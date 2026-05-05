@@ -166,6 +166,46 @@ end # module BallisticUtils
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# MODULE 1.1: ReferenceData
+# ──────────────────────────────────────────────────────────────────────────────
+module ReferenceData
+
+export BulletProfile, COMMON_BULLETS, CARTRIDGE_MAX_PSI
+
+"""Data profile for a specific bullet."""
+struct BulletProfile
+    name::String
+    mass_gr::Float64
+    caliber_in::Float64
+    bc_g7::Float64
+    length_in::Float64
+end
+
+# Data from Chapter 11 of the manual
+const COMMON_BULLETS = Dict{String, BulletProfile}(
+    "Berger 105 Hybrid (6mm)" => BulletProfile("Berger 105 Hybrid (6mm)", 105.0, 0.243, 0.275, 1.10),
+    "Berger 140 Hybrid (6.5mm)" => BulletProfile("Berger 140 Hybrid (6.5mm)", 140.0, 0.264, 0.311, 1.34),
+    "Hornady 147 ELD-M (6.5mm)" => BulletProfile("Hornady 147 ELD-M (6.5mm)", 147.0, 0.264, 0.351, 1.42),
+    "Berger 180 Hybrid (7mm)" => BulletProfile("Berger 180 Hybrid (7mm)", 180.0, 0.284, 0.350, 1.50),
+    "Sierra 175 MK (.308)" => BulletProfile("Sierra 175 MK (.308)", 175.0, 0.308, 0.259, 1.24),
+    "Berger 185 Juggernaut (.308)" => BulletProfile("Berger 185 Juggernaut (.308)", 185.0, 0.308, 0.283, 1.30),
+    "Hornady 178 ELD-M (.308)" => BulletProfile("Hornady 178 ELD-M (.308)", 178.0, 0.308, 0.274, 1.31),
+    "Berger 300 Hybrid (.338)" => BulletProfile("Berger 300 Hybrid (.338)", 300.0, 0.338, 0.419, 1.82)
+)
+
+# Data from Chapter 9 of the manual
+const CARTRIDGE_MAX_PSI = Dict{String, Float64}(
+    ".223 Remington" => 55000.0,
+    "6.5 Creedmoor" => 62000.0,
+    ".308 Winchester" => 62000.0,
+    ".300 Winchester Magnum" => 64000.0,
+    ".338 Lapua Magnum" => 60916.0
+)
+
+end # module ReferenceData
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # MODULE 2: Atmosphere
 # ──────────────────────────────────────────────────────────────────────────────
 module Atmosphere
@@ -660,12 +700,14 @@ module ExteriorBallistics
 using ..Atmosphere
 using ..DragModels
 using ..BallisticUtils
+using Printf
 
 export TrajectoryPoint, ShotParameters,
        solve_trajectory, find_zero_angle,
        miller_sg, spin_drift_inches,
        coriolis_horizontal, eotvos_vertical,
        wind_deflection_lag_rule,
+       aerodynamic_jump, inclined_fire_effective_range,
        trajectory_table
 
 # ── Data types ──
@@ -806,6 +848,25 @@ function wind_deflection_lag_rule(wind_cross_ms::Real, tof::Real,
                                   range_m::Real, v0_ms::Real)
     t_vac = range_m / v0_ms
     return wind_cross_ms * (tof - t_vac)
+end
+
+"""
+    aerodynamic_jump(C_L_alpha, k_t, alpha_trim, p_s, r_s) -> θ_jump [rad]
+
+Aerodynamic jump angle (Eq. 6.13 in manual).
+"""
+function aerodynamic_jump(C_L_alpha::Real, k_t::Real, alpha_trim::Real,
+                          p_s::Real, r_s::Real)
+    return (C_L_alpha / (2.0 * k_t^2)) * (alpha_trim / (p_s - r_s))
+end
+
+"""
+    inclined_fire_effective_range(slant_range, angle_deg) -> R_eff
+
+Rifleman's Rule: effective horizontal range for inclined fire (Eq. 12.1).
+"""
+function inclined_fire_effective_range(slant_range::Real, angle_deg::Real)
+    return slant_range * cos(deg2rad(angle_deg))
 end
 
 """
@@ -992,9 +1053,6 @@ function trajectory_table(p::ShotParameters; step_yd::Real=100.0)
     end
     println("└────────┴──────────┴──────────┴──────────┴──────────┴────────┴──────────┘")
 end
-
-# Need Printf for the table
-using Printf
 
 end # module ExteriorBallistics
 
@@ -1624,6 +1682,7 @@ end # module SixDOF
 # Re-export all sub-modules
 # ──────────────────────────────────────────────────────────────────────────────
 using .BallisticUtils
+using .ReferenceData
 using .Atmosphere
 using .InteriorBallistics
 using .DragModels
@@ -1631,7 +1690,7 @@ using .ExteriorBallistics
 using .ReloadingAnalysis
 using .SixDOF
 
-export BallisticUtils, Atmosphere, InteriorBallistics,
+export BallisticUtils, ReferenceData, Atmosphere, InteriorBallistics,
        DragModels, ExteriorBallistics, ReloadingAnalysis, SixDOF
 
 end # module CompetitionBallistics

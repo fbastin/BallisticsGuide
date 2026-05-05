@@ -125,7 +125,7 @@
 \begin{titlepage}
 \centering
 \vspace*{2cm}
-{\Huge\bfseries Competition Rifle Ballistics\\[0.5cm]
+{\Huge\bfseries Consolidated Competition Ballistics\\[0.5cm]
 \Large A Comprehensive Mathematical Manual\\[0.3cm]
 with Reloading Guide and Julia Implementations}\\[2cm]
 \begin{tikzpicture}
@@ -140,10 +140,10 @@ with Reloading Guide and Julia Implementations}\\[2cm]
   \node[below] at (5,-2.5) {\small Trajectory with aerodynamic drag and gravity};
 \end{tikzpicture}
 \\[2cm]
-{\large\itshape Covering: Interior, Transitional, Exterior, and Terminal Ballistics\\
+{\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 2.0 --- \today}
+{\large Version 3.0 (Consolidated) --- \today}
 \end{titlepage}
 
 \pagenumbering{roman}
@@ -188,6 +188,7 @@ $\omega_E$ & Earth's angular velocity & \SI{7.2921e-5}{\radian\per\second} \\
 $S_g$ & Gyroscopic stability factor & --- \\
 $\tau$ & Twist rate & in.\ per turn \\
 $r$ & Range & \si{\yard} or \si{\meter} \\
+$\Delta y$ & Vertical drop & \si{\inch} or \si{\meter} \\
 $E_k$ & Kinetic energy & \si{\joule} or ft$\cdot$lbf \\
 \bottomrule
 \end{longtable}
@@ -494,11 +495,19 @@ This chapter develops the mathematical framework for predicting the bullet's tra
 
 \section{Vacuum Trajectory (Baseline)}
 
-In the absence of air resistance, the trajectory is a simple parabola:
+In the absence of air resistance, the trajectory is a simple parabola. This model is useful as a theoretical baseline but is \emph{insufficient for real-world ballistics} because bullets travel at supersonic speeds where aerodynamic drag dominates the behavior. Precision rifle shooting relies on understanding the physics governing projectile motion beyond the idealized vacuum case, accounting for gravity, drag, wind, and spin.
+
+The equations of motion in vacuum are:
 \begin{align}
   x(t) &= v_0 \cos\theta \cdot t \label{eq:vac_x}\\
   y(t) &= v_0 \sin\theta \cdot t - \frac{1}{2}g\,t^2 \label{eq:vac_y}
 \end{align}
+
+Eliminating $t$ from Eq.~(\ref{eq:vac_x}) and substituting into Eq.~(\ref{eq:vac_y}) yields the trajectory equation in terms of horizontal distance $x$:
+\begin{equation}
+  \boxed{y(x) = x \tan\theta - \frac{g x^2}{2 v_0^2 \cos^2\theta}}
+  \label{eq:vac_y_x}
+\end{equation}
 
 The range in vacuum:
 \begin{equation}
@@ -556,6 +565,45 @@ The $\Cd$--$\Mach$ curve has characteristic regimes: subsonic ($\Mach < 0.8$) wi
 \caption{Schematic drag coefficient vs.\ Mach number for G1 and G7 reference projectiles.}
 \label{fig:cd_mach}
 \end{figure}
+
+\subsection{Analytical Solution for 1D Drag}
+
+While modern ballistics requires numerical integration (see Section~\ref{sec:numerical}), a simplified 1D model where $\Cd$ is assumed constant provides useful insights into the scaling of range and velocity with respect to the ballistic coefficient.
+
+Consider purely horizontal motion with drag as the only force:
+\begin{equation}
+  \frac{\dd v}{\dd t} = -k\,v^2, \quad \text{where } k = \frac{\rho\,\Cd\,A}{2\,m}
+  \label{eq:1d_drag_ode}
+\end{equation}
+
+Separating variables and integrating:
+\begin{equation}
+  \int_{v_0}^{v} \frac{\dd v'}{(v')^2} = -k \int_{0}^{t} \dd t' \implies -\left[\frac{1}{v'}\right]_{v_0}^{v} = -k\,t
+\end{equation}
+
+The velocity as a function of time is:
+\begin{equation}
+  \boxed{v(t) = \frac{v_0}{1 + k\,v_0\,t}}
+  \label{eq:1d_v_t}
+\end{equation}
+
+Integrating once more to find the distance $x(t)$:
+\begin{equation}
+  x(t) = \int_{0}^{t} \frac{v_0}{1 + k\,v_0\,t'} \dd t' = \frac{1}{k} \ln(1 + k\,v_0\,t)
+\end{equation}
+
+Solving for $t$ in terms of $x$:
+\begin{equation}
+  t = \frac{e^{kx} - 1}{k\,v_0}
+\end{equation}
+
+Substituting this into Eq.~(\ref{eq:1d_v_t}) yields the velocity as a function of distance:
+\begin{equation}
+  \boxed{v(x) = v_0 e^{-kx}}
+  \label{eq:1d_v_x}
+\end{equation}
+
+This exponential decay demonstrates how the "Physics BC" (contained within $k$) determines the velocity retention of the projectile.
 
 \section{Ballistic Coefficient}
 \label{sec:bc}
@@ -721,8 +769,24 @@ Substituting $\Cd = i \cdot \Cd^{\mathrm{std}}$ and $\Bc = m/(i\,d^2)$:
 \end{equation}
 
 \section{Numerical Integration}
+\label{sec:numerical}
 
-The equations of motion are solved numerically using a 4th-order Runge--Kutta (RK4) method \citep{press2007numerical}:
+Since the system of equations (Eqs.~\ref{eq:3dof_x}--\ref{eq:3dof_z}) has no closed-form solution due to the non-linear dependence of $\Cd$ on velocity, it must be solved numerically.
+
+\subsection{Euler Method}
+
+The simplest numerical approach is the first-order Euler method, which updates the state vector using the derivative at the beginning of each time step $\Delta t$:
+\begin{align}
+  v_x^{n+1} &= v_x^n + \Delta t \left(-\frac{\rho\,\Cd\,A}{2\,m}\,v^n\,(v_x^n - w_x)\right) \label{eq:euler_vx}\\
+  v_y^{n+1} &= v_y^n + \Delta t \left(-\frac{\rho\,\Cd\,A}{2\,m}\,v^n\,(v_y^n - w_y) - g\right) \label{eq:euler_vy}\\
+  x^{n+1} &= x^n + v_x^n\,\Delta t \label{eq:euler_x}\\
+  y^{n+1} &= y^n + v_y^n\,\Delta t \label{eq:euler_y}
+\end{align}
+where $v^n = \sqrt{(v_x^n-w_x)^2 + (v_y^n-w_y)^2 + (v_z^n-w_z)^2}$. While intuitive and easy to implement, the Euler method requires very small time steps to maintain stability and accuracy.
+
+\subsection{Runge--Kutta (RK4)}
+
+Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and precision by sampling the derivative at multiple points within the time step \citep{press2007numerical}:
 \begin{align}
   \bm{k}_1 &= h\,\bm{f}(t_n, \bm{y}_n) \\
   \bm{k}_2 &= h\,\bm{f}(t_n + h/2, \bm{y}_n + \bm{k}_1/2) \\
@@ -752,9 +816,18 @@ Given wind speed $W$ at angle $\alpha_w$ relative to the line of fire:
   w_z &= W\sin\alpha_w \quad \text{(crosswind)} \label{eq:wind_z}
 \end{align}
 
+\subsection{Simple Approximation}
+
+A crude but sometimes useful first-order approximation for lateral drift (crosswind drift) is:
+\begin{equation}
+  \Delta z_{\mathrm{wind}} \approx \frac{W\sin\alpha_w}{v_{\mathrm{avg}}} \cdot R
+  \label{eq:simple_wind}
+\end{equation}
+where $v_{\mathrm{avg}}$ is the average velocity over the range $R$. This model assumes the bullet instantly acquires the transverse velocity of the wind, which is physically unrealistic for high-velocity projectiles.
+
 \subsection{Lag Rule (Quick Estimation)}
 
-The Didion approximation \citep{mccoy1999modern, litz2011applied}:
+The Didion approximation, also known as the Lag Rule \citep{mccoy1999modern, litz2011applied}:
 \begin{equation}
   \Delta z_{\mathrm{wind}} \approx W\sin\alpha_w \cdot \left(t_{\mathrm{actual}} - \frac{R}{v_0\cos\theta}\right)
   \label{eq:lag_rule}
@@ -807,9 +880,11 @@ Always to the right in the Northern Hemisphere, left in the Southern. At $45\,\t
 \subsection{Vertical Deflection (E\"otv\"os Effect)}
 
 \begin{equation}
-  \Delta y_{\mathrm{Eot}} \approx -\omega_E \cos\phi\sin\psi \cdot R \cdot t
+  \boxed{\Delta y_{\mathrm{Eot}} \approx \omega_E \cos\phi\sin\psi \cdot R \cdot t}
   \label{eq:eotvos}
 \end{equation}
+
+Firing East ($\psi = 90^{\circ}$) results in a positive vertical deflection (the bullet shoots higher due to the increased centrifugal force), while firing West ($\psi = 270^{\circ}$) results in a negative deflection. At $45^{\circ}$N, \SI{1000}{\yard}, the effect is approximately $\pm 3$ to 4 inches.
 
 \section{Aerodynamic Jump}
 
@@ -1180,6 +1255,12 @@ traj = solve_6dof(params6)
 
 The common approximation: $1\;\text{MOA} \approx 1.047$ inches at \SI{100}{\yard}.
 
+The angular correction in MOA for a vertical drop $\Delta y$ at range $R$ (assuming $\Delta y$ and $R$ are in the same units) is:
+\begin{equation}
+  \boxed{\text{MOA} = \frac{\Delta y}{R} \cdot \frac{180 \times 60}{\pi} \approx \frac{\Delta y}{R} \cdot 3437.75}
+  \label{eq:moa_calc}
+\end{equation}
+
 \section{Milliradian (Mil)}
 
 \begin{equation}
@@ -1188,6 +1269,12 @@ The common approximation: $1\;\text{MOA} \approx 1.047$ inches at \SI{100}{\yard
 \end{equation}
 
 Conversion: $1\;\text{mil} = 3.438\;\text{MOA}$.
+
+The angular correction in mils for a vertical drop $\Delta y$ at range $R$ (same units) is:
+\begin{equation}
+  \boxed{\text{mil} = \frac{\Delta y}{R} \times 1000}
+  \label{eq:mil_calc}
+\end{equation}
 
 
 % ============================================================================
@@ -1853,11 +1940,12 @@ The centrifugal term is absorbed into local $g$. In local coordinates at latitud
   \bm{\omega} = \omega_E\,(0, \cos\phi, \sin\phi)^T
 \end{equation}
 
-Computing the cross product, the dominant terms for $v_x \gg v_y, v_z$:
+Computing the cross product, the dominant terms for $v_x \gg v_y, v_z$ (where $x$ is downrange, $y$ is vertical, and $z$ is cross-range):
 \begin{align}
-  a_z^{\mathrm{Cor}} &\approx 2\omega_E\,v_x\cos\phi \\
-  a_y^{\mathrm{Cor}} &\approx -2\omega_E\,v_x\sin\phi
+  a_z^{\mathrm{Cor}} &\approx 2\omega_E\,v_x\sin\phi \label{eq:app_cor_z}\\
+  a_y^{\mathrm{Cor}} &\approx 2\omega_E\,v_x\cos\phi\sin\psi \label{eq:app_cor_y}
 \end{align}
+where $\psi$ is the firing azimuth. Integrating these twice with respect to time yields the deflection approximations used in Chapter~\ref{ch:advanced}.
 
 \section{Derivation of Spin Drift via Yaw of Repose}
 
