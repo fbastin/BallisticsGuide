@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur balistique &mdash; BallisticsGuide</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">Balistique<span class="logo-accent">Guide</span></a>
+    <nav class="main-nav">
+      <a href="index.html">Guide</a>
+      <a href="index.html#fondamentaux">Fondamentaux</a>
+      <a href="index.html#exterieure">Balistique ext.</a>
+      <a href="index.html#rechargement">Rechargement</a>
+      <a href="calculateur.html" class="nav-cta">Calculateur</a>
+    </nav>
+    <button class="menu-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ CALCULATOR ═══════════════════ -->
+<section class="section" style="padding-top:1.5rem">
+<div class="container">
+
+  <h2 class="section-title">Calculateur balistique</h2>
+  <p class="section-intro" style="margin-bottom:0">
+    Solveur 3-DOF complet &mdash; tous les calculs sont effectués localement dans votre navigateur.
+  </p>
+
+  <div class="calc-layout">
+
+    <!-- ──── Input panel ──── -->
+    <div class="calc-panel">
+
+      <!-- Preset -->
+      <h3>Profil rapide</h3>
+      <div class="field field-full">
+        <label for="preset">Cartouche / balle</label>
+        <select id="preset">
+          <option value="">-- Personnalisé --</option>
+          <option value="65cm_140">6.5 Creedmoor / 140 gr Berger Hybrid</option>
+          <option value="308_175">308 Win / 175 gr Sierra MK</option>
+          <option value="308_185">308 Win / 185 gr Berger Juggernaut</option>
+          <option value="65cm_147">6.5 Creedmoor / 147 gr Hornady ELD-M</option>
+          <option value="6mm_105">6mm / 105 gr Berger Hybrid</option>
+          <option value="7mm_180">7mm / 180 gr Berger Hybrid</option>
+          <option value="338_300">338 Lapua / 300 gr Berger Hybrid</option>
+        </select>
+      </div>
+
+      <!-- Projectile -->
+      <h3>Projectile</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="massGr">Masse (gr)</label>
+          <input type="number" id="massGr" value="140" step="1">
+        </div>
+        <div class="field">
+          <label for="calIn">Calibre (in)</label>
+          <input type="number" id="calIn" value="0.264" step="0.001">
+        </div>
+        <div class="field">
+          <label for="bc">CB (G7)</label>
+          <input type="number" id="bc" value="0.311" step="0.001">
+        </div>
+        <div class="field">
+          <label for="lenIn">Longueur (in)</label>
+          <input type="number" id="lenIn" value="1.34" step="0.01">
+        </div>
+      </div>
+
+      <!-- Launch -->
+      <h3>Lancement</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="mv">V<sub>0</sub> (fps)</label>
+          <input type="number" id="mv" value="2700" step="10">
+        </div>
+        <div class="field">
+          <label for="zeroYd">Zéro (yd)</label>
+          <input type="number" id="zeroYd" value="100" step="25">
+        </div>
+        <div class="field">
+          <label for="twistIn">Pas de rayure (in)</label>
+          <input type="number" id="twistIn" value="8" step="0.5">
+        </div>
+        <div class="field">
+          <label for="sightHt">Haut. lunette (in)</label>
+          <input type="number" id="sightHt" value="1.5" step="0.1">
+        </div>
+      </div>
+
+      <!-- Atmosphère -->
+      <h3>Atmosphère</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="tempF">Température (&deg;F)</label>
+          <input type="number" id="tempF" value="59" step="1">
+        </div>
+        <div class="field">
+          <label for="presInhg">Pression (inHg)</label>
+          <input type="number" id="presInhg" value="29.92" step="0.01">
+        </div>
+        <div class="field">
+          <label for="humid">Humidité (%)</label>
+          <input type="number" id="humid" value="0" step="5" min="0" max="100">
+        </div>
+        <div class="field">
+          <label for="altFt">Altitude (ft)</label>
+          <input type="number" id="altFt" value="0" step="100">
+        </div>
+      </div>
+
+      <!-- Vent -->
+      <h3>Vent</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="windMph">Vitesse (mph)</label>
+          <input type="number" id="windMph" value="10" step="1">
+        </div>
+        <div class="field">
+          <label for="windAng">Direction (&deg;)</label>
+          <input type="number" id="windAng" value="90" step="15" min="0" max="360">
+        </div>
+      </div>
+
+      <!-- Cible -->
+      <h3>Cible &amp; position</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="rangeYd">Portée max (yd)</label>
+          <input type="number" id="rangeYd" value="1000" step="100">
+        </div>
+        <div class="field">
+          <label for="stepYd">Pas (yd)</label>
+          <input type="number" id="stepYd" value="100" step="25">
+        </div>
+        <div class="field">
+          <label for="latDeg">Latitude (&deg;)</label>
+          <input type="number" id="latDeg" value="45" step="1">
+        </div>
+        <div class="field">
+          <label for="azDeg">Azimut (&deg;)</label>
+          <input type="number" id="azDeg" value="90" step="15">
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-calc" onclick="compute()">Calculer la trajectoire</button>
+    </div>
+
+    <!-- ──── Results area ──── -->
+    <div class="calc-results" id="results">
+      <div class="empty-state">
+        <p>&#127919;</p>
+        <p>Configurez vos paramètres puis cliquez sur <strong>Calculer</strong>.</p>
+      </div>
+    </div>
+
+  </div><!-- /calc-layout -->
+</div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p>&copy; 2024&ndash;2026 BallisticsGuide &mdash; Contenu à titre informatif uniquement</p>
+    <p class="footer-links">
+      <a href="index.html">Guide</a>
+      <a href="https://github.com/fbastin/BallisticsGuide" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </div>
+</footer>
+
+<script src="src/CompetitionBallistics.js"></script>
+<script>
+const BU  = CompetitionBallistics.BallisticUtils;
+const ATM = CompetitionBallistics.Atmosphere;
+const EB  = CompetitionBallistics.ExteriorBallistics;
+
+const PRESETS = {
+  "65cm_140": { massGr:140, calIn:.264, bc:.311, lenIn:1.34, mv:2700, twistIn:8 },
+  "308_175":  { massGr:175, calIn:.308, bc:.259, lenIn:1.24, mv:2600, twistIn:10 },
+  "308_185":  { massGr:185, calIn:.308, bc:.283, lenIn:1.30, mv:2580, twistIn:10 },
+  "65cm_147": { massGr:147, calIn:.264, bc:.351, lenIn:1.42, mv:2650, twistIn:7.5 },
+  "6mm_105":  { massGr:105, calIn:.243, bc:.275, lenIn:1.10, mv:2950, twistIn:7.5 },
+  "7mm_180":  { massGr:180, calIn:.284, bc:.350, lenIn:1.50, mv:2750, twistIn:8.5 },
+  "338_300":  { massGr:300, calIn:.338, bc:.419, lenIn:1.82, mv:2750, twistIn:9.4 },
+};
+
+document.getElementById('preset').addEventListener('change', function() {
+  const p = PRESETS[this.value];
+  if (!p) return;
+  document.getElementById('massGr').value  = p.massGr;
+  document.getElementById('calIn').value   = p.calIn;
+  document.getElementById('bc').value      = p.bc;
+  document.getElementById('lenIn').value   = p.lenIn;
+  document.getElementById('mv').value      = p.mv;
+  document.getElementById('twistIn').value = p.twistIn;
+});
+
+function val(id) { return parseFloat(document.getElementById(id).value); }
+
+function compute() {
+  const params = {
+    massGrains:    val('massGr'),
+    caliberIn:     val('calIn'),
+    bc:            val('bc'),
+    dragModel:     'G7',
+    muzzleVelFps:  val('mv'),
+    sightHeightIn: val('sightHt'),
+    zeroRangeYd:   val('zeroYd'),
+    tempF:         val('tempF'),
+    pressureInhg:  val('presInhg'),
+    humidityPct:   val('humid'),
+    altitudeFt:    val('altFt'),
+    windSpeedMph:  val('windMph'),
+    windAngleDeg:  val('windAng'),
+    targetRangeYd: val('rangeYd'),
+    twistIn:       val('twistIn'),
+    bulletLengthIn:val('lenIn'),
+    twistDirection:1,
+    latitudeDeg:   val('latDeg'),
+    azimuthDeg:    val('azDeg'),
+    enableCoriolis:true,
+    enableSpinDrift:true,
+  };
+
+  const stepYd = val('stepYd');
+  const table = EB.trajectoryTable(params, stepYd);
+  const p = EB.makeShotParams(params);
+
+  // Stability
+  const sg = EB.millerSg(p);
+  const sd = BU.sectionalDensity(p.massGrains, p.caliberIn);
+
+  // Atmosphere
+  const T_K = BU.fahrenheitToKelvin(p.tempF);
+  const P_Pa = BU.inhgToPa(p.pressureInhg);
+  const rho = ATM.airDensity({ P: P_Pa, T: T_K, H: p.humidityPct });
+  const da = ATM.densityAltitude(rho);
+  const mach0 = BU.fpsToMs(p.muzzleVelFps) / ATM.speedOfSound(T_K);
+
+  // Summary
+  const last = table.length > 0 ? table[table.length - 1] : null;
+
+  let html = '<h3>Résumé</h3><div class="result-summary">';
+  html += card(sg.toFixed(2), 'S<sub>g</sub> Miller');
+  html += card(sd.toFixed(3), 'Densité sect.');
+  html += card(mach0.toFixed(2), 'Mach initial');
+  html += card(rho.toFixed(4), '&rho; (kg/m&sup3;)');
+  html += card(Math.round(da) + ' m', 'Alt. densité');
+  if (last) {
+    html += card(last.velFps + ' fps', 'V finale');
+    html += card(last.tofS + ' s', 'Temps de vol');
+    html += card(last.energyFtlb + ' ft&middot;lb', '&Eacute;nergie finale');
+  }
+  html += '</div>';
+
+  // Stability warning
+  if (sg < 1.0) {
+    html += '<div class="disclaimer" style="margin-bottom:1rem"><strong>Attention :</strong> S<sub>g</sub> &lt; 1,0 &mdash; le projectile sera instable et basculera en vol.</div>';
+  } else if (sg < 1.3) {
+    html += '<div class="disclaimer" style="margin-bottom:1rem;background:#fff3cd;border-color:#ffc107"><strong>Attention :</strong> S<sub>g</sub> marginal (' + sg.toFixed(2) + '). Envisagez un pas de rayure plus rapide.</div>';
+  }
+
+  // Table
+  html += '<h3>Table de trajectoire</h3>';
+  html += '<div style="overflow-x:auto">';
+  html += '<table class="result-table"><thead><tr>';
+  html += '<th>Dist (yd)</th><th>Drop (in)</th><th>&Eacute;lev (MOA)</th>';
+  html += '<th>Vent (in)</th><th>Vel (fps)</th><th>ToF (s)</th><th>&Eacute;nergie (ft&middot;lb)</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const r of table) {
+    html += '<tr>';
+    html += '<td>' + r.rangeYd + '</td>';
+    html += '<td>' + fmt(r.dropIn, 1) + '</td>';
+    html += '<td>' + fmt(r.elevMoa, 1) + '</td>';
+    html += '<td>' + fmt(r.windIn, 1) + '</td>';
+    html += '<td>' + r.velFps + '</td>';
+    html += '<td>' + r.tofS.toFixed(3) + '</td>';
+    html += '<td>' + r.energyFtlb + '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+
+  document.getElementById('results').innerHTML = html;
+}
+
+function card(v, l) {
+  return '<div class="result-card"><div class="val">' + v + '</div><div class="lbl">' + l + '</div></div>';
+}
+function fmt(n, d) {
+  return (n >= 0 ? '+' : '') + n.toFixed(d);
+}
+
+// Mobile menu
+document.querySelector('.menu-toggle').addEventListener('click', function() {
+  document.querySelector('.main-nav').classList.toggle('open');
+});
+</script>
+
+</body>
+</html>

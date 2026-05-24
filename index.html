@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Balistique de Compétition &mdash; Guide &amp; Calculateur</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">Balistique<span class="logo-accent">Guide</span></a>
+    <nav class="main-nav">
+      <a href="#guide">Guide</a>
+      <a href="#fondamentaux">Fondamentaux</a>
+      <a href="#exterieure">Balistique ext.</a>
+      <a href="#rechargement">Rechargement</a>
+      <a href="calculateur.html" class="nav-cta">Calculateur</a>
+    </nav>
+    <button class="menu-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero">
+  <div class="container">
+    <h1>Balistique de Compétition</h1>
+    <p class="hero-sub">Guide complet &amp; calculateur en ligne pour le tir de précision à longue distance</p>
+    <div class="hero-actions">
+      <a href="calculateur.html" class="btn btn-primary">Ouvrir le calculateur</a>
+      <a href="#guide" class="btn btn-secondary">Explorer le guide</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ AVERTISSEMENT ═══════════════════ -->
+<div class="container">
+  <div class="disclaimer">
+    Les informations présentées sur ce site le sont à titre éducatif et informatif uniquement. Le tir et le rechargement sont des activités réglementées qui doivent être pratiquées dans le strict respect de la législation en vigueur. L'auteur décline toute responsabilité en cas d'usage inapproprié.
+  </div>
+</div>
+
+<!-- ═══════════════════ GUIDE — VUE D'ENSEMBLE ═══════════════════ -->
+<section id="guide" class="section">
+  <div class="container">
+    <h2 class="section-title">Le Guide</h2>
+    <p class="section-intro">
+      Ce guide couvre l'ensemble de la chaîne balistique, du comportement
+      de la poudre dans la chambre jusqu'à l'impact sur cible à plus de 1&nbsp;000 mètres.
+      Chaque chapitre est accompagné de modèles mathématiques implémentés dans le
+      <a href="calculateur.html">calculateur en ligne</a>.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════ 1. FONDAMENTAUX ═══════════════════ -->
+<section id="fondamentaux" class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">Fondamentaux</h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <span class="card-num">1</span>
+        <h3>Modèle atmosphérique</h3>
+        <p>
+          Atmosphère standard ICAO, correction d'humidité, altitude-densité.
+          La densité de l'air agit directement sur la traînée &mdash; une
+          erreur de 10&nbsp;% sur la densité se traduit par ~10&nbsp;% d'erreur
+          sur la force de traînée.
+        </p>
+        <dl class="card-facts">
+          <dt>T<sub>0</sub></dt><dd>288,15 K (15 &deg;C)</dd>
+          <dt>P<sub>0</sub></dt><dd>101 325 Pa (29,92 inHg)</dd>
+          <dt>&rho;<sub>0</sub></dt><dd>1,225 kg/m&sup3;</dd>
+          <dt>a<sub>0</sub></dt><dd>340,3 m/s</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <span class="card-num">2</span>
+        <h3>Coefficient balistique</h3>
+        <p>
+          Le CB caractérise l'efficacité aérodynamique d'un projectile par
+          rapport à un projectile de référence. Le modèle <strong>G7</strong>
+          (ogive sécante + culot tronconique) est le standard moderne pour les
+          balles de compétition ; le G1 reste utilisé pour les balles
+          traditionnelles à fond plat.
+        </p>
+        <dl class="card-facts">
+          <dt>CB = SD / i</dt><dd>densité sectionnelle / facteur de forme</dd>
+          <dt>Plage</dt><dd>0,150 &ndash; 0,420 (G7)</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <span class="card-num">3</span>
+        <h3>Stabilité gyroscopique</h3>
+        <p>
+          La formule de Miller permet de vérifier qu'un pas de rayure stabilise
+          correctement un projectile donné. Un facteur S<sub>g</sub>&nbsp;&gt;&nbsp;1,4
+          est recommandé pour les applications militaires ; les tireurs benchrest
+          visent ~1,2 pour maximiser le CB.
+        </p>
+        <dl class="card-facts">
+          <dt>S<sub>g</sub> &gt; 1,4</dt><dd>bien stabilisé</dd>
+          <dt>S<sub>g</sub> &asymp; 1,0</dt><dd>marginal</dd>
+          <dt>S<sub>g</sub> &lt; 1,0</dt><dd>instable &mdash; basculement</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <span class="card-num">4</span>
+        <h3>Régimes de vitesse</h3>
+        <p>
+          Le comportement aérodynamique change radicalement selon le nombre de Mach.
+          La zone transsonique est critique : le coefficient de traînée C<sub>d</sub>
+          varie brutalement, pouvant provoquer une instabilité dynamique.
+        </p>
+        <dl class="card-facts">
+          <dt>Subsonique</dt><dd>&lt; Mach 0,9 (&lt; 310 m/s)</dd>
+          <dt>Transsonique</dt><dd>Mach 0,9 &ndash; 1,2</dd>
+          <dt>Supersonique</dt><dd>&gt; Mach 1,2 (&gt; 410 m/s)</dd>
+        </dl>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 2. BALISTIQUE INTÉRIEURE ═══════════════════ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Balistique intérieure</h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <span class="card-num">5</span>
+        <h3>Modèle de Le Duc</h3>
+        <p>
+          Modèle simplifié de la vitesse en fonction du déplacement dans
+          le canon : v(x) = a&middot;x / (b + x).
+          Permet d'estimer la vitesse initiale et la pression maximale
+          sans simulation numérique complète.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">6</span>
+        <h3>Longueur de canon &amp; vitesse</h3>
+        <p>
+          La vitesse initiale suit une loi de puissance en fonction de la
+          longueur de canon. Données mesurées pour le .308&nbsp;Win / Lapua 155&nbsp;gr :
+        </p>
+        <dl class="card-facts">
+          <dt>20"</dt><dd>820 m/s (2 690 fps)</dd>
+          <dt>24"</dt><dd>845 m/s (2 772 fps)</dd>
+          <dt>26"</dt><dd>860 m/s (2 822 fps)</dd>
+        </dl>
+        <p class="card-note">Soit environ 12 m/s par pouce supplémentaire.</p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">7</span>
+        <h3>Sensibilité thermique</h3>
+        <p>
+          La vitesse de combustion de la poudre varie avec la température. Les poudres
+          modernes dites «&nbsp;Extreme&nbsp;» (ex. Hodgdon H4350, Varget) ont un
+          coefficient &sigma;<sub>T</sub>&nbsp;&asymp;&nbsp;0,5 fps/&deg;F, contre
+          1,5&ndash;2,0 fps/&deg;F pour les poudres classiques.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 3. BALISTIQUE EXTÉRIEURE ═══════════════════ -->
+<section id="exterieure" class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">Balistique extérieure</h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <span class="card-num">8</span>
+        <h3>Traînée aérodynamique</h3>
+        <p>
+          Le calculateur utilise les tables BRL complètes G1 et G7 avec
+          interpolation par spline cubique (C&sup2;) pour une continuité
+          optimale dans la zone transsonique.
+          L'intégration se fait par Runge-Kutta d'ordre 4 (RK4).
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">9</span>
+        <h3>Vent &amp; déflexion</h3>
+        <p>
+          Modèle complet de vent avec composantes longitudinale et transversale.
+          La règle de Didion (lag rule) donne une bonne approximation :
+          la déflexion est proportionnelle à la différence entre le temps de vol
+          réel et le temps de vol dans le vide.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">10</span>
+        <h3>Dérive gyroscopique (spin drift)</h3>
+        <p>
+          Le couple gyroscopique provoque une dérive latérale croissante avec la distance.
+          Pour un .308&nbsp;Win en pas 1:10 à droite, la dérive est d'environ
+          31&nbsp;cm à 1&nbsp;000&nbsp;m. Le calculateur utilise la formule empirique de Litz.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">11</span>
+        <h3>Effet Coriolis &amp; Eötvös</h3>
+        <p>
+          La rotation terrestre induit une déflexion horizontale (Coriolis)
+          et verticale (Eötvös). Ces effets sont négligeables en dessous de
+          600&nbsp;m mais significatifs au-delà de 1&nbsp;000&nbsp;m, surtout aux
+          hautes latitudes.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">12</span>
+        <h3>Zone transsonique</h3>
+        <p>
+          Portée à laquelle les projectiles courants entrent en zone transsonique &mdash;
+          limite pratique de précision pour le tir de compétition.
+        </p>
+        <table class="card-table">
+          <thead>
+            <tr><th>Cartouche</th><th>Balle</th><th>Transsonique</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>.308 Win</td><td>175 SMK</td><td>&asymp; 820 m</td></tr>
+            <tr><td>6.5 CM</td><td>140 Berger</td><td>&asymp; 950 m</td></tr>
+            <tr><td>.300 WM</td><td>185 Jugg</td><td>&asymp; 1 275 m</td></tr>
+            <tr><td>.338 LM</td><td>300 Berger</td><td>&asymp; 1 500 m</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <span class="card-num">13</span>
+        <h3>Tir en pente</h3>
+        <p>
+          La règle du tireur (Rifleman's Rule) :
+          R<sub>eff</sub> = R<sub>oblique</sub> &times; cos(&alpha;).
+          En tir incliné (montée ou descente), le point d'impact
+          est toujours plus haut qu'en tir à plat.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 4. RECHARGEMENT ═══════════════════ -->
+<section id="rechargement" class="section">
+  <div class="container">
+    <h2 class="section-title">Rechargement &amp; développement de charge</h2>
+    <div class="card-grid">
+
+      <div class="card">
+        <span class="card-num">14</span>
+        <h3>Consistance des vitesses</h3>
+        <p>
+          La dispersion verticale à longue distance est directement liée
+          à l'écart type des vitesses. Objectifs de référence :
+        </p>
+        <table class="card-table">
+          <thead>
+            <tr><th>Type de munition</th><th>ES (m/s)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Munition manufacturée standard</td><td>9 &ndash; 10</td></tr>
+            <tr><td>Munition manufacturée premium</td><td>5 &ndash; 7</td></tr>
+            <tr><td>Rechargement optimisé</td><td>2 &ndash; 3</td></tr>
+            <tr><td>Rechargement benchrest</td><td>&lt; 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <span class="card-num">15</span>
+        <h3>Test Satterlee (ladder test)</h3>
+        <p>
+          Méthode de développement incrémental : un projectile par dose
+          croissante (pas de 0,3&nbsp;gr) permet d'identifier le
+          <em>n&oelig;ud de vitesse</em> &mdash; la zone où la vitesse
+          varie le moins en fonction de la charge. Cette charge est la moins
+          sensible aux variations involontaires.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="card-num">16</span>
+        <h3>Effet de la température</h3>
+        <p>
+          La combinaison de la sensibilité de la poudre et de la variation
+          de densité de l'air provoque un décalage vertical significatif entre
+          saisons. Pour un 6.5&nbsp;CM / H4350 à 1&nbsp;000&nbsp;m, le décalage total
+          entre 0&nbsp;&deg;F et 120&nbsp;&deg;F est d'environ 2&ndash;3&nbsp;MOA.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ CTA CALCULATEUR ═══════════════════ -->
+<section class="section section-cta">
+  <div class="container cta-inner">
+    <h2>Calculateur balistique en ligne</h2>
+    <p>
+      Solveur 3-DOF complet avec intégration RK4, tables de traînée G1/G7 (BRL),
+      correction atmosphérique, Coriolis, dérive gyroscopique et vent.
+      Fonctionne entièrement dans le navigateur &mdash; aucune donnée transmise au serveur.
+    </p>
+    <a href="calculateur.html" class="btn btn-primary btn-large">Lancer le calculateur</a>
+  </div>
+</section>
+
+<!-- ═══════════════════ RÉFÉRENCES ═══════════════════ -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Références &amp; ressources</h2>
+    <div class="card-grid card-grid-2">
+
+      <div class="card">
+        <h3>Bibliographie</h3>
+        <ul class="ref-list">
+          <li>Litz, B. (2011). <em>Applied Ballistics for Long-Range Shooting</em></li>
+          <li>McCoy, R. (1999). <em>Modern Exterior Ballistics</em></li>
+          <li>Litz, B. (2015). <em>Ballistic Performance of Rifle Bullets</em></li>
+          <li>Carlucci, D. &amp; Jacobson, S. (2007). <em>Ballistics: Theory and Design of Guns and Ammunition</em></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Le projet</h3>
+        <p>
+          Ce guide est le compagnon web du manuel
+          <em>Competition Rifle Ballistics: A Comprehensive Mathematical Manual</em>.
+          Le code source (Julia &amp; JavaScript) est disponible sur
+          <a href="https://github.com/fbastin/BallisticsGuide" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+        <p>
+          Le calculateur utilise la bibliothèque <code>CompetitionBallistics.js</code>,
+          portage JavaScript fidèle du solveur Julia.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p>&copy; 2024&ndash;2026 BallisticsGuide &mdash; Contenu à titre informatif uniquement</p>
+    <p class="footer-links">
+      <a href="https://github.com/fbastin/BallisticsGuide" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+document.querySelector('.menu-toggle').addEventListener('click', function() {
+  document.querySelector('.main-nav').classList.toggle('open');
+});
+</script>
+
+</body>
+</html>
