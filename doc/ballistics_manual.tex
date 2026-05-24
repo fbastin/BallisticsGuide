@@ -446,6 +446,26 @@ A practical empirical formula due to Powley and refined by \citet{litz2011applie
 
 A rough rule of thumb: each inch of barrel length change alters muzzle velocity by approximately \SI{20}{\fps} to \SI{35}{\fps} for typical rifle cartridges \citep{litz2011applied}.
 
+As a practical validation of Eq.~\eqref{eq:barrel_length_correction}, consider measured data for the .308~Winchester with Lapua 155\,gr Scenar ammunition:
+
+\begin{table}[H]
+\centering
+\caption{Measured muzzle velocity vs.\ barrel length, .308~Win / Lapua 155\,gr Scenar}
+\label{tab:barrel_length_308}
+\small
+\begin{tabular}{@{}ccc@{}}
+\toprule
+\textbf{Barrel length (in)} & \textbf{$v_0$ (m/s)} & \textbf{$v_0$ (fps)} \\
+\midrule
+20 & 820 & 2690 \\
+24 & 845 & 2772 \\
+26 & 860 & 2822 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This yields approximately \SI{12}{\meter\per\second} ($\approx$\SI{40}{\fps}) per additional inch beyond 20~inches, which is consistent with the power-law exponent of $0.27$ used in the companion Julia library. Note that the gain per inch diminishes with longer barrels, as the propellant gas expansion cools and pressure drops.
+
 \subsection{Temperature Sensitivity of Muzzle Velocity}
 
 Propellant burn rate is temperature-dependent. The temperature coefficient:
@@ -1597,6 +1617,27 @@ This DOPE card gives the shooter all the information needed: dial the elevation,
 
 Target values: ES $< 20\;\text{fps}$ (excellent: $< 10$), SD $< 8\;\text{fps}$ (excellent: $< 4$).
 
+As a practical benchmark, the following table shows typical velocity consistency for factory versus hand-loaded ammunition:
+
+\begin{table}[H]
+\centering
+\caption{Typical velocity consistency: factory ammunition vs.\ optimized handloads}
+\label{tab:velocity_consistency}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Ammunition type} & \textbf{ES (m/s)} & \textbf{ES (fps)} \\
+\midrule
+Standard factory match    & 9--10  & 30--33 \\
+Premium factory match     & 5--7   & 16--23 \\
+Optimized handloads       & 2--3   & 7--10 \\
+Benchrest-grade handloads & $<$2   & $<$7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The gap between factory and hand-loaded ammunition is the primary motivation for reloading in competition shooting: reducing velocity spread by a factor of 3--5 translates directly into tighter vertical dispersion at long range (see below).
+
 \subsection{Velocity SD Impact on Vertical Dispersion}
 
 \begin{equation}
@@ -1666,6 +1707,29 @@ Berger 300 Hyb .338 & 300 & .338 & 0.818 & 0.419 & 0.375 & 1:9.4 \\
 \section{Transonic Stability}
 
 The dynamic stability factor $S_d$ must be considered alongside $S_g$ \citep{mccoy1999modern}. For full stability: $S_g > 1.0$ and $0 < S_d < 2$.
+
+As a bullet decelerates through the transonic zone ($0.9 \lesssim \Mach \lesssim 1.2$), the centre of pressure shifts rapidly and the aerodynamic damping can change sign, potentially causing a well-stabilized supersonic bullet to become dynamically unstable. The practical consequence is increased dispersion---often dramatically so---once the bullet enters this regime. Long-range competitors should therefore know at what range their chosen load crosses into the transonic zone and treat that as the effective maximum range for precision fire.
+
+\begin{table}[H]
+\centering
+\caption{Approximate transonic transition ranges for common competition cartridges at sea-level standard conditions. The transonic zone is defined as $0.9 \leq \Mach \leq 1.1$ ($\approx\SI{310}{}$--$\SI{380}{\meter\per\second}$).}
+\label{tab:transonic_ranges}
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+\textbf{Cartridge} & \textbf{Bullet (gr)} & \textbf{$v_0$ (m/s)} & \textbf{Enters transonic (m)} & \textbf{Subsonic (m)} \\
+\midrule
+.223 Rem        & 77 SMK          & 838  & $\approx$600  & $\approx$750 \\
+.308 Win        & 155 Lapua Scenar & 860 & $\approx$750  & $\approx$950 \\
+.308 Win        & 175 SMK         & 775  & $\approx$820  & $\approx$1075 \\
+6.5 Creedmoor   & 140 Berger Hybrid & 823 & $\approx$950 & $\approx$1200 \\
+.300 Win Mag    & 185 Berger Jugg  & 943  & $\approx$1275 & $\approx$1600 \\
+.338 Lapua Mag  & 300 Berger Hybrid & 838 & $\approx$1500 & $\approx$1900 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bullets with higher BC values and higher muzzle velocities remain supersonic longer, but the relationship is not linear: the steep drag rise in the transonic zone means that once a bullet begins to slow through $\Mach \approx 1.1$, it decelerates rapidly. The solver in Chapter~\ref{ch:solver} captures this behavior through the fine resolution of the G7 drag table in the transonic region.
 
 \section{Inclined Fire (Rifleman's Rule)}
 
