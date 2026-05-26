@@ -150,7 +150,7 @@ const Atmosphere = (() => {
   const rho0      = 1.2250;     // kg/m³
   const L         = 0.0065;     // K/m
   const g0        = 9.80665;    // m/s²
-  const R_air     = 287.058;    // J/(kg·K)
+  const R_air     = 287.0528;   // J/(kg·K) specific gas constant for dry air (ISA 1976)
   const gamma_air = 1.4;
 
   const stdTemperature = (h) => T0 - L * h;
@@ -168,7 +168,7 @@ const Atmosphere = (() => {
   const airDensity = ({ P = P0, T = T0, H = 0.0 } = {}) => {
     const es = saturationVaporPressure(T);
     const e  = (H / 100.0) * es;
-    return (P - 0.3783 * e) / (R_air * T);
+    return (P - 0.37802 * e) / (R_air * T);
   };
 
   const speedOfSound = (T = T0) => Math.sqrt(gamma_air * R_air * T);
@@ -177,7 +177,7 @@ const Atmosphere = (() => {
     airDensity({ P, T, H }) / rho0;
 
   const densityAltitude = (rho) =>
-    (T0 / L) * (1.0 - Math.pow(rho / rho0, 0.190263));
+    (T0 / L) * (1.0 - Math.pow(rho / rho0, 0.234969));
 
   const densityAltitudeFt = (rho) =>
     145442.16 * (1.0 - Math.pow(rho / rho0, 0.234969));
@@ -508,7 +508,7 @@ const ExteriorBallistics = (() => {
 
   function eotvosVertical(rangeM, tof, latitudeDeg, azimuthDeg) {
     const omega = 7.2921e-5;
-    return -omega * Math.cos(latitudeDeg * Math.PI / 180.0) *
+    return omega * Math.cos(latitudeDeg * Math.PI / 180.0) *
            Math.sin(azimuthDeg * Math.PI / 180.0) * rangeM * tof;
   }
 
@@ -604,11 +604,13 @@ const ExteriorBallistics = (() => {
       let az = -D * vrel * vrz;
 
       if (p.enableCoriolis) {
-        const oeY = omegaE * Math.cos(lat);
-        const oeZ = omegaE * Math.sin(lat);
-        ax += -2.0 * (oeY * dvz - oeZ * dvy);
-        ay += -2.0 * (oeZ * dvx);
-        az += -2.0 * (-oeY * dvx);
+        // ω decomposition: x = downrange, y = up, z = right
+        const oeX = omegaE * Math.cos(lat);  // horizontal (North) component
+        const oeY = omegaE * Math.sin(lat);  // vertical (up) component
+        // -2(ω × v): ω = (oeX, oeY, 0)
+        ax += -2.0 * (oeY * dvz);
+        ay += -2.0 * (-oeX * dvz);
+        az += -2.0 * (oeX * dvy - oeY * dvx);
       }
       return [ax, ay, az];
     }

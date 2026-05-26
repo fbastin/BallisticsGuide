@@ -13,6 +13,7 @@
 
 % --- Mathematics ---
 \usepackage{amsmath,amssymb,amsfonts,mathtools}
+\mathtoolsset{showonlyrefs}
 \usepackage{bm}
 \usepackage{cancel}
 
@@ -114,7 +115,8 @@
 \newcommand{\Rey}{\mathit{Re}}
 \newcommand{\sd}{\mathrm{SD}}
 \newcommand{\ff}{\mathrm{FF}}
-\newcommand{\degF}{{}^{\circ}\mathrm{F}}
+\newcommand{\degF}{\ensuremath{{}^{\circ}\mathrm{F}}}
+\newcommand{\degC}{\ensuremath{{}^{\circ}\mathrm{C}}}
 \newcommand{\default}[1]{\;\textrm{\textcolor{blue!60!black}{[default: #1]}}}
 \newcommand{\inmark}{\,\textrm{in.}}
 
@@ -178,7 +180,7 @@ $A$ & Cross-sectional area $= \pi d^2/4$ & \si{\meter\squared} \\
 $g$ & Gravitational acceleration & \si{\meter\per\second\squared} \\
 $\Mach$ & Mach number $= v/a$ & --- \\
 $a$ & Local speed of sound & \si{\meter\per\second} \\
-$T$ & Temperature & \si{\kelvin} or $\degF$ \\
+$T$ & Temperature & \si{\kelvin}, \si{\celsius}, or $\degF$ \\
 $P$ & Barometric pressure & \si{\hecto\pascal} or in~Hg \\
 $H$ & Relative humidity & \% \\
 $\theta$ & Launch (elevation) angle & \si{\degree} or \si{\mil} \\
@@ -235,19 +237,30 @@ Modern computational ballistics, exemplified by solvers such as those described 
 
 The atmosphere is the medium through which the bullet travels. Accurate modeling of air density, speed of sound, and viscosity is prerequisite to all exterior ballistic calculations.
 
+\section{Motivation and Error Sensitivity}
+
+The primary motivation for using a precise atmospheric model is the direct and measurable impact of air density on a projectile's trajectory. Aerodynamic drag is directly proportional to air density:
+\begin{equation}
+  F_{\text{drag}} = \frac{1}{2} \rho \, C_d \, A \, v^2
+  \label{eq:drag_motivation}
+\end{equation}
+where $\rho$ is the air density, $C_d$ is the dimensionless drag coefficient, $A$ is the projectile's cross-sectional area, and $v$ is its velocity relative to the air. Consequently, a 10\% error in air density calculation results in approximately a 10\% error in drag, which directly affects both vertical drop and wind drift.
+
+At long ranges, these effects are substantial. For example, at 1,000 meters, the difference between typical summer and winter conditions can exceed one meter (over 3 MOA) of vertical drop. By understanding and measuring these variables, a shooter can correct for environmental changes rather than relying on guesswork, ensuring first-round hits.
+
 \section{ICAO Standard Atmosphere}
 
 The International Civil Aviation Organization (ICAO) standard atmosphere defines baseline conditions at sea level \citep{icao1993manual}:
 
 \begin{align}
-  T_0 &= \SI{288.15}{\kelvin} \quad (59\,\degF) \\
+  T_0 &= \SI{288.15}{\kelvin} \quad (\SI{15}{\celsius}, 59\,\degF) \\
   P_0 &= \SI{101325}{\pascal} \quad (29.92\;\text{in Hg}) \\
   \rho_0 &= \SI{1.2250}{\kilogram\per\meter\cubed} \\
   a_0 &= \SI{340.294}{\meter\per\second} \quad (\SI{1116.45}{\fps}) \\
   H_0 &= 0\% \quad \text{(dry air)}
 \end{align}
 
-Default values: $T_0 = 288.15\;\text{K}$, $P_0 = 101325\;\text{Pa}$, $\rho_0 = 1.225\;\text{kg/m}^3$, $H_0 = 0\%$.
+Default values: $T_0 = 288.15\;\text{K}$ (\SI{15}{\celsius}), $P_0 = 101325\;\text{Pa}$, $\rho_0 = 1.225\;\text{kg/m}^3$, $H_0 = 0\%$.
 
 \subsection{Temperature Lapse Rate}
 
@@ -266,7 +279,39 @@ Using the barometric formula for the troposphere:
   = P_0 \left(1 - \frac{L\,h}{T_0}\right)^{5.2559}
   \label{eq:pressure_altitude}
 \end{equation}
-where $g_0 = \SI{9.80665}{\meter\per\second\squared}$ and $R_{\mathrm{air}} = \SI{287.058}{\joule\per\kilogram\per\kelvin}$.
+where $g_0 = \SI{9.80665}{\meter\per\second\squared}$ and $R_{\mathrm{air}} = \SI{287.0528}{\joule\per\kilogram\per\kelvin}$.
+
+Figure~\ref{fig:isa_profile} shows how temperature, pressure, and density vary with altitude across the troposphere.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=7cm,
+    xlabel={Altitude $h$ (km)},
+    ylabel={Ratio to sea-level value},
+    xmin=0, xmax=11,
+    ymin=0, ymax=1.1,
+    grid=both,
+    grid style={gray!30},
+    legend pos=north east,
+    legend style={font=\small},
+    xtick={0,1,...,11},
+]
+\addplot[thick, red!80!black, domain=0:11, samples=50]
+    {1 - 0.022558*x};
+\addplot[thick, blue!70!black, domain=0:11, samples=80]
+    {(1 - 0.022558*x)^5.2559};
+\addplot[thick, green!50!black, dashed, domain=0:11, samples=80]
+    {(1 - 0.022558*x)^4.2559};
+\legend{$T/T_0$, $P/P_0$, $\rho/\rho_0$}
+\draw[gray, thin, dashed] (axis cs:1.5,0) -- (axis cs:1.5,1.08);
+\node[above, font=\scriptsize, gray] at (axis cs:1.5,1.08) {1500\,m};
+\end{axis}
+\end{tikzpicture}
+\caption{ICAO Standard Atmosphere profiles (troposphere, 0--11\,km). Temperature decreases linearly at $L = 6.5$~K/km, while pressure and density follow power laws with exponents $n = 5.256$ and $n-1 = 4.256$ respectively. The dashed vertical line marks 1500\,m, a typical mountain shooting altitude where density is already reduced by $\approx 14$\,\%.}
+\label{fig:isa_profile}
+\end{figure}
 
 \section{Air Density}
 
@@ -289,16 +334,59 @@ The saturation vapor pressure (August--Roche--Magnus formula):
 The partial pressure of water vapor:
 \begin{equation}
   e = \frac{H}{100}\, e_s(T)
-  \label{eq:vapor_pressure}
 \end{equation}
 
 Corrected density accounting for humidity (virtual temperature method):
 \begin{equation}
-  \rho = \frac{P - 0.3783\,e}{R_{\mathrm{air}}\,T}
+  \rho = \frac{P - 0.3780\,e}{R_{\mathrm{air}}\,T}
   \label{eq:rho_humid}
 \end{equation}
+where $P$ is the total barometric pressure, $e$ is the partial pressure of water vapor, $T$ is the absolute temperature, and $R_{\mathrm{air}}$ is the specific gas constant for dry air.
 
-The factor 0.3783 arises from $(1 - M_w/M_{\mathrm{air}}) = 1 - 18.015/28.964 \approx 0.3780$.
+The factor 0.3780 arises from $(1 - M_w/M_{\mathrm{air}}) = 1 - 18.015/28.964 \approx 0.3780$.
+
+Figure~\ref{fig:density_sensitivity} compares the relative importance of temperature, pressure, and humidity on air density under typical field conditions.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    xbar,
+    width=10cm, height=5.5cm,
+    xlabel={Change in air density $\Delta\rho/\rho_0$ (\%)},
+    ytick={1,2,3,4,5},
+    yticklabels={
+        {Humidity 100\,\% (25\,$^\circ$C)},
+        {Pressure $-50$\,hPa (weather)},
+        {Temperature $+20$\,$^\circ$C (summer)},
+        {Temperature $-25$\,$^\circ$C (winter)},
+        {Altitude 1500\,m}
+    },
+    y tick label style={font=\small, anchor=east},
+    xmin=-16, xmax=14,
+    bar width=10pt,
+    xmajorgrids=true,
+    ymajorgrids=false,
+    grid style={gray!25},
+    enlarge y limits=0.15,
+]
+\addplot[fill=blue!60!black, draw=blue!60!black] coordinates {
+    (-1.2, 1)
+    (-4.9, 2)
+    (-6.5, 3)
+    (9.5,  4)
+    (-13.6, 5)
+};
+\node[font=\small\bfseries, anchor=east, xshift=-2pt] at (axis cs:-1.2,1) {$-1.2$\,\%};
+\node[font=\small\bfseries, anchor=east, xshift=-2pt] at (axis cs:-4.9,2) {$-4.9$\,\%};
+\node[font=\small\bfseries, anchor=east, xshift=-2pt] at (axis cs:-6.5,3) {$-6.5$\,\%};
+\node[font=\small\bfseries, anchor=west, xshift=2pt]  at (axis cs:9.5,4)  {$9.5$\,\%};
+\node[font=\small\bfseries, anchor=west, xshift=2pt, white]  at (axis cs:-13.6,5) {$-13.6$\,\%};
+\end{axis}
+\end{tikzpicture}
+\caption{Relative change in air density for common deviations from ICAO standard conditions ($15\,^\circ$C, sea level, 1013\,hPa, dry air). Negative values indicate reduced density and less aerodynamic drag. Altitude and temperature are the dominant factors; humidity is negligible ($< 2$\,\%).}
+\label{fig:density_sensitivity}
+\end{figure}
 
 \section{Speed of Sound}
 
@@ -309,22 +397,59 @@ The speed of sound in air depends primarily on temperature:
 \end{equation}
 where $\gamma = 1.4$ is the ratio of specific heats for air.
 
-At the ICAO standard temperature: $a_0 = 20.0468\sqrt{288.15} = \SI{340.29}{\meter\per\second}$.
+At the ICAO standard temperature (\SI{15}{\celsius}): $a_0 = 20.0468\sqrt{288.15} = \SI{340.29}{\meter\per\second}$.
 
 \section{Density Altitude}
 
-Shooters often use density altitude (DA) as a single parameter that encapsulates the combined effects of temperature, pressure, and humidity on air density. DA is the altitude in the standard atmosphere that has the same density as the actual conditions:
+Shooters often use density altitude (DA) as a single parameter that encapsulates the combined effects of temperature, pressure, and humidity on air density. DA is the altitude in the standard atmosphere that has the same density $\rho$ as the actual conditions:
 \begin{equation}
   \text{DA} = \frac{T_0}{L}\left[1 - \left(\frac{\rho}{\rho_0}\right)^{1/(n-1)}\right]
   \label{eq:density_altitude}
 \end{equation}
-where $n = g_0/(L\,R_{\mathrm{air}}) + 1 = 6.2559$.
+where $T_0$ is the standard sea-level temperature, $\rho_0$ is the standard sea-level density, $L$ is the temperature lapse rate, and $n = g_0/(L\,R_{\mathrm{air}}) = 5.2559$.
 
 A practical approximation widely used in the field \citep{litz2011applied}:
 \begin{equation}
   \text{DA} \approx 145442.16 \left(1 - \left(\frac{\rho}{\rho_0}\right)^{0.234969}\right) \quad [\text{feet}]
   \label{eq:density_altitude_ft}
 \end{equation}
+
+Figure~\ref{fig:traj_atmosphere} illustrates the practical impact of atmospheric conditions on trajectory for a typical competition cartridge.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=7cm,
+    xlabel={Range (m)},
+    ylabel={Drop from line of bore (cm)},
+    xmin=0, xmax=1100,
+    ymin=-830, ymax=0,
+    grid=both,
+    grid style={gray!30},
+    legend pos=south west,
+    legend style={font=\small},
+    clip=false,
+]
+\addplot[very thick, black, domain=0:1000, samples=100]
+    {-0.0004*x^2 - 3.2e-7*x^3};
+\addlegendentry{Standard (15\,$^\circ$C, sea level)}
+\addplot[thick, red!70!black, dashed, domain=0:1000, samples=100]
+    {0.9444*(-0.0004*x^2 - 3.2e-7*x^3)};
+\addlegendentry{Summer (35\,$^\circ$C)}
+\addplot[thick, green!50!black, dashdotted, domain=0:1000, samples=100]
+    {0.9167*(-0.0004*x^2 - 3.2e-7*x^3)};
+\addlegendentry{Mountain (1500\,m)}
+\addplot[thick, blue!70!black, dashed, domain=0:1000, samples=100]
+    {1.0694*(-0.0004*x^2 - 3.2e-7*x^3)};
+\addlegendentry{Winter ($-$10\,$^\circ$C)}
+\draw[<->, thick, red!50!black] (axis cs:1030,-660) -- (axis cs:1030,-770);
+\node[right, font=\small, text=red!50!black] at (axis cs:1035,-715) {110\,cm ($> 3$\,MOA)};
+\end{axis}
+\end{tikzpicture}
+\caption{Schematic trajectory comparison for a 6.5\,mm 140\,gr VLD bullet ($B_C = 0.311$ G7, $v_0 = 2700$~fps) under different atmospheric conditions. The spread between extreme conditions exceeds 1~m at 1000~m ($> 3$~MOA), demonstrating the necessity of atmospheric corrections for long-range shooting. Curves are polynomial approximations scaled by density ratio.}
+\label{fig:traj_atmosphere}
+\end{figure}
 
 \section{Julia Implementation: Atmospheric Model}
 
@@ -473,9 +598,9 @@ Propellant burn rate is temperature-dependent. The temperature coefficient:
   \frac{\Delta v_0}{v_0} = \sigma_T\,\Delta T
   \label{eq:temp_sensitivity}
 \end{equation}
-where $\sigma_T$ is the temperature sensitivity coefficient, typically $0.5$ to $2.0\;\text{fps}/\degF$ depending on propellant. Modern temperature-stable propellants like Hodgdon Extreme series have $\sigma_T \approx 0.5\;\text{fps}/\degF$ \citep{litz2011applied}.
+where $\sigma_T$ is the temperature sensitivity coefficient, typically $0.5$ to $2.0\;\text{fps}/\degF$ ($0.9$ to $3.6\;\text{fps}/\degC$) depending on propellant. Modern temperature-stable propellants like Hodgdon Extreme series have $\sigma_T \approx 0.5\;\text{fps}/\degF$ ($0.9\;\text{fps}/\degC$) \citep{litz2011applied}.
 
-\default{$\sigma_T = 1.0\;\text{fps}/\degF$}
+\default{$\sigma_T = 1.0\;\text{fps}/\degF = 1.8\;\text{fps}/\degC$}
 
 
 % ============================================================================
@@ -496,7 +621,7 @@ When the bullet exits the barrel, the high-pressure propellant gases (\SI{10}{}-
 
 \section{Muzzle Tip-Off and Initial Yaw}
 
-As the bullet exits the muzzle, asymmetric gas forces can impart a small angular velocity (tip-off rate). The resulting initial yaw angle $\alpha_0$ is typically small ($0.5$--$3\,\degF$) for well-made ammunition but is a significant factor in group size.
+As the bullet exits the muzzle, asymmetric gas forces can impart a small angular velocity (tip-off rate). The resulting initial yaw angle $\alpha_0$ is typically small ($0.5$--$3^{\circ}$) for well-made ammunition but is a significant factor in group size.
 
 \section{Base Drag Transition}
 
@@ -523,7 +648,7 @@ The equations of motion in vacuum are:
   y(t) &= v_0 \sin\theta \cdot t - \frac{1}{2}g\,t^2 \label{eq:vac_y}
 \end{align}
 
-Eliminating $t$ from Eq.~(\ref{eq:vac_x}) and substituting into Eq.~(\ref{eq:vac_y}) yields the trajectory equation in terms of horizontal distance $x$:
+Eliminating $t$ from Eq.~\eqref{eq:vac_x} and substituting into Eq.~\eqref{eq:vac_y} yields the trajectory equation in terms of horizontal distance $x$:
 \begin{equation}
   \boxed{y(x) = x \tan\theta - \frac{g x^2}{2 v_0^2 \cos^2\theta}}
   \label{eq:vac_y_x}
@@ -617,7 +742,7 @@ Solving for $t$ in terms of $x$:
   t = \frac{e^{kx} - 1}{k\,v_0}
 \end{equation}
 
-Substituting this into Eq.~(\ref{eq:1d_v_t}) yields the velocity as a function of distance:
+Substituting this into Eq.~\eqref{eq:1d_v_t} yields the velocity as a function of distance:
 \begin{equation}
   \boxed{v(x) = v_0 e^{-kx}}
   \label{eq:1d_v_x}
@@ -782,16 +907,17 @@ where $v_{\mathrm{rel}} = \sqrt{(v_x-w_x)^2 + (v_y-w_y)^2 + (v_z-w_z)^2}$.
 
 \subsection{Using the Ballistic Coefficient}
 
-Substituting $\Cd = i \cdot \Cd^{\mathrm{std}}$ and $\Bc = m/(i\,d^2)$:
+Substituting the form factor relationship $\Cd = i \cdot \Cd^{\mathrm{std}}$ and the ballistic coefficient definition $\Bc = m/(i\,d^2)$:
 \begin{equation}
   \frac{\rho\,\Cd\,A}{2\,m} = \frac{\rho\,\Cd^{\mathrm{std}}\,\pi}{8\,\Bc}
   \label{eq:drag_with_bc}
 \end{equation}
+where $i$ is the projectile's form factor, $\Cd^{\mathrm{std}}$ is the drag coefficient of the standard projectile (G1 or G7), and $d$ is the caliber.
 
 \section{Numerical Integration}
 \label{sec:numerical}
 
-Since the system of equations (Eqs.~\ref{eq:3dof_x}--\ref{eq:3dof_z}) has no closed-form solution due to the non-linear dependence of $\Cd$ on velocity, it must be solved numerically.
+Since the system of equations \eqref{eq:3dof_x}--\eqref{eq:3dof_z} has no closed-form solution due to the non-linear dependence of $\Cd$ on velocity, it must be solved numerically.
 
 \subsection{Euler Method}
 
@@ -815,6 +941,7 @@ Modern ballistic solvers use higher-order methods, typically the 4th-order Runge
   \bm{y}_{n+1} &= \bm{y}_n + \tfrac{1}{6}(\bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4)
   \label{eq:rk4}
 \end{align}
+where $h$ is the time step, $\bm{y}_n$ is the state vector at time $t_n$, $\bm{f}$ is the vector of derivatives (velocities and accelerations), and $\bm{k}_1, \dots, \bm{k}_4$ are the intermediate derivative estimates.
 
 A typical time step of $h = 0.0005$ to $\SI{0.001}{\second}$ is sufficient.
 
@@ -863,7 +990,7 @@ A spin-stabilized bullet develops a slow lateral drift in the direction of its s
   \boxed{\Delta z_{\mathrm{spin}} = 1.25\left(S_g + 1.2\right) \cdot t^{1.83}}
   \label{eq:spin_drift}
 \end{equation}
-where $\Delta z_{\mathrm{spin}}$ is the deflection in inches, $S_g$ is the gyroscopic stability factor, and $t$ is the time of flight in seconds.
+where $\Delta z_{\mathrm{spin}}$ is the horizontal deflection in inches, $S_g$ is the gyroscopic stability factor, and $t$ is the time of flight in seconds. The exponent 1.83 and the factor 1.25 are empirical constants derived from Doppler radar measurements of match-grade projectiles.
 
 \subsection{Gyroscopic Stability Factor}
 
@@ -872,7 +999,7 @@ The Miller stability formula \citep{miller2005twist}:
   \boxed{S_g \approx \frac{30\,m}{T_w^2\,d^3\,l\,\left(1 + l^2\right)} \cdot \frac{v_0}{2800} \cdot \frac{T_0}{T}}
   \label{eq:miller_sg}
 \end{equation}
-where $m$ is bullet mass in grains, $T_w$ is twist rate in calibers per turn, $d$ is caliber in inches, $l$ is bullet length in calibers, $T_0 = 518.67\;\text{R}$ ($59\,\degF$).
+where $m$ is bullet mass in grains, $T_w$ is twist rate in calibers per turn, $d$ is caliber in inches, $l$ is bullet length in calibers, $v_0$ is muzzle velocity in fps, $T$ is ambient temperature, and $T_0 = 518.67\;\text{R}$ (\SI{15}{\celsius}, $59\,\degF$) is the standard reference temperature.
 
 For adequate stability, $S_g > 1.0$; values of $1.3$--$2.0$ are typical for match bullets.
 
@@ -886,7 +1013,7 @@ In an Earth-fixed reference frame:
   \avec_{\mathrm{Cor}} = -2\,\bm{\omega}_E \times \vvec
   \label{eq:coriolis}
 \end{equation}
-where $\omega_E = \SI{7.2921e-5}{\radian\per\second}$.
+where $\avec_{\mathrm{Cor}}$ is the Coriolis acceleration, $\bm{\omega}_E$ is the Earth's angular velocity vector, and $\vvec$ is the projectile's velocity vector. The scalar magnitude of the Earth's rotation is $\omega_E = \SI{7.2921e-5}{\radian\per\second}$.
 
 \subsection{Horizontal Deflection}
 
@@ -894,6 +1021,7 @@ where $\omega_E = \SI{7.2921e-5}{\radian\per\second}$.
   \boxed{\Delta z_{\mathrm{Cor}} \approx \omega_E \sin\phi \cdot R \cdot t}
   \label{eq:coriolis_horiz}
 \end{equation}
+where $\Delta z_{\mathrm{Cor}}$ is the horizontal deflection, $\phi$ is the shooter's latitude, $R$ is the range, and $t$ is the time of flight.
 
 Always to the right in the Northern Hemisphere, left in the Southern. At $45\,\text{N}$, \SI{1000}{\yard}, $t \approx 1.5\;\text{s}$: $\Delta z \approx 2.8$ inches ($\approx 0.27\;\text{MOA}$).
 
@@ -903,6 +1031,7 @@ Always to the right in the Northern Hemisphere, left in the Southern. At $45\,\t
   \boxed{\Delta y_{\mathrm{Eot}} \approx \omega_E \cos\phi\sin\psi \cdot R \cdot t}
   \label{eq:eotvos}
 \end{equation}
+where $\Delta y_{\mathrm{Eot}}$ is the vertical deflection (E\"otv\"os effect) and $\psi$ is the firing azimuth (heading).
 
 Firing East ($\psi = 90^{\circ}$) results in a positive vertical deflection (the bullet shoots higher due to the increased centrifugal force), while firing West ($\psi = 270^{\circ}$) results in a negative deflection. At $45^{\circ}$N, \SI{1000}{\yard}, the effect is approximately $\pm 3$ to 4 inches.
 
@@ -913,6 +1042,7 @@ For a spin-stabilized bullet with initial yaw $\alpha_0$ \citep{mccoy1999modern}
   \theta_{\mathrm{jump}} = \frac{C_{L_\alpha}}{2\,k_t^2}\,\frac{\alpha_{\mathrm{trim}}}{p_s - r_s}
   \label{eq:aero_jump}
 \end{equation}
+where $\theta_{\mathrm{jump}}$ is the jump angle, $C_{L_\alpha}$ is the lift force derivative, $k_t$ is the transverse radius of gyration, $\alpha_{\mathrm{trim}}$ is the equilibrium yaw angle, $p_s$ is the dimensionless spin rate, and $r_s$ is the dimensionless stability derivative.
 
 In practice, aerodynamic jump is absorbed into zero-offset and has a random component that contributes to group size rather than a systematic bias.
 
@@ -922,6 +1052,7 @@ In practice, aerodynamic jump is absorbed into zero-offset and has a random comp
   F_{\mathrm{Magnus}} = \frac{1}{2}\rho\,v^2\,A\,C_{N_{p\alpha}}\,\frac{p\,d}{2\,v}\,\alpha
   \label{eq:magnus}
 \end{equation}
+where $F_{\mathrm{Magnus}}$ is the Magnus force, $C_{N_{p\alpha}}$ is the Magnus force coefficient, $p$ is the axial spin rate, $d$ is the caliber, and $\alpha$ is the yaw angle.
 
 For typical small yaw angles ($\alpha < 1\,\text{deg}$), the Magnus contribution is sub-0.1 MOA at \SI{1000}{\yard} and is usually neglected.
 
@@ -1046,7 +1177,7 @@ The general rotational equation for a rigid body in compact tensor form is:
 \end{equation}
 where $\bm{I}$ is the inertia tensor, $\bm{\omega} = (p, q, r)^T$ is the angular velocity in the body frame, and $\bm{M}$ is the total external moment. The cross-product term $\bm{\omega} \times \bm{I}\,\bm{\omega}$ represents the gyroscopic coupling.
 
-For an axially symmetric projectile (body of revolution) with $I_x$ (axial) and $I_y = I_z$ (transverse), the inertia tensor is diagonal and Eq.~(\ref{eq:euler_tensor}) expands to the scalar Euler equations:
+For an axially symmetric projectile (body of revolution) with $I_x$ (axial) and $I_y = I_z$ (transverse), the inertia tensor is diagonal and Eq.~\eqref{eq:euler_tensor} expands to the scalar Euler equations:
 
 \begin{align}
   I_x\,\dot{p} &= M_x \label{eq:euler_p}\\
@@ -1196,7 +1327,7 @@ From the linearized 6-DOF equations, the gyroscopic stability factor is rigorous
   \label{eq:sg_6dof}
 \end{equation}
 
-This is the exact form from which the Miller approximation (Eq.~\ref{eq:miller_sg}) is derived.
+This is the exact form from which the Miller approximation \eqref{eq:miller_sg} is derived.
 
 \subsection{Dynamic Stability}
 
@@ -1446,7 +1577,7 @@ Our load:
 
 \subsection{Step 2: Stability Check}
 
-Using the Miller formula (Eq.~\ref{eq:miller_sg}):
+Using the Miller formula \eqref{eq:miller_sg}:
 \begin{align*}
   d &= 0.243\;\text{in.}, \quad l = 1.10/0.243 = 4.527\;\text{cal}, \quad T_w = 7.5/0.243 = 30.86\;\text{cal/turn} \\
   S_g &= \frac{30 \times 105}{30.86^2 \times 0.243^3 \times 4.527 \times (1 + 4.527^2)} \times \frac{2920}{2800} \times \frac{518.67}{518.67} \\
@@ -1460,11 +1591,12 @@ $S_g = 1.68 > 1.3$: well stabilized. The bullet will maintain gyroscopic stabili
 
 Match day conditions (summer F-Class match in Ottawa, Canada):
 \begin{align*}
-  T &= 82\,\degF = 300.9\;\text{K}, \quad P = 29.75\;\text{in Hg} = 100\,750\;\text{Pa} \\
+  T &= \SI{27.8}{\celsius} = 82\,\degF = 300.9\;\text{K} \\
+  P &= 29.75\;\text{in Hg} = 100\,750\;\text{Pa} \\
   H &= 55\%, \quad \text{Altitude} = 250\;\text{ft}
 \end{align*}
 
-Air density from Eq.~(\ref{eq:rho_humid}):
+Air density from Eq.~\eqref{eq:rho_humid}:
 \begin{align*}
   e_s &= 610.78 \times 10^{7.5 \times 27.7 / (27.7 + 237.3)} = 3695\;\text{Pa} \\
   e &= 0.55 \times 3695 = 2032\;\text{Pa} \\
@@ -1473,7 +1605,7 @@ Air density from Eq.~(\ref{eq:rho_humid}):
 
 Density ratio: $\rho/\rho_0 = 1.1575/1.2250 = 0.9449$. The air is 5.5\% less dense than standard, so the bullet will retain velocity longer and shoot approximately 0.8 MOA flatter at 1000 yards compared to standard conditions.
 
-Speed of sound: $a = 20.047\sqrt{300.9} = 347.7\;\text{m/s}$.
+Speed of sound (at \SI{27.8}{\celsius}): $a = 20.047\sqrt{300.9} = 347.7\;\text{m/s}$.
 
 Muzzle Mach number: $\Mach_0 = 890.0/347.7 = 2.56$ (well into the supersonic regime).
 
@@ -1495,7 +1627,7 @@ params_6br = ShotParameters(
     zero_range_yd   = 100.0,
 
     # Atmosphere: Ottawa, summer match
-    temp_F          = 82.0,
+    temp_F          = 82.0,         # 27.8 C
     pressure_inhg   = 29.75,
     humidity_pct    = 55.0,
     altitude_ft     = 250.0,
@@ -1526,7 +1658,7 @@ The solver output for this configuration:
 
 \begin{table}[H]
 \centering
-\caption{Computed trajectory: 6mm BR, 105 gr Berger Hybrid, $v_0 = 2920$ fps, 82$\,\degF$, 29.75 in Hg, 55\% RH. 8 mph wind at $60^{\circ}$. 100 yd zero. 1:7.5 RH twist, $45.4^{\circ}$N, firing West.}
+\caption{Computed trajectory: 6mm BR, 105 gr Berger Hybrid, $v_0 = 2920$ fps, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 in Hg, 55\% RH. 8 mph wind at $60^{\circ}$. 100 yd zero. 1:7.5 RH twist, $45.4^{\circ}$N, firing West.}
 \label{tab:6br_trajectory}
 \small
 \begin{tabular}{@{}rrrrrrrrr@{}}
@@ -1586,7 +1718,7 @@ This is well below the F-Class X-ring diameter (2.5 inches) and represents a ben
 
 \begin{table}[H]
 \centering
-\caption{DOPE card: 6mm BR 105 Berger / N140 / 2920 fps. Ottawa, 82$\,\degF$, 29.75 inHg. Wind hold is per 1 mph full crosswind.}
+\caption{DOPE card: 6mm BR 105 Berger / N140 / 2920 fps. Ottawa, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 inHg. Wind hold is per 1 mph full crosswind.}
 \label{tab:6br_dope}
 \begin{tabular}{@{}rccc@{}}
 \toprule
@@ -1770,7 +1902,7 @@ Muzzle velocity & $\pm$10 fps & 2.5 & --- \\
 BC & $\pm$3\% & 3.2 & 1.8 (wind) \\
 Wind speed (10 mph cross) & $\pm$2 mph & --- & 15.4 \\
 Wind direction & $\pm 10^{\circ}$ & --- & 6.8 \\
-Temperature & $\pm 10\,\degF$ & 0.8 & --- \\
+Temperature & $\pm \SI{5.6}{\celsius}$ ($\pm 10\,\degF$) & 0.8 & --- \\
 Range estimation & $\pm$5 yd & 1.5 & --- \\
 Spin drift (uncompensated) & --- & --- & 5.1 \\
 Coriolis ($45^{\circ}$N, uncomp.) & --- & $<$1.0 & 2.8 \\
@@ -1791,7 +1923,7 @@ This chapter bridges the mathematical models of the preceding chapters with the 
 
 \section{The Reloader's Equation: What You Control}
 
-From the 3-DOF equation of motion (Eq.~\ref{eq:3dof_vector}), the trajectory depends on three groups of quantities:
+From the 3-DOF equation of motion \eqref{eq:3dof_vector}, the trajectory depends on three groups of quantities:
 
 \begin{enumerate}[label=\textbf{\arabic*.}]
   \item \textbf{Bullet parameters} ($m$, $d$, $\Bc$, $L$): fixed once the bullet is selected.
@@ -1812,7 +1944,7 @@ where $k_C$ is the velocity gain per grain, typically $15$--$40\;\text{fps/gr}$.
 
 \subsection{Velocity Consistency and Vertical Dispersion}
 
-From Eq.~(\ref{eq:vertical_sd}), the vertical group size at range $R$ due to velocity variation:
+From Eq.~\eqref{eq:vertical_sd}, the vertical group size at range $R$ due to velocity variation:
 \begin{equation}
   \sigma_y(R) = \left|\frac{\partial y}{\partial v_0}\right|_R \cdot \sigma_v
   \label{eq:vert_disp_sv}
@@ -1877,6 +2009,7 @@ A 10\% higher BC reduces wind deflection by approximately 8--12\%. \textbf{Choos
   \boxed{\Delta y_{\mathrm{total}}(R,\Delta T) = \underbrace{\frac{\partial y}{\partial v_0}\,\sigma_T\,\Delta T}_{\text{velocity effect}} + \underbrace{\frac{\partial y}{\partial \rho}\,\frac{\partial \rho}{\partial T}\,\Delta T}_{\text{density effect}}}
   \label{eq:total_temp_shift}
 \end{equation}
+where $\Delta y_{\mathrm{total}}$ is the total vertical shift at range $R$, $\Delta T$ is the temperature deviation from a reference point, $\sigma_T$ is the propellant's temperature sensitivity, and $\rho$ is the air density. The terms $\partial y/\partial v_0$ and $\partial y/\partial \rho$ represent the trajectory's sensitivity to muzzle velocity and air density changes, respectively.
 
 For temperature-sensitive propellants, the two effects are \emph{additive}. Using a temperature-stable propellant is ballistically equivalent to reducing the effective sensitivity by 60--80\%.
 
@@ -1886,11 +2019,11 @@ For temperature-sensitive propellants, the two effects are \emph{additive}. Usin
 \label{tab:propellant_temp}
 \begin{tabular}{@{}lcc@{}}
 \toprule
-\textbf{Propellant Class} & $\sigma_T$ \textbf{(fps/$\degF$)} & $\Delta v_0$ \textbf{for $\pm 40\,\degF$} \\
+\textbf{Propellant Class} & $\sigma_T$ \textbf{(fps/$\degF$ [fps/$\degC$])} & $\Delta v_0$ \textbf{for $\pm \SI{22.2}{\celsius}$ [$\pm 40\,\degF$]} \\
 \midrule
-Standard (IMR 4064, etc.) & 1.5--2.0 & $\pm$60--80 fps \\
-Temperature-stable (Varget, H4350) & 0.3--0.8 & $\pm$12--32 fps \\
-Highly stable (RL-16, N565) & 0.2--0.5 & $\pm$8--20 fps \\
+Standard (IMR 4064, etc.) & 1.5--2.0 [2.7--3.6] & $\pm$60--80 fps \\
+Temperature-stable (Varget, H4350) & 0.3--0.8 [0.5--1.4] & $\pm$12--32 fps \\
+Highly stable (RL-16, N565) & 0.2--0.5 [0.36--0.9] & $\pm$8--20 fps \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1930,7 +2063,7 @@ Typical sweet spots: jam/light contact (0.000--0.005 in.), moderate jump (0.015-
 \end{tabular}
 \end{table}
 
-From the Le Duc model peak pressure (Eq.~\ref{eq:peak_pressure}):
+From the Le Duc model peak pressure \eqref{eq:peak_pressure}:
 \begin{equation}
   P_{\mathrm{peak}} \approx 1.6 \times P_{\mathrm{avg}}
   = 1.6 \times \frac{m_e\,v_0^2}{2\,A_{\mathrm{bore}}\,L_{\mathrm{travel}}}
@@ -1967,13 +2100,13 @@ The ballistic signature of barrel wear:
 Based on the mathematical models above:
 
 \begin{enumerate}[label=\textbf{Step \arabic*:}]
-  \item \textbf{Bullet selection.} Maximize $\Bc$. Verify $S_g > 1.4$ using Eq.~(\ref{eq:miller_sg}).
-  \item \textbf{Propellant selection.} Temperature-stable. Calculate $\Delta v_0$ over competition temperature range using Eq.~(\ref{eq:temp_sensitivity}).
+  \item \textbf{Bullet selection.} Maximize $\Bc$. Verify $S_g > 1.4$ using Eq.~\eqref{eq:miller_sg}.
+  \item \textbf{Propellant selection.} Temperature-stable. Calculate $\Delta v_0$ over competition temperature range using Eq.~\eqref{eq:temp_sensitivity}.
   \item \textbf{Brass preparation.} Sort by weight/capacity. Uniform necks and primer pockets.
   \item \textbf{Charge weight exploration.} Satterlee ladder or OCW test. Identify velocity nodes.
   \item \textbf{Seating depth optimization.} Test at 0.010 in.\ increments from lands.
   \item \textbf{Validation.} 20+ rounds over chronograph. SD $< 8$ fps (target $< 5$). Run the solver (Chapter~\ref{ch:solver}) to verify vertical dispersion at max range.
-  \item \textbf{Temperature verification.} Compute come-up shift using Eq.~(\ref{eq:total_temp_shift}).
+  \item \textbf{Temperature verification.} Compute come-up shift using Eq.~\eqref{eq:total_temp_shift}.
 \end{enumerate}
 
 
@@ -1990,7 +2123,7 @@ Starting from Newton's second law, neglecting lift (valid for small yaw):
   m\,\ddot{\rvec} = -m\,g\,\hat{\bm{e}}_y - \frac{1}{2}\,\rho\,\Cd\,A\,\|\vvec_{\mathrm{rel}}\|\,\vvec_{\mathrm{rel}}
 \end{equation}
 
-Expressing in component form with $\vvec_{\mathrm{rel}} = \vvec - \vvec_w$ and dividing by $m$, introducing $\Cd\,A/(2m) = \pi\,\Cd^{\mathrm{std}}/(8\,\Bc)$, recovers Eqs.~(\ref{eq:3dof_x})--(\ref{eq:3dof_z}).
+Expressing in component form with $\vvec_{\mathrm{rel}} = \vvec - \vvec_w$ and dividing by $m$, introducing $\Cd\,A/(2m) = \pi\,\Cd^{\mathrm{std}}/(8\,\Bc)$, recovers Eqs.~\eqref{eq:3dof_x}--\eqref{eq:3dof_z}.
 
 \section{Derivation of the Coriolis Terms}
 

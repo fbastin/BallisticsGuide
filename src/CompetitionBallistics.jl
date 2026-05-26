@@ -221,7 +221,7 @@ const P0        = 101325.0    # Pa
 const rho0      = 1.2250      # kg/m³
 const L         = 0.0065      # K/m  (tropospheric lapse rate)
 const g0        = 9.80665     # m/s²
-const R_air     = 287.058     # J/(kg·K) specific gas constant for dry air
+const R_air     = 287.0528    # J/(kg·K) specific gas constant for dry air (ISA 1976)
 const gamma_air = 1.4         # ratio of specific heats (Cp/Cv)
 
 """
@@ -263,7 +263,7 @@ Air density with humidity correction (virtual temperature method).
 function air_density(; P::Real=P0, T::Real=T0, H::Real=0.0)
     e_s = saturation_vapor_pressure(T)
     e   = (H / 100.0) * e_s
-    return (P - 0.3783 * e) / (R_air * T)
+    return (P - 0.37802 * e) / (R_air * T)
 end
 
 """
@@ -287,9 +287,11 @@ end
     density_altitude(ρ) -> DA [m]
 
 Density altitude: altitude in the standard atmosphere with density ρ [kg/m³].
+Formula: h = (T0/L) * (1 - (rho/rho0)^(1 / (g/(L*R) - 1)))
+Exponent ≈ 1 / (5.2559 - 1) ≈ 0.234969
 """
 function density_altitude(rho::Real)
-    return (T0 / L) * (1.0 - (rho / rho0)^0.190263)
+    return (T0 / L) * (1.0 - (rho / rho0)^0.234969)
 end
 
 """
