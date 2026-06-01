@@ -179,18 +179,19 @@ struct BulletProfile
     caliber_in::Float64
     bc_g7::Float64
     length_in::Float64
+    twist_in::Float64 # Recommended twist
 end
 
-# Data from Chapter 11 of the manual
+# Data from Chapter 11 of the manual and Tireur.org integration
 const COMMON_BULLETS = Dict{String, BulletProfile}(
-    "Berger 105 Hybrid (6mm)" => BulletProfile("Berger 105 Hybrid (6mm)", 105.0, 0.243, 0.275, 1.10),
-    "Berger 140 Hybrid (6.5mm)" => BulletProfile("Berger 140 Hybrid (6.5mm)", 140.0, 0.264, 0.311, 1.34),
-    "Hornady 147 ELD-M (6.5mm)" => BulletProfile("Hornady 147 ELD-M (6.5mm)", 147.0, 0.264, 0.351, 1.42),
-    "Berger 180 Hybrid (7mm)" => BulletProfile("Berger 180 Hybrid (7mm)", 180.0, 0.284, 0.350, 1.50),
-    "Sierra 175 MK (.308)" => BulletProfile("Sierra 175 MK (.308)", 175.0, 0.308, 0.259, 1.24),
-    "Berger 185 Juggernaut (.308)" => BulletProfile("Berger 185 Juggernaut (.308)", 185.0, 0.308, 0.283, 1.30),
-    "Hornady 178 ELD-M (.308)" => BulletProfile("Hornady 178 ELD-M (.308)", 178.0, 0.308, 0.274, 1.31),
-    "Berger 300 Hybrid (.338)" => BulletProfile("Berger 300 Hybrid (.338)", 300.0, 0.338, 0.419, 1.82)
+    "Berger 105 Hybrid (6mm)" => BulletProfile("Berger 105 Hybrid (6mm)", 105.0, 0.243, 0.275, 1.10, 8.0),
+    "Berger 140 Hybrid (6.5mm)" => BulletProfile("Berger 140 Hybrid (6.5mm)", 140.0, 0.264, 0.311, 1.34, 8.0),
+    "Hornady 147 ELD-M (6.5mm)" => BulletProfile("Hornady 147 ELD-M (6.5mm)", 147.0, 0.264, 0.351, 1.42, 7.5),
+    "Berger 180 Hybrid (7mm)" => BulletProfile("Berger 180 Hybrid (7mm)", 180.0, 0.284, 0.350, 1.50, 8.5),
+    "Sierra 175 MK (.308)" => BulletProfile("Sierra 175 MK (.308)", 175.0, 0.308, 0.259, 1.24, 10.0),
+    "Berger 185 Juggernaut (.308)" => BulletProfile("Berger 185 Juggernaut (.308)", 185.0, 0.308, 0.283, 1.30, 10.0),
+    "Hornady 178 ELD-M (.308)" => BulletProfile("Hornady 178 ELD-M (.308)", 178.0, 0.308, 0.274, 1.31, 10.0),
+    "Berger 300 Hybrid (.338)" => BulletProfile("Berger 300 Hybrid (.338)", 300.0, 0.338, 0.419, 1.82, 9.4)
 )
 
 # Data from Chapter 9 of the manual

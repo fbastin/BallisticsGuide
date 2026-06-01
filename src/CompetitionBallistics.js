@@ -10,12 +10,7 @@
 //   - InteriorBallistics  : Le Duc model, pressure, burn rate, temp sensitivity
 //   - DragModels          : G1/G7 BRL tabular data with interpolation
 //   - ExteriorBallistics  : Full 3-DOF solver (RK4), Coriolis, spin drift, wind
-//
-// Usage (ES module):
-//   import { BallisticUtils, Atmosphere, ExteriorBallistics } from './CompetitionBallistics.js';
-//
-// Usage (Node.js CommonJS):
-//   const { BallisticUtils, Atmosphere, ExteriorBallistics } = require('./CompetitionBallistics.js');
+//   - ParameterMetadata   : Physical explanations and limits (NEW)
 // ==========================================================================
 
 // --------------------------------------------------------------------------
@@ -27,6 +22,7 @@ const BallisticUtils = (() => {
   const grainsToKg    = (gr) => gr * 6.47989e-5;
   const kgToGrains    = (kg) => kg / 6.47989e-5;
   const grainsToGrams = (gr) => gr * 0.06480;
+  const gramsToGrains = (g)  => g / 0.06480;
 
   // -- Velocity --
   const fpsToMs = (fps) => fps * 0.3048;
@@ -36,6 +32,7 @@ const BallisticUtils = (() => {
   const inchesToM  = (x) => x * 0.0254;
   const mToInches  = (x) => x / 0.0254;
   const inchesToMm = (x) => x * 25.4;
+  const mmToInches = (x) => x / 25.4;
   const yardsToM   = (x) => x * 0.9144;
   const mToYards   = (x) => x / 0.9144;
 
@@ -50,6 +47,7 @@ const BallisticUtils = (() => {
   const inhgToPa  = (x) => x * 3386.389;
   const paToInhg  = (x) => x / 3386.389;
   const inhgToHpa = (x) => x * 33.8639;
+  const hpaToInhg = (x) => x / 33.8639;
 
   // -- Angles --
   const moaToRad = (moa) => moa * (Math.PI / (180.0 * 60.0));
@@ -97,14 +95,15 @@ const BallisticUtils = (() => {
     C * caliberIn * caliberIn / bulletLengthIn;
 
   return {
-    grainsToKg, kgToGrains, grainsToGrams,
+    grainsToKg, kgToGrains, grainsToGrams, gramsToGrains,
     fpsToMs, msToFps,
-    inchesToM, mToInches, inchesToMm, yardsToM, mToYards,
+    inchesToM, mToInches, inchesToMm, mmToInches, yardsToM, mToYards,
     fahrenheitToKelvin, kelvinToFahrenheit, fahrenheitToRankine,
     celsiusToKelvin, kelvinToCelsius,
-    inhgToPa, paToInhg, inhgToHpa,
+    inhgToPa, paToInhg, inhgToHpa, hpaToInhg,
     moaToRad, radToMoa, milToRad, radToMil, moaToMil, milToMoa,
     dropToMoa, dropToMil,
+    kinetic_energy_J: kineticEnergyJ, kinetic_energy_ftlbs: kineticEnergyFtlbs, // matching Julia names
     kineticEnergyJ, kineticEnergyFtlbs,
     sectionalDensity, formFactor,
     millerStability, greenhillTwist,
@@ -118,14 +117,14 @@ const BallisticUtils = (() => {
 const ReferenceData = (() => {
 
   const COMMON_BULLETS = {
-    "Berger 105 Hybrid (6mm)":       { name: "Berger 105 Hybrid (6mm)",       massGr: 105.0, caliberIn: 0.243, bcG7: 0.275, lengthIn: 1.10 },
-    "Berger 140 Hybrid (6.5mm)":     { name: "Berger 140 Hybrid (6.5mm)",     massGr: 140.0, caliberIn: 0.264, bcG7: 0.311, lengthIn: 1.34 },
-    "Hornady 147 ELD-M (6.5mm)":     { name: "Hornady 147 ELD-M (6.5mm)",     massGr: 147.0, caliberIn: 0.264, bcG7: 0.351, lengthIn: 1.42 },
-    "Berger 180 Hybrid (7mm)":       { name: "Berger 180 Hybrid (7mm)",       massGr: 180.0, caliberIn: 0.284, bcG7: 0.350, lengthIn: 1.50 },
-    "Sierra 175 MK (.308)":          { name: "Sierra 175 MK (.308)",          massGr: 175.0, caliberIn: 0.308, bcG7: 0.259, lengthIn: 1.24 },
-    "Berger 185 Juggernaut (.308)":  { name: "Berger 185 Juggernaut (.308)",  massGr: 185.0, caliberIn: 0.308, bcG7: 0.283, lengthIn: 1.30 },
-    "Hornady 178 ELD-M (.308)":      { name: "Hornady 178 ELD-M (.308)",      massGr: 178.0, caliberIn: 0.308, bcG7: 0.274, lengthIn: 1.31 },
-    "Berger 300 Hybrid (.338)":      { name: "Berger 300 Hybrid (.338)",      massGr: 300.0, caliberIn: 0.338, bcG7: 0.419, lengthIn: 1.82 },
+    "Berger 105 Hybrid (6mm)":       { name: "Berger 105 Hybrid (6mm)",       massGr: 105.0, caliberIn: 0.243, bcG7: 0.275, lengthIn: 1.10, twistIn: 8.0 },
+    "Berger 140 Hybrid (6.5mm)":     { name: "Berger 140 Hybrid (6.5mm)",     massGr: 140.0, caliberIn: 0.264, bcG7: 0.311, lengthIn: 1.34, twistIn: 8.0 },
+    "Hornady 147 ELD-M (6.5mm)":     { name: "Hornady 147 ELD-M (6.5mm)",     massGr: 147.0, caliberIn: 0.264, bcG7: 0.351, lengthIn: 1.42, twistIn: 7.5 },
+    "Berger 180 Hybrid (7mm)":       { name: "Berger 180 Hybrid (7mm)",       massGr: 180.0, caliberIn: 0.284, bcG7: 0.350, lengthIn: 1.50, twistIn: 8.5 },
+    "Sierra 175 MK (.308)":          { name: "Sierra 175 MK (.308)",          massGr: 175.0, caliberIn: 0.308, bcG7: 0.259, lengthIn: 1.24, twistIn: 10.0 },
+    "Berger 185 Juggernaut (.308)":  { name: "Berger 185 Juggernaut (.308)",  massGr: 185.0, caliberIn: 0.308, bcG7: 0.283, lengthIn: 1.30, twistIn: 10.0 },
+    "Hornady 178 ELD-M (.308)":      { name: "Hornady 178 ELD-M (.308)",      massGr: 178.0, caliberIn: 0.308, bcG7: 0.274, lengthIn: 1.31, twistIn: 10.0 },
+    "Berger 300 Hybrid (.338)":      { name: "Berger 300 Hybrid (.338)",      massGr: 300.0, caliberIn: 0.338, bcG7: 0.419, lengthIn: 1.82, twistIn: 9.4 },
   };
 
   const CARTRIDGE_MAX_PSI = {
@@ -137,6 +136,34 @@ const ReferenceData = (() => {
   };
 
   return { COMMON_BULLETS, CARTRIDGE_MAX_PSI };
+})();
+
+
+// --------------------------------------------------------------------------
+// MODULE 1.2: ParameterMetadata (NEW)
+// --------------------------------------------------------------------------
+const ParameterMetadata = (() => {
+  const DATA = {
+    mass: {
+      label: "Masse",
+      help: "L'inertie dépend de la masse. À calibre égal, une balle lourde garde mieux sa vitesse.",
+      physics: "Une masse plus élevée augmente la densité sectionnelle et réduit la décélération pour une force de traînée donnée (F=ma).",
+      min: 1, max: 1000
+    },
+    bc: {
+      label: "Coefficient Balistique",
+      help: "Plus le CB est élevé, mieux la balle fend l'air. Diminue généralement avec la masse.",
+      physics: "Le CB (G7) compare la traînée du projectile à celle d'un projectile de référence profilé.",
+      min: 0.01, max: 1.2
+    },
+    v0: {
+      label: "Vitesse Initiale",
+      help: "Vitesse réelle mesurée. Une balle plus légère part plus vite avec la même charge.",
+      physics: "Énergie cinétique E = 1/2 mv². Une diminution de m à E constant augmente v de façon quadratique.",
+      min: 100, max: 5000
+    }
+  };
+  return { DATA };
 })();
 
 
@@ -231,6 +258,7 @@ const InteriorBallistics = (() => {
 
   return {
     leducVelocity, leducPressure, peakPressure,
+    effective_mass: effectiveMass, burn_fraction: burnFraction, // matching Julia names
     effectiveMass, burnFraction, propellantEnergy,
     chamberPressureClosedBomb,
     barrelLengthCorrection, muzzleVelocityTempCorrection,
@@ -243,7 +271,7 @@ const InteriorBallistics = (() => {
 // --------------------------------------------------------------------------
 const DragModels = (() => {
 
-  // G7 BRL tabular data: [Mach, Cd] pairs flattened
+  // G7 BRL tabular data flattened
   const G7_RAW = [
     0.000,0.1198,  0.050,0.1197,  0.100,0.1196,
     0.150,0.1194,  0.200,0.1193,  0.250,0.1194,
@@ -560,7 +588,7 @@ const ExteriorBallistics = (() => {
   function solveTrajectory(params) {
     const p   = makeShotParams(params);
     const si  = _toSi(p);
-    const rho = airDensity({ P: si.P, T: si.T, H: si.H });
+    const rho = airDensity({ P: si.P, T: si.T, H: p.humidityPct });
     const aS  = speedOfSound(si.T);
     const A   = Math.PI * si.d * si.d / 4.0;
     const omegaE = 7.2921e-5;
@@ -722,6 +750,7 @@ const ExteriorBallistics = (() => {
 const CompetitionBallistics = {
   BallisticUtils,
   ReferenceData,
+  ParameterMetadata,
   Atmosphere,
   InteriorBallistics,
   DragModels,
