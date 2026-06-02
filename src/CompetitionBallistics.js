@@ -94,6 +94,35 @@ const BallisticUtils = (() => {
   const greenhillTwist = (caliberIn, bulletLengthIn, C = 150.0) =>
     C * caliberIn * caliberIn / bulletLengthIn;
 
+  const loadConsistencyScore = (esFps, sdFps) => {
+    let score = 100.0 - 5.0 * sdFps - 2.0 * esFps;
+    return Math.max(0.0, Math.min(score, 100.0));
+  };
+
+  const bcFromTwoChronographs = (v1Fps, v2Fps, distFt, calIn, massGr, model = "G7", tempF = 59.0, presInhg = 29.92, rho0 = 1.225) => {
+    const v1 = fpsToMs(v1Fps);
+    const v2 = fpsToMs(v2Fps);
+    const dist = distFt * 0.3048;
+    const T = fahrenheitToKelvin(tempF);
+    
+    // Inline simplified atmosphere to avoid cyclic dependencies
+    const P_Pa = inhgToPa(presInhg);
+    const R_air = 287.0528;
+    const rho = P_Pa / (R_air * T);
+    const aS = Math.sqrt(1.4 * R_air * T);
+
+    const vAvg = (v1 + v2) / 2.0;
+    const Ma = vAvg / aS;
+    
+    // We assume DragModels is available when this function is called
+    // If called directly before DragModels is initialized, it will throw.
+    const cdStd = CompetitionBallistics.DragModels.dragCoefficient(model, Ma);
+
+    let bc = (rho * cdStd * Math.PI * dist) / (8.0 * (1.0 / v2 - 1.0 / v1));
+    bc *= rho0 / rho; // Convert to standard conditions
+    return Math.abs(bc);
+  };
+
   return {
     grainsToKg, kgToGrains, grainsToGrams, gramsToGrains,
     fpsToMs, msToFps,
@@ -107,6 +136,7 @@ const BallisticUtils = (() => {
     kineticEnergyJ, kineticEnergyFtlbs,
     sectionalDensity, formFactor,
     millerStability, greenhillTwist,
+    loadConsistencyScore, bcFromTwoChronographs,
   };
 })();
 
@@ -419,7 +449,7 @@ const DragModels = (() => {
   const cdG1Spline = (mach) => evalSpline(G1_SPLINE, mach);
   const cdG7Spline = (mach) => evalSpline(G7_SPLINE, mach);
 
-  const dragCoefficient = (model, mach, spline = false) => {
+  const dragCoefficient = (model, mach, spline = true) => {
     if (model === "G1") return spline ? cdG1Spline(mach) : cdG1(mach);
     if (model === "G7") return spline ? cdG7Spline(mach) : cdG7(mach);
     throw new Error(`Unknown drag model: ${model}. Supported: "G1", "G7"`);
@@ -440,13 +470,29 @@ const DragModels = (() => {
   const cdFromRadar = (velocity, dvDt, massKg, rho, A) =>
     -2.0 * massKg * dvDt / (rho * A * velocity * velocity);
 
+  // -- Single-velocity BC conversion between reference models --
+  // A bullet with BC_from has form factor i_from = SD/BC_from relative to the
+  // `from` reference, so its absolute drag is Cd = i_from·Cd_from(M). Expressed
+  // against the `to` reference, i_to = Cd/Cd_to(M) and BC_to = SD/i_to, hence:
+  //     BC_to = BC_from · Cd_to(M) / Cd_from(M).
+  // The ratio varies with Mach, so a representative velocity must be supplied —
+  // this is exactly why catalogue G1 BCs are velocity-banded. Returns the
+  // converted BC and the drag-curve ratio used.
+  function convertBC(bc, fromModel, toModel, mach) {
+    if (fromModel === toModel) return { bc, ratio: 1.0, mach };
+    const cdFrom = dragCoefficient(fromModel, mach);
+    const cdTo   = dragCoefficient(toModel, mach);
+    const ratio  = cdTo / cdFrom;
+    return { bc: bc * ratio, ratio, mach };
+  }
+
   return {
     G7_TABLE, G1_TABLE, G7_SPLINE, G1_SPLINE,
     cdG1, cdG7, cdG1Spline, cdG7Spline,
     dragCoefficient,
     buildCubicSpline, evalSpline,
     buildCustomDrag, cdmEval, cdmEvalLinear,
-    cdFromRadar,
+    cdFromRadar, convertBC,
   };
 })();
 
@@ -559,23 +605,39 @@ const ExteriorBallistics = (() => {
     const rho = airDensity({ P: si.P, T: si.T, H: si.H });
     const aS  = speedOfSound(si.T);
     const A   = Math.PI * si.d * si.d / 4.0;
+    // Form factor i = SD/BC scales the reference drag to the actual bullet.
+    const ff  = BallisticUtils.formFactor(p.massGrains, p.caliberIn, p.bc);
     let theta = Math.atan(g0 * si.zr / (2.0 * si.v0 * si.v0));
     const dt  = p.dt;
 
     for (let iter = 0; iter < maxIter; iter++) {
-      let x = 0.0, y = -si.sh;
+      let x = 0.0, y = -si.sh, z = 0.0;
       let vx = si.v0 * Math.cos(theta);
       let vy = si.v0 * Math.sin(theta);
+      let vz = 0.0;
+      let t  = 0.0;
 
-      while (x < si.zr) {
-        const v  = Math.sqrt(vx * vx + vy * vy);
+      function derivsZero(sv) {
+        const [_x, _y, _z, _vx, _vy, _vz] = sv;
+        const v = Math.sqrt(_vx * _vx + _vy * _vy);
         const Ma = v / aS;
         const cd = dragCoefficient(p.dragModel, Ma);
-        const df = rho * cd * A / (2.0 * si.m);
-        vx += (-df * v * vx) * dt;
-        vy += (-df * v * vy - g0) * dt;
-        x  += vx * dt;
-        y  += vy * dt;
+        const df = (rho * cd * A * ff) / (2.0 * si.m) * (4.0 / Math.PI);
+        return [_vx, _vy, 0, -df * v * _vx, -df * v * _vy - g0, 0];
+      }
+
+      while (x < si.zr && t < 15.0) {
+        const s1 = [x, y, z, vx, vy, vz];
+        const k1 = derivsZero(s1);
+        const s2 = s1.map((v, i) => v + 0.5 * dt * k1[i]);
+        const k2 = derivsZero(s2);
+        const s3 = s1.map((v, i) => v + 0.5 * dt * k2[i]);
+        const k3 = derivsZero(s3);
+        const s4 = s1.map((v, i) => v + dt * k3[i]);
+        const k4 = derivsZero(s4);
+        const nextS = s1.map((v, i) => v + (dt / 6.0) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+        [x, y, z, vx, vy, vz] = nextS;
+        t += dt;
       }
 
       if (Math.abs(y) < tol) return theta;
@@ -591,9 +653,20 @@ const ExteriorBallistics = (() => {
     const rho = airDensity({ P: si.P, T: si.T, H: p.humidityPct });
     const aS  = speedOfSound(si.T);
     const A   = Math.PI * si.d * si.d / 4.0;
+    // Form factor i = SD/BC scales the reference drag to the actual bullet.
+    const ff  = BallisticUtils.formFactor(p.massGrains, p.caliberIn, p.bc);
     const omegaE = 7.2921e-5;
     const lat = p.latitudeDeg * Math.PI / 180.0;
+    const azm = p.azimuthDeg  * Math.PI / 180.0;   // firing azimuth, clockwise from North
     const dt  = p.dt;
+
+    // Earth-rotation vector in the shot frame (x = downrange/LOS, y = up, z = right).
+    // Ω in (East, North, Up) = ω(0, cos lat, sin lat); projected onto a shot frame
+    // whose downrange axis points at azimuth `azm` from North:
+    //   downrange = (sin azm, cos azm, 0), up = (0,0,1), right = (cos azm, -sin azm, 0).
+    const oeX = omegaE * Math.cos(lat) * Math.cos(azm);
+    const oeY = omegaE * Math.sin(lat);
+    const oeZ = -omegaE * Math.cos(lat) * Math.sin(azm);
 
     // Wind components
     const wAng = p.windAngleDeg * Math.PI / 180.0;
@@ -601,8 +674,12 @@ const ExteriorBallistics = (() => {
     const wz =  si.w * Math.sin(wAng);
     const wy = 0.0;
 
-    // Incline
-    const inc = p.inclineDeg * Math.PI / 180.0;
+    // Incline: resolve gravity in the LOS frame. The component perpendicular to the
+    // line of sight (g·cos α) drives the drop — the physical basis of the
+    // "rifleman's rule" — while g·sin α acts along the flight path. α = 0 ⇒ flat fire.
+    const inc    = p.inclineDeg * Math.PI / 180.0;
+    const gAlong = -g0 * Math.sin(inc);
+    const gPerp  = -g0 * Math.cos(inc);
 
     // Zero angle + dialed corrections
     let theta0 = findZeroAngle(p);
@@ -612,35 +689,32 @@ const ExteriorBallistics = (() => {
     const sg = millerSg(p);
 
     // Initial state
-    let x  = 0.0, y  = 0.0, z  = 0.0;
-    let vx = si.v0 * Math.cos(theta0) * Math.cos(inc) * Math.cos(psi0);
+    let x  = 0.0, y  = -si.sh, z  = 0.0;
+    let vx = si.v0 * Math.cos(theta0) * Math.cos(psi0);
     let vy = si.v0 * Math.sin(theta0);
     let vz = si.v0 * Math.cos(theta0) * Math.sin(psi0);
     let t  = 0.0;
 
     const results = [];
 
-    function derivs(dvx, dvy, dvz) {
-      const vrx = dvx - wx, vry = dvy - wy, vrz = dvz - wz;
+    function derivs(sv) {
+      const [_x, _y, _z, _vx, _vy, _vz] = sv;
+      const vrx = _vx - wx, vry = _vy - wy, vrz = _vz - wz;
       const vrel = Math.sqrt(vrx * vrx + vry * vry + vrz * vrz);
       const Ma = vrel / aS;
       const cd = dragCoefficient(p.dragModel, Ma);
-      const D  = rho * cd * A / (2.0 * si.m);
+      const D  = (rho * cd * A * ff) / (2.0 * si.m) * (4.0 / Math.PI);
 
-      let ax = -D * vrel * vrx;
-      let ay = -D * vrel * vry - g0;
+      let ax = -D * vrel * vrx + gAlong;
+      let ay = -D * vrel * vry + gPerp;
       let az = -D * vrel * vrz;
 
       if (p.enableCoriolis) {
-        // ω decomposition: x = downrange, y = up, z = right
-        const oeX = omegaE * Math.cos(lat);  // horizontal (North) component
-        const oeY = omegaE * Math.sin(lat);  // vertical (up) component
-        // -2(ω × v): ω = (oeX, oeY, 0)
-        ax += -2.0 * (oeY * dvz);
-        ay += -2.0 * (-oeX * dvz);
-        az += -2.0 * (oeX * dvy - oeY * dvx);
+        ax += -2.0 * (oeY * _vz - oeZ * _vy);
+        ay += -2.0 * (oeZ * _vx - oeX * _vz);
+        az += -2.0 * (oeX * _vy - oeY * _vx);
       }
-      return [ax, ay, az];
+      return [_vx, _vy, _vz, ax, ay, az];
     }
 
     while (x <= si.tr && t < 15.0) {
@@ -651,7 +725,7 @@ const ExteriorBallistics = (() => {
       results.push({
         time:     t,
         rangeM:   x,
-        dropM:    y + si.sh,
+        dropM:    y,
         windageM: z,
         vx, vy, vz,
         vTotal:   vTot,
@@ -659,31 +733,22 @@ const ExteriorBallistics = (() => {
         energyJ:  ek,
       });
 
-      // RK4
-      const [ax1, ay1, az1] = derivs(vx, vy, vz);
+      // RK4 integration for state vector [x, y, z, vx, vy, vz]
+      const s1 = [x, y, z, vx, vy, vz];
+      const k1 = derivs(s1);
 
-      const vx2 = vx + 0.5 * dt * ax1;
-      const vy2 = vy + 0.5 * dt * ay1;
-      const vz2 = vz + 0.5 * dt * az1;
-      const [ax2, ay2, az2] = derivs(vx2, vy2, vz2);
+      const s2 = s1.map((v, i) => v + 0.5 * dt * k1[i]);
+      const k2 = derivs(s2);
 
-      const vx3 = vx + 0.5 * dt * ax2;
-      const vy3 = vy + 0.5 * dt * ay2;
-      const vz3 = vz + 0.5 * dt * az2;
-      const [ax3, ay3, az3] = derivs(vx3, vy3, vz3);
+      const s3 = s1.map((v, i) => v + 0.5 * dt * k2[i]);
+      const k3 = derivs(s3);
 
-      const vx4 = vx + dt * ax3;
-      const vy4 = vy + dt * ay3;
-      const vz4 = vz + dt * az3;
-      const [ax4, ay4, az4] = derivs(vx4, vy4, vz4);
+      const s4 = s1.map((v, i) => v + dt * k3[i]);
+      const k4 = derivs(s4);
 
-      vx += dt / 6.0 * (ax1 + 2 * ax2 + 2 * ax3 + ax4);
-      vy += dt / 6.0 * (ay1 + 2 * ay2 + 2 * ay3 + ay4);
-      vz += dt / 6.0 * (az1 + 2 * az2 + 2 * az3 + az4);
+      const nextS = s1.map((v, i) => v + (dt / 6.0) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
 
-      x += vx * dt;
-      y += vy * dt;
-      z += vz * dt;
+      [x, y, z, vx, vy, vz] = nextS;
       t += dt;
     }
 

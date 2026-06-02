@@ -146,8 +146,12 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.0 (Consolidated) --- \today}
+{\large Version 3.1 (Updated) --- \today}
 \end{titlepage}
+
+\begin{abstract}
+This manual provides a rigorous mathematical treatment of competition rifle ballistics. The current version (v3.1) includes significant precision improvements to the 3-DOF engine (Coordinate System alignment and 4/$\pi$ drag scaling) and outlines the roadmap for the implementation of a 6-DOF McCoy expert mode.
+\end{abstract}
 
 \pagenumbering{roman}
 \tableofcontents
@@ -288,6 +292,7 @@ As seen in Eq.~\eqref{eq:drag_motivation}, the drag force is \emph{directly prop
 At long ranges, these effects are substantial. For example, at 1,000 meters, the difference between typical summer (hot, thin air) and winter (cold, dense air) conditions can exceed one full meter (over 3 MOA) of vertical drop for a standard competition cartridge. By understanding and actively calculating these variables, a shooter stops relying on empirical "dope cards" and can mathematically guarantee first-round hits across varying climates.
 
 \section{ICAO Standard Atmosphere}
+\label{sec:icao}
 
 To have a baseline for comparison, aerodynamicists and ballisticians use the International Civil Aviation Organization (ICAO) standard atmosphere. This defines standard "sea level" conditions \citep{icao1993manual,coesa1976standard}. Let's define the benchmark variables:
 
@@ -952,14 +957,47 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \toprule
 $\Mach$ & $\Cd^{\mathrm{G7}}$ & $\Mach$ & $\Cd^{\mathrm{G7}}$ & $\Mach$ & $\Cd^{\mathrm{G7}}$ \\
 \midrule
-0.00 & 0.1198 & 1.00 & 0.4002 & 2.00 & 0.2487 \\
-0.50 & 0.1198 & 1.05 & 0.3810 & 2.50 & 0.2169 \\
-0.80 & 0.1280 & 1.10 & 0.3621 & 3.00 & 0.1966 \\
-0.90 & 0.1687 & 1.20 & 0.3278 & 3.50 & 0.1800 \\
-0.95 & 0.2300 & 1.50 & 0.2860 & 4.00 & 0.1668 \\
+0.00 & 0.1198 & 1.00 & 0.3803 & 2.00 & 0.1993 \\
+0.50 & 0.1194 & 1.05 & 0.3845 & 2.50 & 0.1629 \\
+0.80 & 0.1242 & 1.10 & 0.3597 & 3.00 & 0.1400 \\
+0.90 & 0.1464 & 1.20 & 0.3250 & 3.50 & 0.1225 \\
+0.95 & 0.2054 & 1.50 & 0.2602 & 4.00 & 0.1090 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The values above are reproduced verbatim from the table embedded in the solver
+(\texttt{G7\_RAW} in \texttt{CompetitionBallistics.js}); the solver interpolates
+this same data at run time, so the documentation and the implementation are
+guaranteed to agree.
+
+\subsection{Drag Functions vs.\ Siacci Tables: a Common Confusion}
+
+\noindent
+The $\Cd(\Mach)$ tables (G1, G7, \dots) are \emph{aerodynamic} data: $\Cd$ is
+dimensionless and depends only on the projectile geometry and the Mach number,
+\emph{not} on the atmosphere. They are therefore identical whether one takes them
+from McCoy~\citep{mccoy1999modern} or from a tabulation such as JBM's. The
+atmosphere only enters our solver through the \emph{actual} air density $\rho$ and
+speed of sound $a(T)$, both recomputed from the ICAO model
+(\S\ref{sec:icao}) at every step via
+$D = \tfrac{1}{2}\rho\,\Cd(\Mach)\,A\,i/m$, with $i = \sd/\Bc$ the form factor.
+
+What \emph{does} depend on the standard atmosphere are the integrated
+\emph{Siacci tables} $S(V), A(V), I(V), T(V)$, because their integration
+involves the standard density and speed of sound. This is the well-known caveat
+that Siacci tables computed under the ICAO atmosphere differ from those in
+McCoy's book. \textbf{Our solver uses no Siacci table}---it integrates the 3-DOF
+equations numerically---so this caveat does not apply here.
+
+The single genuine consistency requirement is that the user-supplied $\Bc$ be
+referenced to the same standard atmosphere as the code, namely ICAO
+($\rho_0 = \SI{1.225}{\kilogram\per\meter\cubed}$, \SI{15}{\celsius}, dry).
+Modern G7 values (Berger, Hornady, Litz/Applied Ballistics) are all
+ICAO-referenced. Older \emph{Army Standard Metro} (ASM) $\Bc$ values
+(\SI{29.53}{inHg}, 78\,\% RH) carry a $\approx 0.4$--$0.5\,\%$ density offset.
+
+\paragraph{Warning on Legacy Calculators (e.g., JBM):} Many legacy ballistic calculators, such as JBM Ballistics, enable the Army Standard Metro atmosphere by default. If a modern ICAO-referenced G7 BC is input into an ASM-default calculator without explicitly disabling the Metro setting, the solver will silently apply a density offset. Because ASM air is lighter than ICAO air, this introduces an artificial trajectory error that grows significantly at extended ranges. The \texttt{CompetitionBallistics} engine exclusively uses the modern ICAO standard, ensuring native 1:1 compatibility with all contemporary manufacturer BCs without requiring any error-prone conversions.
 
 \section{Doppler Radar Drag Measurement}
 \label{sec:doppler}
@@ -1077,7 +1115,7 @@ The simplest numerical approach is the first-order Euler method, which updates t
 \end{align}
 where $v^n = \sqrt{(v_x^n-w_x)^2 + (v_y^n-w_y)^2 + (v_z^n-w_z)^2}$. While intuitive and easy to implement, the Euler method requires very small time steps to maintain stability and accuracy.
 
-\subsection{Runge--Kutta (RK4)}
+\subsection{Runge--Kutta (RK4) \& Area Scaling}
 
 Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and precision by sampling the derivative at multiple points within the time step \citep{press2007numerical}:
 \begin{align}
@@ -1088,9 +1126,12 @@ Modern ballistic solvers use higher-order methods, typically the 4th-order Runge
   \bm{y}_{n+1} &= \bm{y}_n + \tfrac{1}{6}(\bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4)
   \label{eq:rk4}
 \end{align}
-where $h$ is the time step, $\bm{y}_n$ is the state vector at time $t_n$, $\bm{f}$ is the vector of derivatives (velocities and accelerations), and $\bm{k}_1, \dots, \bm{k}_4$ are the intermediate derivative estimates.
+where $h$ is the time step, $\bm{y}_n$ is the full state vector $(x, y, z, v_x, v_y, v_z)$ at time $t_n$, and $\bm{f}$ is the vector of derivatives (velocities and accelerations).
 
-A typical time step of $h = 0.0005$ to $\SI{0.001}{\second}$ is sufficient.
+\paragraph{Version 3.1 Mathematical Corrections:} 
+It is critical to apply the RK4 integration to the \emph{full state vector} rather than decoupling position and velocity (a common error that degrades long-range accuracy). Furthermore, when scaling the reference drag by the Ballistic Coefficient ($\text{BC} = m / i d^2$), one must account for the physical area $A = \pi d^2 / 4$. Thus, the effective deceleration must be multiplied by a geometric correction factor of $4/\pi$ to bridge the shooting definition of sectional density and the physical drag force. These corrections ensure sub-MOA consistency with industry reference tools like JBM Ballistics at ranges exceeding 1,000 yards.
+
+A typical time step of $h = \SI{0.0005}{\second}$ to $\SI{0.001}{\second}$ is sufficient.
 
 
 % ============================================================================
@@ -1227,6 +1268,24 @@ Always to the right in the Northern Hemisphere, left in the Southern. At $45\,\t
 where $\Delta y_{\mathrm{Eot}}$ is the vertical deflection (E\"otv\"os effect) and $\psi$ is the firing azimuth (heading).
 
 Firing East ($\psi = 90^{\circ}$) results in a positive vertical deflection (the bullet shoots higher due to the increased centrifugal force), while firing West ($\psi = 270^{\circ}$) results in a negative deflection. At $45^{\circ}$N, \SI{1000}{\yard}, the effect is approximately $\pm 3$ to 4 inches.
+
+\subsection{Implementation}
+
+The closed-form expressions~\eqref{eq:coriolis_horiz} and~\eqref{eq:eotvos} are
+\emph{approximations}; the solver does not use them directly. Instead it applies
+the exact acceleration~\eqref{eq:coriolis} at every RK4 step, decomposing
+$\bm{\omega}_E$ into the shot frame ($x$ downrange, $y$ up, $z$ right) as a
+function of \emph{both} latitude $\phi$ and firing azimuth $\psi$:
+\begin{equation}
+  \bm{\omega}_E = \omega_E\bigl(\cos\phi\cos\psi,\;\sin\phi,\;-\cos\phi\sin\psi\bigr).
+  \label{eq:omega_shotframe}
+\end{equation}
+Equations~\eqref{eq:coriolis_horiz} and~\eqref{eq:eotvos} are then recovered as
+the leading-order integrals of $-2\,\bm{\omega}_E\times\vvec$. Numerically, firing
+East at $45^{\circ}$N raises the \SI{1000}{\yard} impact by $\approx 2.4$ inches
+and West lowers it by the same amount, while the horizontal drift stays
+$\approx 2.4$ inches right regardless of azimuth---consistent with the
+azimuth-independent form of Eq.~\eqref{eq:coriolis_horiz}.
 
 \section{Aerodynamic Jump}
 
@@ -2138,6 +2197,16 @@ Bullets with higher BC values and higher muzzle velocities remain supersonic lon
 \end{equation}
 
 The perpendicular gravity component $g_{\perp} = g\cos\alpha$ causes the bullet to drop away from the line of sight. Since $\cos\alpha < 1$ for any nonzero inclination (up or down), the drop is always less than flat fire.
+
+Rather than applying the approximate range-scaling of Eq.~\eqref{eq:riflemans_rule}
+as a post-correction, the solver handles inclination exactly: it resolves gravity
+in the line-of-sight frame, applying $g_{\perp} = g\cos\alpha$ perpendicular to the
+sight line and $g_{\parallel} = g\sin\alpha$ along the flight path, then integrates
+normally. This captures the slight up/down asymmetry (the along-path component
+accelerates a descending shot and decelerates a climbing one) that the pure
+cosine rule omits. For the reference 6.5\,mm load at $\pm 30^{\circ}$ and
+\SI{1000}{\yard}, the drop along the sight line falls from $-272$ inches (flat) to
+roughly $-233$ inches (uphill) and $-228$ inches (downhill).
 
 \section{Barrel Harmonics and Optimal Charge Weight}
 

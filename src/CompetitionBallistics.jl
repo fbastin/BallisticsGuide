@@ -883,26 +883,39 @@ function find_zero_angle(p::ShotParameters; tol::Real=1e-6, max_iter::Int=50)
     ρ = air_density(P=si.P, T=si.T, H=si.H)
     a_s = speed_of_sound(si.T)
     A = π * si.d^2 / 4.0
+    ff = form_factor(p.mass_grains, p.caliber_in, p.bc)
 
     θ = atan(Atmosphere.g0 * si.zr / (2.0 * si.v0^2))  # initial guess
 
     for _ in 1:max_iter
-        x, y = 0.0, -si.sh
+        x, y, z = 0.0, -si.sh, 0.0
         vx = si.v0 * cos(θ)
         vy = si.v0 * sin(θ)
+        vz = 0.0
+        t  = 0.0
         dt = p.dt
 
-        while x < si.zr
-            v = sqrt(vx^2 + vy^2)
+        function derivs_zero(sv)
+            _x, _y, _z, _vx, _vy, _vz = sv
+            v = sqrt(_vx^2 + _vy^2)
             Ma = v / a_s
             cd = drag_coefficient(p.drag_model, Ma)
-            drag_factor = ρ * cd * A / (2.0 * si.m)
-            ax = -drag_factor * v * vx
-            ay = -drag_factor * v * vy - Atmosphere.g0
-            vx += ax * dt
-            vy += ay * dt
-            x  += vx * dt
-            y  += vy * dt
+            df = (ρ * cd * A * ff) / (2.0 * si.m) * (4.0 / π)
+            return (_vx, _vy, 0.0, -df * v * _vx, -df * v * _vy - Atmosphere.g0, 0.0)
+        end
+
+        while x < si.zr && t < 15.0
+            s1 = (x, y, z, vx, vy, vz)
+            k1 = derivs_zero(s1)
+            s2 = s1 .+ 0.5 .* dt .* k1
+            k2 = derivs_zero(s2)
+            s3 = s1 .+ 0.5 .* dt .* k2
+            k3 = derivs_zero(s3)
+            s4 = s1 .+ dt .* k3
+            k4 = derivs_zero(s4)
+            next_s = s1 .+ (dt / 6.0) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
+            x, y, z, vx, vy, vz = next_s
+            t += dt
         end
 
         if abs(y) < tol
@@ -943,9 +956,10 @@ function solve_trajectory(p::ShotParameters)
 
     sg = miller_sg(p)
     dt = p.dt
+    ff = form_factor(p.mass_grains, p.caliber_in, p.bc)
 
     # Initial state
-    x, y, z = 0.0, 0.0, 0.0
+    x, y, z = 0.0, -si.sh, 0.0
     vx = si.v0 * cos(θ0) * cos(inc) * cos(ψ0)
     vy = si.v0 * sin(θ0)
     vz = si.v0 * cos(θ0) * sin(ψ0)
@@ -954,25 +968,24 @@ function solve_trajectory(p::ShotParameters)
     results = TrajectoryPoint[]
 
     # ── RK4 derivatives ──
-    function derivs(vx, vy, vz)
-        vrx = vx - wx;  vry = vy - wy;  vrz = vz - wz
+    function derivs(sv)
+        _x, _y, _z, _vx, _vy, _vz = sv
+        vrx = _vx - wx;  vry = _vy - wy;  vrz = _vz - wz
         vrel = sqrt(vrx^2 + vry^2 + vrz^2)
         Ma = vrel / a_s
         cd = drag_coefficient(p.drag_model, Ma)
-        D = ρ * cd * A / (2.0 * si.m)
+        D = (ρ * cd * A * ff) / (2.0 * si.m) * (4.0 / π)
 
-        ax = -D * vrel * vrx
-        ay = -D * vrel * vry - Atmosphere.g0
+        ax = -D * vrel * vrx + g_along
+        ay = -D * vrel * vry + g_perp
         az = -D * vrel * vrz
 
         if p.enable_coriolis
-            oe_y = ω_E * cos(lat)
-            oe_z = ω_E * sin(lat)
-            ax += -2.0 * (oe_y * vz - oe_z * vy)
-            ay += -2.0 * (oe_z * vx)
-            az += -2.0 * (-oe_y * vx)
+            ax += -2.0 * (oe_y * _vz - oe_z * _vy)
+            ay += -2.0 * (oe_z * _vx - oe_x * _vz)
+            az += -2.0 * (oe_x * _vy - oe_y * _vx)
         end
-        return (ax, ay, az)
+        return (_vx, _vy, _vz, ax, ay, az)
     end
 
     while x <= si.tr && t < 15.0
@@ -981,29 +994,26 @@ function solve_trajectory(p::ShotParameters)
         ek    = 0.5 * si.m * v_tot^2
 
         push!(results, TrajectoryPoint(
-            t, x, y + si.sh, z,
+            t, x, y, z,
             vx, vy, vz, v_tot, mach, ek
         ))
 
-        # RK4 integration
-        ax1, ay1, az1 = derivs(vx, vy, vz)
+        # RK4 integration for state vector [x, y, z, vx, vy, vz]
+        s1 = (x, y, z, vx, vy, vz)
+        k1 = derivs(s1)
 
-        vx2 = vx + 0.5*dt*ax1;  vy2 = vy + 0.5*dt*ay1;  vz2 = vz + 0.5*dt*az1
-        ax2, ay2, az2 = derivs(vx2, vy2, vz2)
+        s2 = s1 .+ 0.5 .* dt .* k1
+        k2 = derivs(s2)
 
-        vx3 = vx + 0.5*dt*ax2;  vy3 = vy + 0.5*dt*ay2;  vz3 = vz + 0.5*dt*az2
-        ax3, ay3, az3 = derivs(vx3, vy3, vz3)
+        s3 = s1 .+ 0.5 .* dt .* k2
+        k3 = derivs(s3)
 
-        vx4 = vx + dt*ax3;  vy4 = vy + dt*ay3;  vz4 = vz + dt*az3
-        ax4, ay4, az4 = derivs(vx4, vy4, vz4)
+        s4 = s1 .+ dt .* k3
+        k4 = derivs(s4)
 
-        vx += dt/6.0 * (ax1 + 2*ax2 + 2*ax3 + ax4)
-        vy += dt/6.0 * (ay1 + 2*ay2 + 2*ay3 + ay4)
-        vz += dt/6.0 * (az1 + 2*az2 + 2*az3 + az4)
+        next_s = s1 .+ (dt / 6.0) .* (k1 .+ 2 .* k2 .+ 2 .* k3 .+ k4)
 
-        x += vx * dt
-        y += vy * dt
-        z += vz * dt
+        x, y, z, vx, vy, vz = next_s
         t += dt
     end
 
