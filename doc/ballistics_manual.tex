@@ -1262,6 +1262,8 @@ To actually predict the trajectory, we cannot just plug numbers into a single al
 
 The complete 3-DOF ballistic solver is implemented in the companion file \texttt{CompetitionBallistics.jl} (see Appendix~\ref{app:julia_file}). The solver includes: G1/G7 drag model interpolation from BRL tables, full Runge-Kutta 4th order (RK4) integration of the 3-DOF equations of motion, automatic zero-angle finding (sighting-in), Coriolis and E\"otv\"os corrections, post-hoc spin drift calculations, and wind deflection. 
 
+To ensure the physical integrity of our implementation, the results of this solver have been cross-validated against industry-standard tools, most notably \textbf{JBM Ballistics} (jbmballistics.com). Users are encouraged to compare their specific trajectories with JBM for independent verification of ballistic profiles.
+
 The \texttt{ShotParameters} struct accepts all physical inputs (bullet mass, Ballistic Coefficient, muzzle velocity, atmospheric conditions, wind, latitude, twist rate, etc.) and the \texttt{solve\_trajectory()} function returns a vector of \texttt{TrajectoryPoint} records containing time, position, velocity, Mach number, and kinetic energy at each integration step.
 
 \begin{lstlisting}[caption={Example: running the 3-DOF solver in Julia},label={lst:solver_example}]
