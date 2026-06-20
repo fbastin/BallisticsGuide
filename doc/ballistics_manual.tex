@@ -525,6 +525,8 @@ For the competition shooter, interior ballistics dictates the two most important
 
 To understand how a cartridge achieves a specific muzzle velocity, we must treat the rifle chamber as a high-pressure thermodynamic engine.
 
+\paragraph{Online implementation (note).} A web implementation of the 0D model below (a Gordon's Reloading Tool--style solver) is available on Tireur.org. It is intended strictly as an \emph{educational} tool: validation against published manufacturer data shows that it currently \emph{under-predicts} both peak pressure and muzzle velocity, so it should be used to study trends---not for absolute load development \citep{grt_manual}. Always verify any charge against official manufacturer data.
+
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
@@ -551,11 +553,11 @@ To understand how a cartridge achieves a specific muzzle velocity, we must treat
 
 \section{The Thermodynamic Problem}
 
-\subsection{Nobel--Abel Equation of State}
+\subsection{Noble--Abel Equation of State}
 
 When gunpowder burns, it creates gas. At the extreme pressures found in a rifle chamber (often exceeding 60,000 PSI or 400 MPa), these gases are packed so tightly that they deviate significantly from the "ideal gas" behavior taught in high school physics ($PV = nRT$). The gas molecules themselves take up physical space!
 
-To account for this, we use the Nobel--Abel equation, which introduces an "excluded volume" or co-volume:
+To account for this, we use the Noble--Abel equation \citep{corner1950interior,carlucci2007ballistics}, which introduces an "excluded volume" or co-volume:
 \begin{equation}
   P\,(V - \eta) = n\,R_u\,T_g
   \label{eq:nobel_abel}
@@ -571,7 +573,7 @@ Let's define these variables:
     \item $T_g$: The absolute temperature of the propellant gas.
 \end{itemize}
 
-By subtracting the co-volume $\eta$ from the total volume $V$, the Nobel-Abel equation prevents the gas pressure from inaccurately dropping to zero.
+By subtracting the co-volume $\eta$ from the total volume $V$, the Noble-Abel equation prevents the gas pressure from inaccurately dropping to zero.
 
 \subsection{Energy Balance}
 
@@ -605,7 +607,7 @@ The rate of gas generation follows a geometric burn rate law. For a single-perfo
   \label{eq:burn_rate}
 \end{equation}
 
-For small arms propellants, the empirical Vielle law is commonly used:
+For small arms propellants, the empirical Vieille law \citep{corner1950interior} is commonly used:
 \begin{equation}
   r_b = \beta\,P^n
   \label{eq:vielle}
@@ -620,6 +622,8 @@ For common grain geometries, the fraction burned $z$ relates to the linear fract
   \label{eq:form_function}
 \end{equation}
 where $\theta$ is the form factor: $\theta = 0$ for a slab, $\theta > 0$ for progressive, and $\theta < 0$ for degressive grains.
+
+\paragraph{Note on software models.} Production tools such as GRT and QuickLOAD extend this classical framework with proprietary, calibrated sub-models---notably a multi-stage form function (three stages in GRT versus two in QuickLOAD) and detailed energy-loss and effective-mass (Lagrange/Sebert) terms---fitted to closed-bomb and ballistic measurements \citep{corner1950interior,kneubuehl_ballistik,grt_manual,anderson1987ibhvg2}. These calibrated internals are not fully published; the equations above are the open, literature-based formulation.
 
 \section{Le Duc Velocity Model}
 
@@ -2594,48 +2598,8 @@ While Greenhill's is an excellent historical rule of thumb, modern shooters use 
 
 
 % ============================================================================
-\begin{thebibliography}{99}
-
-\bibitem[Bashforth(1870)]{bashforth1870description}
-Bashforth, F. (1870). \emph{A Mathematical Treatise on the Motion of Projectiles}. Asher \& Co., London.
-
-\bibitem[Braun(1958)]{braun1958aerodynamic}
-Braun, W.F. (1958). The free flight aerodynamics range. \emph{Ballistic Research Laboratories Report No.\ 1048}. Aberdeen Proving Ground, MD.
-
-\bibitem[Carlucci and Jacobson(2007)]{carlucci2007ballistics}
-Carlucci, D.E. and Jacobson, S.S. (2007). \emph{Ballistics: Theory and Design of Guns and Ammunition}. CRC Press.
-
-\bibitem[Greenhill(1879)]{greenhill1879rotation}
-Greenhill, A.G. (1879). On the rotation required for the stability of an elongated projectile. \emph{Minutes of the Proceedings of the Royal Artillery Institution}, 10:577--593.
-
-\bibitem[COESA(1976)]{coesa1976standard}
-U.S.\ Committee on Extension to the Standard Atmosphere (1976). \emph{U.S.\ Standard Atmosphere, 1976}. NOAA--S/T~76-1562, NASA--TM--X--74335. National Oceanic and Atmospheric Administration, National Aeronautics and Space Administration, United States Air Force. \href{https://ntrs.nasa.gov/citations/19770009539}{NTRS 19770009539}.
-
-\bibitem[ICAO(1993)]{icao1993manual}
-International Civil Aviation Organization (1993). \emph{Manual of the ICAO Standard Atmosphere, extended to 80 kilometres (262\,500 feet)}. ICAO Doc 7488/3, 3rd edition. Identical to ISO 2533:1975/Add.~2:1997.
-
-\bibitem[Ingalls(1893)]{ingalls1893exterior}
-Ingalls, J.M. (1893). \emph{Exterior Ballistics in the Plane of Fire}. D.\ Van Nostrand Company.
-
-\bibitem[Litz(2011)]{litz2011applied}
-Litz, B. (2011). \emph{Applied Ballistics for Long Range Shooting}. Applied Ballistics, LLC, 2nd edition.
-
-\bibitem[Litz(2015)]{litz2015ballistic}
-Litz, B. (2015). \emph{Ballistic Performance of Rifle Bullets}. Applied Ballistics, LLC, 3rd edition.
-
-\bibitem[McCoy(1999)]{mccoy1999modern}
-McCoy, R.L. (1999). \emph{Modern Exterior Ballistics}. Schiffer Publishing, 2nd edition.
-
-\bibitem[Miller(2005)]{miller2005twist}
-Miller, D. (2005). The new twist rule. \emph{Precision Shooting}, March 2005.
-
-\bibitem[Press et~al.(2007)]{press2007numerical}
-Press, W.H. et~al. (2007). \emph{Numerical Recipes}. Cambridge University Press, 3rd edition.
-
-\bibitem[Siacci(1888)]{siacci1888balistica}
-Siacci, F. (1888). \emph{Balistica}. Arnaldo Forni Editore, Bologna.
-
-\end{thebibliography}
+\nocite{*}
+\bibliography{references}
 
 
 % ============================================================================
