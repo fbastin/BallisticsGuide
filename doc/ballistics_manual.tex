@@ -949,7 +949,60 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \end{tabularx}
 \end{table}
 
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[every node/.style={font=\small}]
+  % G1 : blunt, flat base
+  \fill[gray!20, draw=red!70!black, thick]
+    (0,0.45) -- (1.6,0.45) to[out=0,in=120] (2.5,0) to[out=-120,in=0] (1.6,-0.45) -- (0,-0.45) -- cycle;
+  \node[font=\bfseries] at (1.25,-0.85) {G1};
+  \node[font=\scriptsize] at (1.25,-1.18) {blunt, flat base};
+  % G7 : long secant ogive, boat-tail
+  \fill[gray!20, draw=blue!70!black, thick]
+    (4.0,0.30) -- (4.25,0.45) -- (4.9,0.45) to[out=0,in=150] (6.4,0) to[out=-150,in=0] (4.9,-0.45) -- (4.25,-0.45) -- (4.0,-0.30) -- cycle;
+  \node[font=\bfseries] at (5.2,-0.85) {G7};
+  \node[font=\scriptsize] at (5.2,-1.18) {long ogive, boat-tail};
+  % G8 : long secant ogive, flat base
+  \fill[gray!20, draw=gray!55!black, thick]
+    (8.0,0.45) -- (8.9,0.45) to[out=0,in=150] (10.4,0) to[out=-150,in=0] (8.9,-0.45) -- (8.0,-0.45) -- cycle;
+  \node[font=\bfseries] at (9.2,-0.85) {G8};
+  \node[font=\scriptsize] at (9.2,-1.18) {long ogive, flat base};
+\end{tikzpicture}
+\caption{Schematic silhouettes of three reference projectiles (nose to the right). The blunt, flat-based G1 differs markedly from a modern match bullet, whereas the long boat-tailed G7 closely matches it; G8 shares the G7 nose but keeps a flat base.}
+\label{fig:drag_shapes}
+\end{figure}
+
 \textbf{For competition rifle shooting, G7 is strongly preferred} over G1 for modern VLD boat-tail bullets because the G7 reference shape more closely matches these bullets, resulting in a form factor $i$ closer to 1.0 and a more constant $\Bc$ across the velocity range \citep{litz2011applied}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=7cm,
+    xlabel={Mach number $\Mach$},
+    ylabel={$\Cd$ (reference shape)},
+    xmin=0, xmax=3, ymin=0, ymax=0.66,
+    grid=both, grid style={gray!30},
+    legend pos=north east, legend style={font=\small},
+    xtick={0,0.5,1,1.5,2,2.5,3},
+]
+\fill[orange!15] (axis cs:0.8,0) rectangle (axis cs:1.2,0.66);
+\node[font=\scriptsize, orange!60!black] at (axis cs:1.0,0.635) {transonic};
+\addplot[thick, red!80!black] coordinates {
+  (0,0.2629)(0.5,0.2253)(0.7,0.2300)(0.8,0.2622)(0.9,0.3200)(0.95,0.4000)
+  (1.0,0.5950)(1.05,0.6280)(1.1,0.6230)(1.2,0.6010)(1.5,0.5430)
+  (2.0,0.4640)(2.5,0.4080)(3.0,0.3700)};
+\addlegendentry{G1 (blunt, flat base)}
+\addplot[thick, blue!70!black] coordinates {
+  (0,0.1198)(0.5,0.1194)(0.8,0.1242)(0.9,0.1464)(0.95,0.2054)
+  (1.0,0.3803)(1.05,0.3845)(1.1,0.3597)(1.2,0.3250)(1.5,0.2602)
+  (2.0,0.1993)(2.5,0.1629)(3.0,0.1400)};
+\addlegendentry{G7 (streamlined, boat-tail)}
+\end{axis}
+\end{tikzpicture}
+\caption{Drag coefficient of the G1 and G7 reference shapes versus Mach number (G7 values from Table~\ref{tab:g7_values}; G1 representative BRL data). Both rise sharply through the transonic region, but the slender G7 has a markedly lower, flatter peak---the physical reason its $\Bc$ stays nearly constant across the supersonic range.}
+\label{fig:cd_mach_compare}
+\end{figure}
 
 \subsection{G7 Drag Function}
 
