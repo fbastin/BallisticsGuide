@@ -96,6 +96,86 @@ const BallisticUtils = (() => {
     return sg;
   };
 
+  // Formule amendée de Courtney & Miller (Precision Shooting, janvier 2012) pour
+  // les balles à pointe plastique. Le plastique est ~10 fois moins dense que le
+  // métal : il allonge la balle sans rien ajouter aux moments d'inertie. Seul le
+  // terme (1 + l²), qui vient des moments d'inertie, prend la longueur métallique.
+  // L'autre l vient du centre de pression, propriété aérodynamique de forme, et
+  // garde la longueur totale. Appliquer le Miller ordinaire à ces balles
+  // SOUS-ESTIME leur stabilité.
+  const millerStabilityTipped = ({
+    massGr, caliberIn, bulletLengthIn, metalLengthIn, twistIn,
+    muzzleVelFps = 2800.0, tempF = 59.0, pressureInhg = 29.92
+  }) => {
+    const d  = caliberIn;
+    const l  = bulletLengthIn / d;
+    const lm = metalLengthIn / d;
+    const tw = twistIn / d;
+    let sg = 30.0 * massGr / (tw * tw * d * d * d * l * (1.0 + lm * lm));
+    sg *= Math.cbrt(muzzleVelFps / 2800.0);
+    sg *= (fahrenheitToRankine(tempF) / 518.67) * (29.92 / pressureInhg);
+    return sg;
+  };
+
+  // --- Passage masse <-> longueur ------------------------------------------
+  //
+  // Miller exige une LONGUEUR ; le tireur connaît un POIDS. Pour une balle de
+  // forme et de densité moyenne données, m ~ rho * d^2 * L, donc la longueur en
+  // calibres l = L/d varie comme m/d^3. Le coefficient ci-dessous a été calibré
+  // le 2026-07-27 sur neuf balles match chemisées dont la longueur est publiée
+  // par le fabricant (Sierra 55/77/155/175, Berger 105/140/180/185/300), du .224
+  // au .338 : écart maximal 6 % sur la longueur.
+  //
+  // ATTENTION : c'est une constante de FAMILLE, pas une loi. 6 % d'écart sur la
+  // longueur valent +20/-16 % sur Sg. Et la relation se dégrade hors du match
+  // chemisé — un monobloc cuivre mesuré (Barnes TSX 168 gr .308, 1,318") est 8 %
+  // plus long que la relation ne le prédit, soit 20 % de Sg en moins. Dès que la
+  // longueur publiée est disponible, elle prime sur toute estimation.
+  const BULLET_SHAPE_K = 6.9024e-4;
+
+  const bulletLengthFromWeight = (massGr, caliberIn, k = BULLET_SHAPE_K) =>
+    k * massGr / (caliberIn * caliberIn);          // = (k*m/d^3) * d
+
+  const bulletWeightFromLength = (bulletLengthIn, caliberIn, k = BULLET_SHAPE_K) =>
+    bulletLengthIn * caliberIn * caliberIn / k;
+
+  // --- Sens inverse : quel pas faut-il ? -----------------------------------
+  //
+  // PIÈGE : ce n'est pas l'inverse littéral de millerStability. Miller applique
+  // au PAS des exposants deux fois plus petits qu'au facteur de stabilité —
+  // « multiply the calculated s by the 1/3 root of (v/2800) and calculated t by
+  // the 1/6 root », et fTP « multiplies the calculated s and t², and its square
+  // root multiplies t itself ». Inverser naïvement le code de Sg donne un pas faux.
+  const millerTwistForSg = ({
+    massGr, caliberIn, bulletLengthIn, sgTarget = 2.0,
+    muzzleVelFps = 2800.0, tempF = 59.0, pressureInhg = 29.92
+  }) => {
+    const d = caliberIn;
+    const l = bulletLengthIn / d;
+    const twSq = 30.0 * massGr / (sgTarget * d * d * d * l * (1.0 + l * l));
+    const fTP = (fahrenheitToRankine(tempF) / 518.67) * (29.92 / pressureInhg);
+    const tw = Math.sqrt(twSq) * Math.pow(muzzleVelFps / 2800.0, 1.0 / 6.0) * Math.sqrt(fTP);
+    return tw * d;                                  // pas en pouces par tour
+  };
+
+  // Poids maximal admissible pour un pas donné, via la relation masse <-> longueur.
+  // En y substituant m = l*d^3/k, d et l se simplifient de Miller sauf dans
+  // (1 + l²) : Sg = 30 * fv * fTP / (k * t² * (1 + l²)). Renvoie null si le pas
+  // ne peut atteindre la cible pour aucune longueur (balle plus courte impossible).
+  const maxBulletForTwist = ({
+    caliberIn, twistIn, sgTarget = 2.0,
+    muzzleVelFps = 2800.0, tempF = 59.0, pressureInhg = 29.92, k = BULLET_SHAPE_K
+  }) => {
+    const d = caliberIn;
+    const tw = twistIn / d;
+    const fv = Math.cbrt(muzzleVelFps / 2800.0);
+    const fTP = (fahrenheitToRankine(tempF) / 518.67) * (29.92 / pressureInhg);
+    const lSq = 30.0 * fv * fTP / (k * tw * tw * sgTarget) - 1.0;
+    if (lSq <= 0) return null;
+    const l = Math.sqrt(lSq);
+    return { bulletLengthIn: l * d, massGr: l * d * d * d / k };
+  };
+
   const greenhillTwist = (caliberIn, bulletLengthIn, C = 150.0) =>
     C * caliberIn * caliberIn / bulletLengthIn;
 
@@ -140,7 +220,9 @@ const BallisticUtils = (() => {
     kinetic_energy_J: kineticEnergyJ, kinetic_energy_ftlbs: kineticEnergyFtlbs, // matching Julia names
     kineticEnergyJ, kineticEnergyFtlbs,
     sectionalDensity, formFactor,
-    millerStability, greenhillTwist,
+    millerStability, millerStabilityTipped, greenhillTwist,
+    millerTwistForSg, maxBulletForTwist,
+    bulletLengthFromWeight, bulletWeightFromLength, BULLET_SHAPE_K,
     loadConsistencyScore, bcFromTwoChronographs,
   };
 })();
