@@ -612,6 +612,7 @@ const ExteriorBallistics = (() => {
     pressureInhg:    29.92,
     humidityPct:     0.0,
     altitudeFt:      0.0,
+    pressureIsSeaLevel: false,   // true = la pression saisie est un QNH, à ramener via altitudeFt
     windSpeedMph:    0.0,
     windAngleDeg:    90.0,
     targetRangeYd:   1000.0,
@@ -630,13 +631,34 @@ const ExteriorBallistics = (() => {
     return { ...DEFAULT_SHOT, ...overrides };
   }
 
+  // Pression réellement vue par le projectile.
+  //
+  // `altitudeFt` a longtemps été déclaré dans DEFAULT_SHOT et transmis par le
+  // formulaire sans être lu NULLE PART : seule la pression saisie agissait, si
+  // bien qu'indiquer 1500 m d'altitude en laissant 1013 hPa rendait des
+  // résultats de niveau de la mer, sans le moindre signalement.
+  //
+  // Deux conventions coexistent chez les tireurs : la pression *station*, lue
+  // sur place, et la pression ramenée au niveau de la mer (QNH), celle des
+  // bulletins météo. La première se suffit à elle-même — l'altitude n'apporte
+  // alors rien de plus. La seconde doit être ramenée au point de tir, et c'est
+  // là que l'altitude sert.
+  //
+  // Ce helper est le SEUL point de vérité : _toSi et millerSg passent tous deux
+  // par lui, précisément pour qu'ils ne puissent plus diverger.
+  function stationPressureInhg(p) {
+    if (!p.pressureIsSeaLevel) return p.pressureInhg;
+    const hM = (p.altitudeFt || 0) * 0.3048;
+    return p.pressureInhg * (Atmosphere.stdPressure(hM) / Atmosphere.P0);
+  }
+
   function _toSi(p) {
     return {
       m:   grainsToKg(p.massGrains),
       d:   inchesToM(p.caliberIn),
       v0:  fpsToMs(p.muzzleVelFps),
       T:   fahrenheitToKelvin(p.tempF),
-      P:   inhgToPa(p.pressureInhg),
+      P:   inhgToPa(stationPressureInhg(p)),
       H:   p.humidityPct,
       w:   p.windSpeedMph * 0.44704,
       sh:  inchesToM(p.sightHeightIn),
@@ -655,7 +677,7 @@ const ExteriorBallistics = (() => {
       twistIn:       p.twistIn,
       muzzleVelFps:  p.muzzleVelFps,
       tempF:         p.tempF,
-      pressureInhg:  p.pressureInhg,
+      pressureInhg:  stationPressureInhg(p),
     });
   }
 
@@ -887,7 +909,7 @@ const ExteriorBallistics = (() => {
 
   return {
     DEFAULT_SHOT, makeShotParams,
-    millerSg, spinDriftInches,
+    millerSg, spinDriftInches, stationPressureInhg,
     coriolisHorizontal, eotvosVertical,
     windDeflectionLagRule,
     aerodynamicJump, inclinedFireEffectiveRange,
