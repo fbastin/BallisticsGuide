@@ -1287,12 +1287,14 @@ where $\Delta z_{\mathrm{spin}}$ is the horizontal deflection in inches, $S_g$ i
 
 The Miller stability formula \citep{miller2005twist}:
 \begin{equation}
-  \boxed{S_g \approx \frac{30\,m}{T_w^2\,d^3\,l\,\left(1 + l^2\right)} \cdot \frac{v_0}{2800} \cdot \frac{T_0}{T}}
+  \boxed{S_g \approx \frac{30\,m}{T_w^2\,d^3\,l\,\left(1 + l^2\right)} \cdot \left(\frac{v_0}{2800}\right)^{1/3} \cdot \frac{T}{T_0} \cdot \frac{P_0}{P}}
   \label{eq:miller_sg}
 \end{equation}
-where $m$ is bullet mass in grains, $T_w$ is twist rate in calibers per turn, $d$ is caliber in inches, $l$ is bullet length in calibers, $v_0$ is muzzle velocity in fps, $T$ is ambient temperature, and $T_0 = 518.67\;\text{R}$ (\SI{15}{\celsius}, $59\,\degF$) is the standard reference temperature.
+where $m$ is bullet mass in grains, $T_w$ is twist rate in calibers per turn, $d$ is caliber in inches, $l$ is bullet length in calibers, $v_0$ is muzzle velocity in fps, $T$ is ambient temperature, $P$ ambient pressure, and $T_0 = 518.67\;\text{R}$ (\SI{15}{\celsius}, $59\,\degF$), $P_0 = 29.92$ in Hg are the standard reference conditions.
 
-For adequate stability, $S_g > 1.0$; values of $1.3$--$2.0$ are typical for match bullets.
+Two points are easy to get wrong. The velocity correction is a \emph{cube root}, not a direct ratio: the discrepancy is under 2\% near 2800 fps but reaches 27\% at 4000 fps. And the atmospheric correction goes as $T/T_0$, not its inverse --- the overturning moment scales with air density $\rho \propto P/T$, so $S_g \propto 1/\rho$: hot or thin air \emph{raises} $S_g$. A bullet marginally stable at sea level gains stability at altitude.
+
+For adequate stability, $S_g > 1.0$; values of $1.3$--$2.0$ are typical for match bullets. Below $S_g \approx 1.5$ the bullet flies with residual pitching and yawing that costs measurable BC --- Litz reports a 9\% BC loss for a .30 calibre 185\,gr bullet at $S_g = 1.2$ \citep{litz2011applied}.
 
 \section{Coriolis and E\"otv\"os Effects}
 \label{sec:coriolis}
@@ -1951,7 +1953,7 @@ Our load:
 \begin{itemize}[nosep]
   \item \textbf{Bullet:} Berger 105\,gr Hybrid Target, 6mm (.243 cal)
   \item \textbf{BC (G7):} 0.275 \citep{litz2015ballistic}
-  \item \textbf{Bullet length:} 1.10 in.
+  \item \textbf{Bullet length:} 1.292 in.\ (manufacturer specification)
   \item \textbf{Propellant:} Vihtavuori N140, 30.2\,gr
   \item \textbf{Muzzle velocity:} 2920\,fps (from 26-inch barrel, verified by chronograph)
   \item \textbf{Barrel twist:} 1:7.5 right-hand
@@ -1963,13 +1965,13 @@ Our load:
 
 Using the Miller formula \eqref{eq:miller_sg}:
 \begin{align*}
-  d &= 0.243\;\text{in.}, \quad l = 1.10/0.243 = 4.527\;\text{cal}, \quad T_w = 7.5/0.243 = 30.86\;\text{cal/turn} \\
-  S_g &= \frac{30 \times 105}{30.86^2 \times 0.243^3 \times 4.527 \times (1 + 4.527^2)} \times \frac{2920}{2800} \times \frac{518.67}{518.67} \\
-  &= \frac{3150}{30.86^2 \times 0.01435 \times 4.527 \times 21.49} \times 1.043 \\
-  &\approx 1.68
+  d &= 0.243\;\text{in.}, \quad l = 1.292/0.243 = 5.317\;\text{cal}, \quad T_w = 7.5/0.243 = 30.86\;\text{cal/turn} \\
+  S_g &= \frac{30 \times 105}{30.86^2 \times 0.243^3 \times 5.317 \times (1 + 5.317^2)} \times \left(\frac{2920}{2800}\right)^{1/3} \times \frac{518.67}{518.67} \\
+  &= \frac{3150}{30.86^2 \times 0.01435 \times 5.317 \times 29.27} \times 1.014 \\
+  &\approx 1.50
 \end{align*}
 
-$S_g = 1.68 > 1.3$: well stabilized. The bullet will maintain gyroscopic stability down to approximately Mach 1.2 (about 1350\,fps), which occurs near 1100 yards for this load.
+$S_g = 1.50 > 1.3$: well stabilized, and right at the threshold above which the bullet realises its full BC. The bullet will maintain gyroscopic stability down to approximately Mach 1.2 (about 1350\,fps), which occurs near 1100 yards for this load.
 
 \subsection{Step 3: Atmospheric Conditions}
 
@@ -2649,9 +2651,9 @@ Use $C = 150$ for muzzle velocities $v < 2800$ fps, and $C = 180$ for higher vel
 While Greenhill's is an excellent historical rule of thumb, modern shooters use Miller's gyroscopic stability factor ($S_g$). 
 \begin{itemize}[noitemsep]
     \item $S_g < 1.0$: Unstable (tumbling).
-    \item $S_g \in [1.0, 1.3]$: Marginally stable (will fly straight but lose ballistic coefficient).
-    \item $S_g \in [1.3, 2.0]$: Optimal match stability.
-    \item $S_g > 2.0$: Over-stabilized (can exaggerate spin drift and limit extreme long range precision).
+    \item $S_g \in [1.0, 1.5]$: Marginally stable. The bullet flies straight but with residual yaw that costs BC --- up to 9\% at $S_g = 1.2$.
+    \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep{litz2011applied}.
+    \item $S_g > 2.0$: Amply stable. Spin drift grows with $S_g$, but Doppler radar data contradicts the older claim that ``over-stabilisation'' costs accuracy: at flat-fire ranges a higher $S_g$ \emph{reduces} drag, especially transonic. Over-spinning matters mainly for jacket integrity on thin-jacketed bullets.
 \end{itemize}
 
 

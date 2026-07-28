@@ -79,15 +79,20 @@ const BallisticUtils = (() => {
 
   const millerStability = ({
     massGr, caliberIn, bulletLengthIn, twistIn,
-    muzzleVelFps = 2800.0, tempF = 59.0
+    muzzleVelFps = 2800.0, tempF = 59.0, pressureInhg = 29.92
   }) => {
     const d  = caliberIn;
     const l  = bulletLengthIn / d;
     const tw = twistIn / d;
     const tR = fahrenheitToRankine(tempF);
     let sg = 30.0 * massGr / (tw * tw * d * d * d * l * (1.0 + l * l));
-    sg *= (muzzleVelFps / 2800.0);
-    sg *= (518.67 / tR);
+    // Correction de vitesse de Miller : racine cubique du rapport à 2800 fps,
+    // et non rapport direct. L'écart est faible près de 2800 fps mais atteint
+    // 27 % à 4000 fps.
+    sg *= Math.cbrt(muzzleVelFps / 2800.0);
+    // Correction atmosphérique : Sg varie comme 1/rho, et rho ~ P/T.
+    // Air chaud ou raréfié (altitude) = Sg plus élevé.
+    sg *= (tR / 518.67) * (29.92 / pressureInhg);
     return sg;
   };
 
@@ -568,6 +573,7 @@ const ExteriorBallistics = (() => {
       twistIn:       p.twistIn,
       muzzleVelFps:  p.muzzleVelFps,
       tempF:         p.tempF,
+      pressureInhg:  p.pressureInhg,
     });
   }
 
