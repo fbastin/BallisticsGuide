@@ -203,8 +203,19 @@ const BallisticUtils = (() => {
     // If called directly before DragModels is initialized, it will throw.
     const cdStd = CompetitionBallistics.DragModels.dragCoefficient(model, Ma);
 
-    let bc = (rho * cdStd * Math.PI * dist) / (8.0 * (1.0 / v2 - 1.0 / v1));
-    bc *= rho0 / rho; // Convert to standard conditions
+    // Décroissance de vitesse sous une traînée en v^2, intégrée sur la DISTANCE :
+    //     dv/dx = -k v   =>   ln(v1/v2) = k x
+    // La forme en (1/v2 - 1/v1) qui figurait ici est celle de l'intégration sur le
+    // TEMPS ; appliquée à une distance, elle rendait un BC ~10^5 fois trop grand.
+    //
+    // k est la constante de retardation du solveur, k = (rho/2) Cd C0 / BC, où C0
+    // convertit la densité sectionnelle (lb/in^2, définie sur d^2) vers le SI :
+    //     C0 = 0.0254^2 / 0.45359237
+    // C'est le même appariement SD <-> table de traînée que dans solveTrajectory.
+    const C0 = 0.0254 * 0.0254 / 0.45359237;
+    const bc = (rho * cdStd * C0 * dist) / (2.0 * Math.log(v1 / v2));
+    // Pas de renormalisation par rho0 : rho est déjà celui de la mesure, donc le BC
+    // obtenu est le vrai BC du projectile, indépendant des conditions.
     return Math.abs(bc);
   };
 
@@ -813,6 +824,12 @@ const ExteriorBallistics = (() => {
       const vrel = Math.sqrt(vrx * vrx + vry * vry + vrz * vrz);
       const Ma = vrel / aS;
       const cd = dragCoefficient(p.dragModel, Ma);
+      // Le facteur 4/pi n'est pas un fudge : il apparie la densité sectionnelle à la
+      // table de traînée. SD se définit sur d^2 (m/d^2, lb/in^2), alors que les tables
+      // BRL réfèrent Cd à l'aire frontale pi d^2/4 ; A * 4/pi rend donc d^2, la même
+      // surface que celle de SD. L'ôter sous-estimerait la traînée de 27 % — vérifié :
+      // une .308 175 gr G7=0,243 à 2600 fps arriverait à 1000 yd à 1462 fps au lieu de
+      // 1153, ce qui n'a aucun sens en régime transsonique. Ne pas « simplifier ».
       const D  = (rho * cd * A * ff) / (2.0 * si.m) * (4.0 / Math.PI);
 
       let ax = -D * vrel * vrx + gAlong;
