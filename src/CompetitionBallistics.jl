@@ -1421,7 +1421,18 @@ Base.@kwdef struct ShotParameters6DOF
     aero::AeroCoefficients6DOF  = AeroCoefficients6DOF()
 
     # Solver
-    dt::Float64                 = 0.0001    # smaller dt for angular dynamics
+    #
+    # `dt` must resolve the FAST body-frame mode, not the epicyclic period seen
+    # from the ground. The gyroscopic coupling in the rate equations spins (q,r)
+    # at |(Ix-Iy)/Iy|·p — about 23 000 rad/s for a match rifle bullet, i.e. a
+    # 270 µs period — while the epicyclic motion an observer sees is ten to
+    # twenty times slower. Sizing the step on the slow one is what left the
+    # legacy default at 1e-4 s, where the solution blew up (see `solve_6dof`).
+    # 5e-6 s gives ~50 steps per fast cycle, the rule of thumb McCoy reports for
+    # 6-DOF work, and RK4 is then both stable and converged.
+    dt::Float64                 = 5.0e-6
+    integrator::Symbol          = :rk4      # :rk4, or :euler for the legacy scheme
+    record_every::Int           = 20        # sample the output every N steps
 end
 
 """Snapshot of the 6-DOF state at one time step."""
@@ -1505,18 +1516,50 @@ end
 """
     solve_6dof(p::ShotParameters6DOF) -> Vector{State6DOF}
 
-Full 6-DOF rigid-body trajectory solver.
-Uses quaternion kinematics (singularity-free), renormalized at every step.
+Full 6-DOF rigid-body trajectory solver, RK4 on the whole 13-component state
+(position, velocity, quaternion, body rates). Quaternion kinematics are
+singularity-free; the quaternion is renormalized after every step.
 
-!!! warning "Integration is first-order Euler, not RK4"
-    The 13-component state (position, velocity, quaternion, body rates) is advanced
-    by an explicit **Euler** step, and accuracy is bought with a short fixed step
-    (`dt = 1e-4 s` by default) rather than with a higher-order scheme. The zero-angle
-    search below is Euler as well. That is adequate for the stability and yaw work
-    this module targets, but it is *not* the RK4 integrator of
-    [`solve_trajectory`](@ref): at order 1 the error falls only as `dt`, where RK4
-    divides it by 16 each time the step is halved. Promoting this loop to RK4 on the
-    full state is the natural next step before the solver is put in front of users.
+Set `integrator = :euler` to fall back on the first-order scheme this module used
+until 2026-08-12. It is kept as a reference point, not as a working alternative —
+see below.
+
+# Choosing `dt`
+
+The step must resolve the **fast body-frame mode**, not the epicyclic motion an
+observer sees. The gyroscopic coupling in the rate equations rotates (q, r) at
+|(Ix−Iy)/Iy|·p — 24 000 rad/s for the default 6.5 mm bullet, a 262 µs period —
+while the epicyclic period is a tenfold longer. The default `dt = 5e-6 s` puts
+~52 steps in the fast cycle, the rule of thumb McCoy reports for 6-DOF work.
+
+Measured convergence at 100 yd, against a run at `dt = 6.25e-7 s`:
+
+| `dt` (s) | error on drop | error on total yaw |
+|---------:|--------------:|-------------------:|
+| 4e-5     | 1.9e-3 m      | 8.5e-3 rad         |
+| 1e-5     | 7.4e-6 m      | 5.5e-5 rad         |
+| **5e-6** | **2.0e-6 m**  | **2.9e-6 rad**     |
+
+The yaw column falls by a factor of ~16 per halving, i.e. the fourth order is
+actually attained; the drop column reaches its round-off floor near 1e-6 m.
+
+!!! danger "Why `:euler` is a fallback and not an option"
+    Explicit Euler is **unconditionally unstable** on the undamped gyroscopic
+    oscillator these equations contain: its amplification factor is
+    √(1+(ωh)²) > 1 for every step size. With the historical default of `dt = 1e-4 s`
+    the body rates reached 1e159 rad/s and the quaternion went `NaN` within 39 ms of
+    flight — the solver never produced a usable 1000 yd trajectory. Shrinking the
+    step only slows the blow-up: at `dt = 1e-6 s` the pitch rate still reaches
+    1e18 rad/s. RK4 is stable here because its region of absolute stability covers
+    the imaginary axis up to |ωh| ≈ 2.83, and the default step sits at ωh ≈ 0.12.
+
+!!! note "Placeholder aerodynamic coefficients"
+    With the library's default [`AeroCoefficients6DOF`](@ref) the computed total
+    angle of attack **grows** along the trajectory (0.46° at the muzzle, 1.26° at
+    270 m, 18.7° at 1000 yd): the coefficient set describes a bullet whose yawing
+    motion is not damped. Those coefficients are placeholders, not measurements for
+    any particular bullet, and this is what that costs. Supply a measured set before
+    reading anything physical into a run.
 """
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
@@ -1545,7 +1588,10 @@ function solve_6dof(sp::ShotParameters6DOF)
     alpha0 = deg2rad(sp.initial_yaw_deg)
     p0 = sp.twist_direction * initial_spin_rate(v0, tw)
 
-    # Find zero angle (simplified 2D iteration)
+    # Find zero angle (simplified 2D iteration). Still a first-order step, and
+    # deliberately so: this is a point-mass translation with no fast rotational
+    # mode, where Euler at `dt` is accurate and the loop only has to land a
+    # launch angle to 1e-6 m of drop at the zero range.
     zr = yards_to_m(sp.zero_range_yd)
     theta0 = atan(Atmosphere.g0 * zr / (2 * v0^2))
     for _ in 1:30
@@ -1564,92 +1610,63 @@ function solve_6dof(sp::ShotParameters6DOF)
         theta0 -= yt / zr * cos(theta0)
     end
 
-    # State: position, velocity, quaternion, angular velocity
-    x, y, z = 0.0, 0.0, 0.0
-    u = v0 * cos(theta0)
-    v_y = v0 * sin(theta0)
-    w_z = 0.0
+    # ── State vector, 13 components ──────────────────────────────────────
+    #   1-3    position     x, y, z                      [m]
+    #   4-6    velocity     u, v, w                      [m/s]
+    #   7-10   quaternion   q0, q1, q2, q3
+    #   11-13  body rates   p (spin), q (pitch), r (yaw) [rad/s]
 
-    # Initial quaternion: small yaw offset alpha0 about z-axis
-    q0_q = cos(alpha0/2); q1_q = 0.0; q2_q = 0.0; q3_q = sin(alpha0/2)
+    # Derivative of the state, as a pure function of the state alone. Writing it
+    # this way is what lets an integrator sample the slope more than once inside
+    # a step; everything else it needs is captured from the enclosing scope.
+    function derivs6(s::NTuple{13,Float64})
+        u, v_y, w_z = s[4], s[5], s[6]
+        q0_q, q1_q, q2_q, q3_q = s[7], s[8], s[9], s[10]
+        p_s, q_p, r_y = s[11], s[12], s[13]
 
-    p_s = p0           # spin rate
-    q_p = sp.initial_pitch_rate  # pitch rate
-    r_y = 0.0          # yaw rate
-
-    results = State6DOF[]
-    t = 0.0
-
-    while x <= tr && t < 15.0
-        v_total = sqrt(u^2 + v_y^2 + w_z^2)
-        mach = v_total / a_s
         R = quat_to_dcm(q0_q, q1_q, q2_q, q3_q)
-        b1 = R[:, 1]  # body x-axis in inertial frame
+        b1 = R[:, 1]                        # body x-axis in the inertial frame
 
-        # Relative velocity (subtract wind)
-        vrel = [u - wx, v_y, w_z - wz]
+        vrel = [u - wx, v_y, w_z - wz]      # velocity relative to the air
         vrel_mag = norm(vrel)
-
-        # Total angle of attack
         cos_alpha = clamp(dot(vrel, b1) / (vrel_mag + 1e-20), -1.0, 1.0)
-        alpha_t = acos(cos_alpha)
+        alpha_t = acos(cos_alpha)           # total angle of attack
 
-        push!(results, State6DOF(t, x, y, z, u, v_y, w_z,
-              q0_q, q1_q, q2_q, q3_q, p_s, q_p, r_y, alpha_t, mach, v_total))
-
-        # Dynamic pressure
         qbar = 0.5 * rho * vrel_mag^2
-
-        # --- Forces (in inertial frame) ---
         Ma = vrel_mag / a_s
-        Cd0 = aero.Cd0_func(Ma)
-        Cd_total = Cd0 + aero.Cda2 * alpha_t^2
 
-        # Drag (opposite to relative velocity)
+        # --- Forces (inertial frame) ---
+        Cd_total = aero.Cd0_func(Ma) + aero.Cda2 * alpha_t^2
         F_drag = -qbar * A * Cd_total * vrel / (vrel_mag + 1e-20)
 
-        # Normal force (lift) - perpendicular to b1, in the v-b1 plane
         v_perp = vrel - dot(vrel, b1) * b1
         v_perp_mag = norm(v_perp)
         if v_perp_mag > 1e-10
             n_hat = v_perp / v_perp_mag
             F_lift = qbar * A * aero.CNa * alpha_t * n_hat
         else
+            n_hat = zeros(3)
             F_lift = zeros(3)
         end
 
-        # Magnus force (perpendicular to both b1 and the yaw plane)
+        F_magnus = zeros(3)
         if v_perp_mag > 1e-10 && abs(p_s) > 1e-3
             magnus_dir = cross(b1, n_hat)
             magnus_dir_mag = norm(magnus_dir)
             if magnus_dir_mag > 1e-10
-                magnus_dir /= magnus_dir_mag
                 F_magnus = qbar * A * aero.CNpa * (p_s * d / (2 * vrel_mag)) *
-                           alpha_t * magnus_dir
-            else
-                F_magnus = zeros(3)
+                           alpha_t * (magnus_dir / magnus_dir_mag)
             end
-        else
-            F_magnus = zeros(3)
         end
 
-        # Gravity
         F_grav = [0.0, -m * Atmosphere.g0, 0.0]
-
-        # Total force -> acceleration
         F_total = F_drag + F_lift + F_magnus + F_grav
-        ax = F_total[1] / m
-        ay = F_total[2] / m
-        az = F_total[3] / m
 
-        # --- Moments (in body frame) ---
+        # --- Moments (body frame) ---
         pd2v = p_s * d / (2 * vrel_mag + 1e-20)
-
-        # Decompose alpha into pitch (alpha) and yaw (beta) components
-        # in body frame
         v_body = R' * vrel
-        alpha_p = -v_body[3] / (v_body[1] + 1e-20)  # pitch-plane
-        beta_y  =  v_body[2] / (v_body[1] + 1e-20)  # yaw-plane
+        alpha_p = -v_body[3] / (v_body[1] + 1e-20)   # pitch plane
+        beta_y  =  v_body[2] / (v_body[1] + 1e-20)   # yaw plane
 
         Mx = qbar * A * d^2 * aero.Clp * pd2v
         Mq_body = qbar * A * d * (aero.CMa * alpha_p -
@@ -1659,40 +1676,103 @@ function solve_6dof(sp::ShotParameters6DOF)
                   aero.CMpa * pd2v * alpha_p +
                   aero.CMq_CMad * r_y * d / (2 * vrel_mag + 1e-20))
 
-        # Euler rotational equations
-        dp = Mx / Ix
-        dq = (Mq_body - (Ix - Iy) * p_s * r_y) / Iy
-        dr = (Mr_body + (Ix - Iy) * p_s * q_p) / Iy
+        return (
+            u, v_y, w_z,                                    # ẋ = v
+            F_total[1] / m, F_total[2] / m, F_total[3] / m, # v̇ = F/m
+            0.5 * (-p_s*q1_q - q_p*q2_q - r_y*q3_q),        # quaternion kinematics
+            0.5 * ( p_s*q0_q + r_y*q2_q - q_p*q3_q),
+            0.5 * ( q_p*q0_q - r_y*q1_q + p_s*q3_q),
+            0.5 * ( r_y*q0_q + q_p*q1_q - p_s*q2_q),
+            Mx / Ix,                                        # Euler's rotational
+            (Mq_body - (Ix - Iy) * p_s * r_y) / Iy,         #   equations
+            (Mr_body + (Ix - Iy) * p_s * q_p) / Iy,
+        )
+    end
 
-        # Quaternion kinematic ODE
-        dq0 = 0.5 * (-p_s*q1_q - q_p*q2_q - r_y*q3_q)
-        dq1 = 0.5 * ( p_s*q0_q + r_y*q2_q - q_p*q3_q)
-        dq2 = 0.5 * ( q_p*q0_q - r_y*q1_q + p_s*q3_q)
-        dq3 = 0.5 * ( r_y*q0_q + q_p*q1_q - p_s*q2_q)
+    # Quantities that are reported but never integrated.
+    function diagnostics6(s::NTuple{13,Float64})
+        u, v_y, w_z = s[4], s[5], s[6]
+        v_total = sqrt(u^2 + v_y^2 + w_z^2)
+        b1 = quat_to_dcm(s[7], s[8], s[9], s[10])[:, 1]
+        vrel = [u - wx, v_y, w_z - wz]
+        cos_alpha = clamp(dot(vrel, b1) / (norm(vrel) + 1e-20), -1.0, 1.0)
+        return (acos(cos_alpha), v_total / a_s, v_total)
+    end
 
-        # --- Euler step (simplified; full RK4 on the 13-state would be
-        #     ideal but Euler with small dt is adequate for demonstration) ---
-        u   += ax * dt
-        v_y += ay * dt
-        w_z += az * dt
-        x   += u * dt
-        y   += v_y * dt
-        z   += w_z * dt
+    # Classical fourth-order Runge-Kutta on the whole 13-component state.
+    function step_rk4(s::NTuple{13,Float64})
+        k1 = derivs6(s)
+        k2 = derivs6(ntuple(i -> s[i] + 0.5dt * k1[i], Val(13)))
+        k3 = derivs6(ntuple(i -> s[i] + 0.5dt * k2[i], Val(13)))
+        k4 = derivs6(ntuple(i -> s[i] + dt * k3[i], Val(13)))
+        return ntuple(i -> s[i] + (dt / 6.0) * (k1[i] + 2k2[i] + 2k3[i] + k4[i]), Val(13))
+    end
 
-        p_s += dp * dt
-        q_p += dq * dt
-        r_y += dr * dt
+    # Legacy first-order scheme, kept as a fallback and as a reference point.
+    # Reproduces the historical behaviour exactly: velocities advance first and
+    # positions ride the NEW velocities (semi-implicit Euler for translation),
+    # while attitude and body rates advance on the old state (explicit Euler).
+    # Do not expect it to hold up — on the gyroscopic terms it is unstable at
+    # every step size, see the note on `solve_6dof`.
+    function step_euler(s::NTuple{13,Float64})
+        k = derivs6(s)
+        u  = s[4] + k[4] * dt
+        v_ = s[5] + k[5] * dt
+        w_ = s[6] + k[6] * dt
+        return (s[1] + u * dt, s[2] + v_ * dt, s[3] + w_ * dt,
+                u, v_, w_,
+                s[7] + k[7] * dt, s[8] + k[8] * dt, s[9] + k[9] * dt, s[10] + k[10] * dt,
+                s[11] + k[11] * dt, s[12] + k[12] * dt, s[13] + k[13] * dt)
+    end
 
-        q0_q += dq0 * dt
-        q1_q += dq1 * dt
-        q2_q += dq2 * dt
-        q3_q += dq3 * dt
+    step = if sp.integrator === :rk4
+        step_rk4
+    elseif sp.integrator === :euler
+        step_euler
+    else
+        throw(ArgumentError("integrator must be :rk4 or :euler, got :$(sp.integrator)"))
+    end
+    sp.record_every >= 1 || throw(ArgumentError("record_every must be >= 1"))
 
-        # Renormalize quaternion
-        qn = sqrt(q0_q^2 + q1_q^2 + q2_q^2 + q3_q^2)
-        q0_q /= qn; q1_q /= qn; q2_q /= qn; q3_q /= qn
+    # Initial state. The quaternion carries a small yaw offset alpha0 about z.
+    s = (0.0, 0.0, 0.0,
+         v0 * cos(theta0), v0 * sin(theta0), 0.0,
+         cos(alpha0/2), 0.0, 0.0, sin(alpha0/2),
+         p0, sp.initial_pitch_rate, 0.0)
+
+    results = State6DOF[]
+    t = 0.0
+    n = 0
+
+    while s[1] <= tr && t < 15.0
+        if n % sp.record_every == 0
+            alpha_t, mach, v_total = diagnostics6(s)
+            push!(results, State6DOF(t, s[1], s[2], s[3], s[4], s[5], s[6],
+                  s[7], s[8], s[9], s[10], s[11], s[12], s[13],
+                  alpha_t, mach, v_total))
+        end
+
+        s = step(s)
+
+        # Renormalize the quaternion: any integrator drifts off the unit sphere.
+        # How fast it drifts is also the cheapest accuracy check available — the
+        # rule McCoy applies to the direction-cosine formulation is that a
+        # deviation past ~1e-5 means the step is too long.
+        qn = sqrt(s[7]^2 + s[8]^2 + s[9]^2 + s[10]^2)
+        s = (s[1], s[2], s[3], s[4], s[5], s[6],
+             s[7]/qn, s[8]/qn, s[9]/qn, s[10]/qn,
+             s[11], s[12], s[13])
 
         t += dt
+        n += 1
+    end
+
+    # With decimated output the last sample would otherwise fall short of the end.
+    if n % sp.record_every != 0
+        alpha_t, mach, v_total = diagnostics6(s)
+        push!(results, State6DOF(t, s[1], s[2], s[3], s[4], s[5], s[6],
+              s[7], s[8], s[9], s[10], s[11], s[12], s[13],
+              alpha_t, mach, v_total))
     end
 
     return results

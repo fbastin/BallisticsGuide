@@ -657,7 +657,7 @@ begin
         pressure_inhg   = 29.92,
         target_range_yd = 600.0,  # shorter range for 6-DOF demo
         aero            = aero,
-        dt              = 0.00005, # fine time step for angular dynamics
+        dt              = 5e-6,   # resolves the fast body-frame mode (~50 steps/cycle)
     )
 
     println("=== 6-DOF Parameters ===")
