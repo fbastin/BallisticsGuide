@@ -602,6 +602,28 @@ md"""
 ## 7. Six-Degree-of-Freedom Model (`SixDOF`)
 
 The 6-DOF model resolves the bullet's angular motion: yaw, precession, nutation, and spin decay. This predicts spin drift from first principles rather than using the Litz empirical formula.
+
+!!! note "Why the 3-DOF solver is enough for the shooting this library targets"
+    Reach for this module for stability and flight-dynamic work — not because the 3-DOF
+    trajectory is suspect. McCoy (*Modern Exterior Ballistics*, 2nd ed., §9.6) is explicit:
+    6-DOF trajectories **are not required for routine work in exterior ballistics**. If the
+    total angle of attack stays small everywhere along the flight path, a point-mass
+    trajectory is "often sufficiently accurate for all practical purposes". The criterion is
+    the **yaw level, not the range**: 6-DOF becomes necessary for large-yaw flight — an
+    artillery or mortar shell at high quadrant elevation, or a projectile launched sidewise
+    into a several-hundred-mph crosswind. McCoy's own worked example, a .308", 168 gr Sierra
+    International match bullet fired flat to 1000 yards, never exceeds 5° of pitch and yaw,
+    and he notes it "can actually be done by simpler methods". Sport shooting, long range
+    included, sits entirely on the small-yaw side of that line.
+
+!!! warning "Garbage in, garbage out"
+    A 6-DOF run is only as good as its aerodynamic coefficients, and the coefficients set up
+    in §7.1 below are **library defaults, not measurements for this bullet**. The full set —
+    normal force, overturning moment, pitch and roll damping, Magnus force and moment — comes
+    from spark-range or wind-tunnel reduction and is published for almost no commercial
+    bullet; MCDRAG returns the zero-yaw drag coefficient alone. A 6-DOF trajectory fed with
+    placeholder coefficients is worth less than a 3-DOF trajectory fed with a measured BC.
+    McCoy's own summary of the method carries the practitioners' motto: *GI-GO*.
 """
 
 # ╔═╡ 00000050-0000-0000-0000-000000000001

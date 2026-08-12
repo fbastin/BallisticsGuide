@@ -1408,7 +1408,11 @@ trajectory_table(params, step_yd=100)
 
 The 3-DOF point-mass model discussed previously is excellent for most conventional shooting scenarios. However, it completely ignores the fact that a bullet is a rapidly spinning chunk of metal (spinning up to 300,000 RPM). A 3-DOF model uses "empirical patches" (fudge factors like the Didion lag rule or empirical spin drift formulas) to estimate the effects of this spin.
 
-When shooting at extreme long range, or when using modern high-BC bullets that border on being aerodynamically unstable, these fudge factors break down. We must upgrade to a Six-Degree-of-Freedom (6-DOF) model. 
+When shooting at extreme long range, or when using modern high-BC bullets that border on being aerodynamically unstable, these patches lose their footing, and a Six-Degree-of-Freedom (6-DOF) model becomes the appropriate tool.
+
+\paragraph{Note: when 6-DOF is actually required.} It is worth stating plainly, before developing the equations, that this chapter is not a correction the 3-DOF trajectory is waiting for. \citet{mccoy1999modern} is explicit: 6-DOF trajectories \emph{are not required for routine work in exterior ballistics}. If the total angle of attack is small everywhere along the flight path, a point-mass trajectory is ``often sufficiently accurate for all practical purposes'', and where a drift solution is also wanted, the modified point-mass method is accurate for all but the highest quadrant elevation angles. The criterion is the \emph{yaw level}, not the range: six-degrees-of-freedom methods are required whenever a projectile experiences large-yaw flight --- an artillery or mortar shell at high quadrant elevation, or a projectile launched sidewise into a several-hundred-mile-per-hour crosswind. McCoy's own worked example, a .308", 168\,gr Sierra International match bullet fired flat to 1000 yards, never exceeds five degrees of pitch and yaw, and he notes that its flight dynamic analysis ``can actually be done by simpler methods''. Sport shooting, including at long range, sits entirely on the small-yaw side of that line; the 6-DOF model earns its keep in stability and flight-dynamic analysis.
+
+\paragraph{Note: the binding constraint is data, not algorithm.} A 6-DOF solution ``gives the most accurate solution possible \dots provided that all the aerodynamic forces and moments, and the initial conditions, are known to a high degree of accuracy'' \citep{mccoy1999modern}. That proviso is the whole difficulty. The full coefficient set --- normal force, overturning moment, pitch and roll damping, Magnus force and moment --- is measured in a spark range or a wind tunnel and is published for almost no commercial bullet; the semi-empirical codes shooters know by name supply only fragments of it (MCDRAG returns the zero-yaw drag coefficient alone). Practitioners of the method have a motto for what follows: \emph{GI-GO}, garbage in, garbage out. No computed trajectory or flight dynamic analysis can be any better than the quality of its input data, and a 6-DOF run fed with placeholder coefficients is worth less than a 3-DOF run fed with a measured ballistic coefficient.
 
 A 6-DOF model treats the bullet as a spinning rigid body. It tracks three translational coordinates (forward, up, sideways) and three rotational coordinates (yaw, pitch, roll). By doing this, a 6-DOF solver predicts yaw, precession, nutation, spin decay, and all complex gyroscopic phenomena from absolute first principles. This chapter develops the full 6-DOF equations of motion.
 
@@ -1619,7 +1623,7 @@ The rotation matrix from the quaternion:
   \label{eq:quat_to_R}
 \end{equation}
 
-After each RK4 step, renormalize: $\bm{q} \leftarrow \bm{q}/\|\bm{q}\|$.
+After each integration step, renormalize: $\bm{q} \leftarrow \bm{q}/\|\bm{q}\|$.
 
 \section{Aerodynamic Coefficient Database}
 
