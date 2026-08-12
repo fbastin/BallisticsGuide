@@ -1374,20 +1374,33 @@ using LinearAlgebra
 
 export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
-       gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof
+       gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof,
+       mccoy_308_168_aero, mccoy_308_168_shot
 
-"""Aerodynamic coefficient set for 6-DOF simulation."""
+"""
+Aerodynamic coefficient set for 6-DOF simulation.
+
+Every coefficient may be given either as a **number** — held constant — or as a
+**function of Mach number**, which is how measured data actually comes. See
+[`mccoy_308_168_aero`](@ref) for a set built from published spark-range
+measurements, and note that the defaults below are none of that: they are
+placeholders that describe no particular bullet.
+"""
 Base.@kwdef struct AeroCoefficients6DOF
     # Cd0 as a function of Mach (zero-yaw drag); defaults to G7 × form factor
-    Cd0_func::Function   = (Ma) -> cd_g7(Ma)
-    Cda2::Float64        = 3.5        # yaw drag coefficient C_{D,α²}
-    CNa::Float64         = 2.8        # normal force derivative C_{N,α} [per rad]
-    CMa::Float64         = 3.2        # overturning moment coeff C_{M,α} [per rad]
-    Clp::Float64         = -0.010     # spin-damping moment C_{l,p}
-    CMq_CMad::Float64    = -8.0       # pitch damping sum (C_{M,q} + C_{M,α̇})
-    CNpa::Float64        = 0.1        # Magnus force coefficient C_{N,pα}
-    CMpa::Float64        = -0.2       # Magnus moment coefficient C_{M,pα}
+    Cd0_func::Function                = (Ma) -> cd_g7(Ma)
+    Cda2::Union{Float64,Function}     = 3.5     # yaw drag coefficient C_{D,δ²}
+    CNa::Union{Float64,Function}      = 2.8     # normal force derivative C_{N,α} [per rad]
+    CMa::Union{Float64,Function}      = 3.2     # overturning moment coeff C_{M,α} [per rad]
+    Clp::Union{Float64,Function}      = -0.010  # spin-damping moment C_{l,p}
+    CMq_CMad::Union{Float64,Function} = -8.0    # pitch damping sum (C_{M,q} + C_{M,α̇})
+    CNpa::Union{Float64,Function}     = 0.1     # Magnus force coefficient C_{N,pα}
+    CMpa::Union{Float64,Function}     = -0.2    # Magnus moment coefficient C_{M,pα}
 end
+
+"""Evaluate a coefficient that may be a constant or a function of Mach."""
+@inline _coef(c::Float64, ::Real) = c
+@inline _coef(c::Function, mach::Real) = c(mach)
 
 """Parameters for a 6-DOF shot."""
 Base.@kwdef struct ShotParameters6DOF
@@ -1433,6 +1446,13 @@ Base.@kwdef struct ShotParameters6DOF
     dt::Float64                 = 5.0e-6
     integrator::Symbol          = :rk4      # :rk4, or :euler for the legacy scheme
     record_every::Int           = 20        # sample the output every N steps
+
+    # Measured moments of inertia [kg·m²], axial and transverse. Leave at
+    # `nothing` to fall back on the cylinder estimate of `moments_of_inertia`,
+    # which is badly wrong for a real bullet — see that function's docstring.
+    # Supply both or neither.
+    Ix::Union{Float64,Nothing}  = nothing
+    Iy::Union{Float64,Nothing}  = nothing
 end
 
 """Snapshot of the 6-DOF state at one time step."""
@@ -1452,8 +1472,28 @@ end
 """
     moments_of_inertia(mass_kg, caliber_m, length_m) -> (Ix, Iy)
 
-Approximate moments of inertia for a rotationally symmetric bullet.
-Ix = axial (about symmetry axis), Iy = transverse.
+Crude estimate of the moments of inertia of a rotationally symmetric bullet:
+`Ix` axial, from a solid cylinder; `Iy` transverse, from a uniform rod plus that
+cylinder. Both assume the mass is spread evenly along the body.
+
+!!! warning "Known to be badly wrong for a real bullet"
+    A pointed, boat-tailed match bullet carries its mass nowhere near uniformly.
+    Checked against the only measured pair available here — Table 9.2 of McCoy for
+    the .308", 168 gr Sierra International — this estimate gives
+
+    | | measured | this function | error |
+    |---|---:|---:|---:|
+    | Ix | 7.23e-8 | 8.33e-8 | +15 % |
+    | Iy | 5.38e-7 | 9.21e-7 | **+71 %** |
+    | Ix/Iy | 0.1344 | 0.0904 | −33 % |
+
+    Since `Sg ∝ Ix²/Iy`, the gyroscopic stability factor then comes out at 0.775 of
+    its true value — 1.32 instead of the 1.70 McCoy publishes for that bullet at a
+    12" twist. The ratio `Ix/Iy` also governs the gyroscopic coupling in the rate
+    equations, so the error propagates through the whole attitude solution.
+
+    **Pass measured values through `ShotParameters6DOF(Ix=…, Iy=…)` whenever they
+    exist.** With them, the module reproduces the published Sg to three digits.
 """
 function moments_of_inertia(mass_kg::Real, caliber_m::Real, length_m::Real)
     r = caliber_m / 2.0
@@ -1536,6 +1576,106 @@ that `Sd ≤ 0` or `Sd ≥ 2` cannot be rescued by any amount of spin.
 """
 dynamically_stable_6dof(Sg::Real, Sd::Real) = 1.0 / Sg < Sd * (2.0 - Sd)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Reference case: .308", 168 gr Sierra International — McCoy, Example 9.1
+#
+# Spark-range measurements tabulated in Appendix A of the 6-DOF chapter, and
+# physical characteristics from Table 9.2 of the same chapter. This is the one
+# fully documented case available to validate the module end to end: the source
+# publishes both the inputs and the resulting 6-DOF flight, so a run here can be
+# checked rather than merely admired.
+#
+# Not transcribed, and therefore left at library defaults:
+#   * C_Npα (Magnus FORCE) — not tabulated in the appendix for this bullet;
+#   * the yaw dependence of C_Mα (= C_Mα0 + C_Mα2 sin²α_t) and of C_Mpα, which is
+#     tabulated against α_t² as well and changes sign near α_t² ≈ 5.6 deg². The
+#     zero-yaw column is used, valid while the motion stays under ~2.4 degrees.
+# ─────────────────────────────────────────────────────────────────────────────
+
+const MCCOY_308_168_CD0 = [
+    0.0 .140; 0.8 .140; 0.85 .142; 0.90 .160; 0.95 .240; 1.00 .430; 1.05 .449;
+    1.1 .447; 1.2 .434; 1.4 .410; 1.6 .385; 1.8 .365; 2.0 .350; 2.2 .339; 2.5 .320]
+
+const MCCOY_308_168_CDD2 = [
+    0.0 2.9; 0.95 2.9; 1.0 3.0; 1.05 3.1; 1.1 3.6; 1.2 6.5; 1.4 7.6; 1.6 7.3;
+    1.8 6.8; 2.0 6.1; 2.2 5.4; 2.5 4.4]
+
+const MCCOY_308_168_CLP = [
+    0.0 -.0150; 0.5 -.0125; 0.8 -.0108; 0.85 -.0107; 0.90 -.0105; 0.95 -.0103;
+    1.00 -.0100; 1.05 -.0099; 1.1 -.0098; 1.2 -.0095; 1.4 -.0088; 1.6 -.0083;
+    1.8 -.0080; 2.0 -.0075; 2.2 -.0073; 2.5 -.0068]
+
+const MCCOY_308_168_CLA = [
+    0.0 1.75; 0.5 1.63; 0.8 1.45; 0.85 1.40; 0.90 1.35; 0.95 1.30; 1.0 1.35;
+    1.05 1.55; 1.1 1.70; 1.2 1.90; 1.4 2.15; 1.6 2.32; 1.8 2.45; 2.0 2.58;
+    2.2 2.68; 2.5 2.85]
+
+const MCCOY_308_168_CMA0 = [
+    0.0 3.05; 0.5 3.26; 0.8 3.38; 0.85 3.40; 0.90 3.43; 0.95 3.45; 1.0 3.24;
+    1.05 3.17; 1.1 3.15; 1.2 3.12; 1.4 3.06; 1.6 2.98; 1.8 2.88; 2.0 2.79;
+    2.2 2.69; 2.5 2.56]
+
+# Pitch damping sum. Positive — i.e. ANTI-damping — below Mach 1.05, as measured.
+const MCCOY_308_168_CMQ = [
+    0.0 1.2; 1.05 1.2; 1.1 0.5; 1.2 -3.6; 1.4 -7.3; 1.6 -8.2; 2.5 -8.2]
+
+# Magnus moment, zero-yaw column (the appendix tabulates it against α_t² as well).
+const MCCOY_308_168_CMPA = [
+    0.0 -2.6; 0.90 -2.6; 1.1 -1.35; 1.4 -0.51; 1.7 -0.33; 2.5 -0.33]
+
+"""
+    mccoy_308_168_aero() -> AeroCoefficients6DOF
+
+Measured coefficient set for the .308", 168 gr Sierra International bullet.
+
+The normal-force slope the solver wants is recovered from the tabulated lift-curve
+slope as `C_Nα = C_Lα + C_D`, both read at the same Mach number.
+"""
+function mccoy_308_168_aero()
+    cd0(Ma) = DragModels.interp_table(MCCOY_308_168_CD0, Ma)
+    return AeroCoefficients6DOF(
+        Cd0_func = cd0,
+        Cda2     = Ma -> DragModels.interp_table(MCCOY_308_168_CDD2, Ma),
+        CNa      = Ma -> DragModels.interp_table(MCCOY_308_168_CLA, Ma) + cd0(Ma),
+        CMa      = Ma -> DragModels.interp_table(MCCOY_308_168_CMA0, Ma),
+        Clp      = Ma -> DragModels.interp_table(MCCOY_308_168_CLP, Ma),
+        CMq_CMad = Ma -> DragModels.interp_table(MCCOY_308_168_CMQ, Ma),
+        CMpa     = Ma -> DragModels.interp_table(MCCOY_308_168_CMPA, Ma),
+    )
+end
+
+"""
+    mccoy_308_168_shot(; kwargs...) -> ShotParameters6DOF
+
+Example 9.1 as published: 2600 fps, 12" right-hand twist, sea-level ICAO, zeroed
+at 1000 yards, with the measured moments of inertia of Table 9.2 and a muzzle yaw
+*rate* of 25 rad/s — which is what produces the published first maximum yaw of
+2.0 degrees, rather than an initial yaw angle. Any keyword overrides a default.
+
+Published results to check a run against: muzzle gyroscopic stability factor
+**1.70**; pitch-yaw amplitude of about **1.75°** over 180–200 yards (Figure 9.3)
+and about **2.2°** over 580–600 yards (Figure 9.4); and, over the whole 1000
+yards, an amplitude that never exceeds 5 degrees.
+"""
+function mccoy_308_168_shot(; kwargs...)
+    lb_in2 = 0.45359237 * 6.4516e-4        # 1 lb·in² -> kg·m²
+    return ShotParameters6DOF(;
+        mass_grains        = 168.0,
+        caliber_in         = 0.308,
+        bullet_length_in   = 1.226,         # Table 9.2
+        muzzle_vel_fps     = 2600.0,
+        twist_in           = 12.0,
+        twist_direction    = 1,
+        initial_yaw_deg    = 0.0,
+        initial_pitch_rate = 25.0,          # rad/s, muzzle yaw rate
+        zero_range_yd      = 1000.0,
+        target_range_yd    = 1000.0,
+        aero               = mccoy_308_168_aero(),
+        Ix                 = 0.000247 * lb_in2,
+        Iy                 = 0.001838 * lb_in2,
+        kwargs...)
+end
+
 """Quaternion multiplication."""
 function quat_mult(a, b)
     return (
@@ -1602,21 +1742,28 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
     for any particular bullet. Supply a measured set before reading anything
     physical into a run.
 
-!!! danger "The yawing motion does not agree with the linear stability criterion"
-    Measured on 2026-08-12, after the integrator was fixed and verified: the yaw
-    **envelope** grows over 400 yd in every coefficient set tried — by a factor 2.1
-    to 6.4 — *including* sets that [`dynamically_stable_6dof`](@ref) places
-    comfortably inside the stable region (e.g. `CMpa = 0`, `CMq_CMad = -8`, where
-    Sd = 0.865 and Sd(2−Sd) = 0.98 against a required 0.67). Worse, the ordering is
-    inverted: the more negative the Magnus moment coefficient, the *slower* the
-    growth in the solver, where the linear theory has it the other way round.
+!!! danger "The epicyclic motion runs at twice the frequency it should"
+    Measured on 2026-08-12 against the published reference case
+    ([`mccoy_308_168_shot`](@ref)), with the integrator already fixed and the
+    measured moments of inertia in place:
 
-    The envelope was sampled at ~10 points per fast body cycle, so this is not an
-    aliasing artefact, and the integration itself converges at order 4. Something in
-    the rotational equations — the Magnus sign convention is the first suspect — does
-    not follow the reference. Until that is settled, treat the yaw history of this
-    module as unvalidated: the trajectory it produces is not affected in any way that
-    matters at small yaw, but the flight-dynamic output is what the module exists for.
+    * the **gyroscopic stability factor comes out right** — 1.701 against the
+      published 1.70, a three-digit match;
+    * the **pitch-yaw amplitudes do not**. The published first maximum is 2.0°, the
+      solver gives 0.83°; Figure 9.3 shows ~1.75° over 180–200 yd against 0.52°
+      here, and Figure 9.4 ~2.2° over 580–600 yd against 0.75°;
+    * the cause is a **frequency error, not an amplitude one**. The interval between
+      successive maxima of the total angle of attack is 2.28 ms where the linearized
+      theory of the same source gives 4.459 ms: the solver's epicyclic beat runs at
+      **1.96× the correct rate**, and since the amplitude excited by a given muzzle
+      yaw rate goes as 1/(φ'_F − φ'_S), that alone accounts for the missing motion.
+
+    The theory side is not in doubt: fed the measured coefficients, it returns 2.03°
+    for the published 25 rad/s muzzle yaw rate against the 2.0° printed in the book.
+    A clean factor of two points at the moment or kinematic chain — not at a sign,
+    which was the earlier suspicion and is now ruled out. Until it is found, the
+    attitude output of this module is unvalidated; the trajectory it produces is not
+    affected in any way that matters at small yaw.
 """
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
@@ -1632,7 +1779,10 @@ function solve_6dof(sp::ShotParameters6DOF)
     A   = π * d^2 / 4.0
     tr  = yards_to_m(sp.target_range_yd)
 
-    Ix, Iy = moments_of_inertia(m, d, L)
+    if (sp.Ix === nothing) != (sp.Iy === nothing)
+        throw(ArgumentError("supply both Ix and Iy, or neither"))
+    end
+    Ix, Iy = sp.Ix === nothing ? moments_of_inertia(m, d, L) : (sp.Ix, sp.Iy)
     aero = sp.aero
     dt = sp.dt
 
@@ -1692,15 +1842,21 @@ function solve_6dof(sp::ShotParameters6DOF)
         qbar = 0.5 * rho * vrel_mag^2
         Ma = vrel_mag / a_s
 
+        # Coefficients at this Mach number (constants pass straight through).
+        c_Cda2 = _coef(aero.Cda2, Ma);  c_CNa  = _coef(aero.CNa, Ma)
+        c_CMa  = _coef(aero.CMa, Ma);   c_Clp  = _coef(aero.Clp, Ma)
+        c_CMqa = _coef(aero.CMq_CMad, Ma)
+        c_CNpa = _coef(aero.CNpa, Ma);  c_CMpa = _coef(aero.CMpa, Ma)
+
         # --- Forces (inertial frame) ---
-        Cd_total = aero.Cd0_func(Ma) + aero.Cda2 * alpha_t^2
+        Cd_total = aero.Cd0_func(Ma) + c_Cda2 * alpha_t^2
         F_drag = -qbar * A * Cd_total * vrel / (vrel_mag + 1e-20)
 
         v_perp = vrel - dot(vrel, b1) * b1
         v_perp_mag = norm(v_perp)
         if v_perp_mag > 1e-10
             n_hat = v_perp / v_perp_mag
-            F_lift = qbar * A * aero.CNa * alpha_t * n_hat
+            F_lift = qbar * A * c_CNa * alpha_t * n_hat
         else
             n_hat = zeros(3)
             F_lift = zeros(3)
@@ -1711,7 +1867,7 @@ function solve_6dof(sp::ShotParameters6DOF)
             magnus_dir = cross(b1, n_hat)
             magnus_dir_mag = norm(magnus_dir)
             if magnus_dir_mag > 1e-10
-                F_magnus = qbar * A * aero.CNpa * (p_s * d / (2 * vrel_mag)) *
+                F_magnus = qbar * A * c_CNpa * (p_s * d / (2 * vrel_mag)) *
                            alpha_t * (magnus_dir / magnus_dir_mag)
             end
         end
@@ -1725,13 +1881,13 @@ function solve_6dof(sp::ShotParameters6DOF)
         alpha_p = -v_body[3] / (v_body[1] + 1e-20)   # pitch plane
         beta_y  =  v_body[2] / (v_body[1] + 1e-20)   # yaw plane
 
-        Mx = qbar * A * d^2 * aero.Clp * pd2v
-        Mq_body = qbar * A * d * (aero.CMa * alpha_p -
-                  aero.CMpa * pd2v * beta_y +
-                  aero.CMq_CMad * q_p * d / (2 * vrel_mag + 1e-20))
-        Mr_body = qbar * A * d * (aero.CMa * beta_y +
-                  aero.CMpa * pd2v * alpha_p +
-                  aero.CMq_CMad * r_y * d / (2 * vrel_mag + 1e-20))
+        Mx = qbar * A * d^2 * c_Clp * pd2v
+        Mq_body = qbar * A * d * (c_CMa * alpha_p -
+                  c_CMpa * pd2v * beta_y +
+                  c_CMqa * q_p * d / (2 * vrel_mag + 1e-20))
+        Mr_body = qbar * A * d * (c_CMa * beta_y +
+                  c_CMpa * pd2v * alpha_p +
+                  c_CMqa * r_y * d / (2 * vrel_mag + 1e-20))
 
         return (
             u, v_y, w_z,                                    # ẋ = v
