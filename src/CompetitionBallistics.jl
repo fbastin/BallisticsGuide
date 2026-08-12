@@ -1742,29 +1742,35 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
     for any particular bullet. Supply a measured set before reading anything
     physical into a run.
 
-!!! danger "The epicyclic motion runs at twice the frequency it should"
-    Measured on 2026-08-12 against the published reference case
-    ([`mccoy_308_168_shot`](@ref)), with the integrator already fixed and the
-    measured moments of inertia in place:
+!!! warning "Excitation is right, downrange amplitude is not"
+    Checked on 2026-08-12 against the published reference case
+    ([`mccoy_308_168_shot`](@ref)):
 
-    * the **gyroscopic stability factor comes out right** — 1.701 against the
-      published 1.70, a three-digit match;
-    * the **pitch-yaw amplitudes do not**. The published first maximum is 2.0°, the
-      solver gives 0.83°; Figure 9.3 shows ~1.75° over 180–200 yd against 0.52°
-      here, and Figure 9.4 ~2.2° over 580–600 yd against 0.75°;
-    * the cause is a **frequency error, not an amplitude one**. The interval between
-      successive maxima of the total angle of attack is 2.28 ms where the linearized
-      theory of the same source gives 4.459 ms: the solver's epicyclic beat runs at
-      **1.96× the correct rate**, and since the amplitude excited by a given muzzle
-      yaw rate goes as 1/(φ'_F − φ'_S), that alone accounts for the missing motion.
+    | | published | here |
+    |---|---:|---:|
+    | muzzle Sg | 1.70 | **1.701** |
+    | first maximum yaw | 2.0° | **2.02°** |
+    | 180–200 yd (Fig. 9.3) | ~1.75° | 3.44° |
+    | 580–600 yd (Fig. 9.4) | ~2.2° | 8.25° |
 
-    The theory side is not in doubt: fed the measured coefficients, it returns 2.03°
-    for the published 25 rad/s muzzle yaw rate against the 2.0° printed in the book.
-    A clean factor of two points at the moment or kinematic chain — not at a sign,
-    which was the earlier suspicion and is now ruled out. Until it is found, the
-    attitude output of this module is unvalidated; the trajectory it produces is not
-    affected in any way that matters at small yaw.
-"""
+    The first two lines say the static and the excitation are now right: a 25 rad/s
+    muzzle yaw rate produces the published first maximum, which it did not before
+    the overturning-moment sign was corrected. What remains is that the motion is
+    **not held near 2°** — it grows.
+
+    The most likely mechanism is one this module does not carry: the measured
+    Magnus moment coefficient of this bullet **changes sign with yaw**, from −0.33
+    below α_t ≈ 2.4° to +0.10 above it. On the low branch the linearized criterion
+    gives Sd = −0.046 against a required Sd(2−Sd) > 1/Sg = 0.588 — unstable, so the
+    yaw grows; on the high branch Sd = +0.584, Sd(2−Sd) = 0.827 — stable, so it
+    decays. That is a limit cycle sitting exactly where the published motion sits,
+    and reproducing it needs coefficients that depend on yaw as well as Mach.
+
+    Two sign hypotheses were tested against the published figures and **both were
+    refuted**, so neither has been applied: flipping the Magnus moment makes the
+    bullet tumble (28° by 200 yd), and flipping the normal force over-damps it to
+    nothing (0.02° by 600 yd). The attitude output therefore remains unvalidated
+    downrange, though the trajectory is unaffected at the yaw levels that matter."""
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
     m   = grains_to_kg(sp.mass_grains)
@@ -1881,11 +1887,18 @@ function solve_6dof(sp::ShotParameters6DOF)
         alpha_p = -v_body[3] / (v_body[1] + 1e-20)   # pitch plane
         beta_y  =  v_body[2] / (v_body[1] + 1e-20)   # yaw plane
 
+        # `alpha_p` and `beta_y` above are the angles of the VELOCITY relative to
+        # the body; the body's own displacement from the flow is their negative.
+        # A spin-stabilized bullet is statically UNSTABLE (C_Mα > 0 overturns), so
+        # the moment has to amplify that displacement — hence the leading minus.
+        # Without it the solver treated the projectile as statically stable: with
+        # spin removed the yaw oscillated instead of diverging, and with spin the
+        # epicyclic beat came out at √(P²+4M) instead of √(P²−4M), 1.96× too fast.
         Mx = qbar * A * d^2 * c_Clp * pd2v
-        Mq_body = qbar * A * d * (c_CMa * alpha_p -
+        Mq_body = qbar * A * d * (-c_CMa * alpha_p -
                   c_CMpa * pd2v * beta_y +
                   c_CMqa * q_p * d / (2 * vrel_mag + 1e-20))
-        Mr_body = qbar * A * d * (c_CMa * beta_y +
+        Mr_body = qbar * A * d * (-c_CMa * beta_y +
                   c_CMpa * pd2v * alpha_p +
                   c_CMqa * r_y * d / (2 * vrel_mag + 1e-20))
 
@@ -1947,10 +1960,16 @@ function solve_6dof(sp::ShotParameters6DOF)
     end
     sp.record_every >= 1 || throw(ArgumentError("record_every must be >= 1"))
 
-    # Initial state. The quaternion carries a small yaw offset alpha0 about z.
+    # Initial state. The bullet leaves the bore pointing along its velocity, so the
+    # attitude must carry the launch elevation `theta0` — the previous version left
+    # the axis on the inertial x-axis and so injected a spurious initial angle of
+    # attack equal to the launch angle (0.83° for a 1000-yard zero).
+    # `alpha0` is added on top: being a rotation about z, in this frame (y up,
+    # z right) it offsets the nose vertically, i.e. it is a pitch offset.
+    tilt = theta0 + alpha0
     s = (0.0, 0.0, 0.0,
          v0 * cos(theta0), v0 * sin(theta0), 0.0,
-         cos(alpha0/2), 0.0, 0.0, sin(alpha0/2),
+         cos(tilt/2), 0.0, 0.0, sin(tilt/2),
          p0, sp.initial_pitch_rate, 0.0)
 
     results = State6DOF[]
