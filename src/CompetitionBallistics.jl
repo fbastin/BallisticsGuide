@@ -1375,7 +1375,7 @@ using LinearAlgebra
 export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
        gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof,
-       mccoy_308_168_aero, mccoy_308_168_shot
+       mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa
 
 """
 Aerodynamic coefficient set for 6-DOF simulation.
@@ -1398,9 +1398,15 @@ Base.@kwdef struct AeroCoefficients6DOF
     CMpa::Union{Float64,Function}     = -0.2    # Magnus moment coefficient C_{M,pα}
 end
 
-"""Evaluate a coefficient that may be a constant or a function of Mach."""
-@inline _coef(c::Float64, ::Real) = c
-@inline _coef(c::Function, mach::Real) = c(mach)
+"""
+Normalize a coefficient to a two-argument function `(mach, alpha_t) -> value`.
+
+Accepts a constant, a function of Mach alone, or a function of Mach and total
+angle of attack (in radians). The arity is resolved **once**, when the solver
+starts, so the inner loop never pays for the dispatch.
+"""
+_as_coef(c::Float64) = (_ma, _al) -> c
+_as_coef(c::Function) = applicable(c, 1.0, 1.0) ? c : (ma, _al) -> c(ma)
 
 """Parameters for a 6-DOF shot."""
 Base.@kwdef struct ShotParameters6DOF
@@ -1587,9 +1593,8 @@ dynamically_stable_6dof(Sg::Real, Sd::Real) = 1.0 / Sg < Sd * (2.0 - Sd)
 #
 # Not transcribed, and therefore left at library defaults:
 #   * C_Npα (Magnus FORCE) — not tabulated in the appendix for this bullet;
-#   * the yaw dependence of C_Mα (= C_Mα0 + C_Mα2 sin²α_t) and of C_Mpα, which is
-#     tabulated against α_t² as well and changes sign near α_t² ≈ 5.6 deg². The
-#     zero-yaw column is used, valid while the motion stays under ~2.4 degrees.
+#   * nothing else — the yaw dependence of C_D, C_Mα and C_Mpα is carried since
+#     2026-08-12, the last being the mechanism that sets the amplitude at all.
 # ─────────────────────────────────────────────────────────────────────────────
 
 const MCCOY_308_168_CD0 = [
@@ -1619,9 +1624,55 @@ const MCCOY_308_168_CMA0 = [
 const MCCOY_308_168_CMQ = [
     0.0 1.2; 1.05 1.2; 1.1 0.5; 1.2 -3.6; 1.4 -7.3; 1.6 -8.2; 2.5 -8.2]
 
-# Magnus moment, zero-yaw column (the appendix tabulates it against α_t² as well).
-const MCCOY_308_168_CMPA = [
-    0.0 -2.6; 0.90 -2.6; 1.1 -1.35; 1.4 -0.51; 1.7 -0.33; 2.5 -0.33]
+# Magnus moment. The appendix tabulates it against BOTH Mach and α_t², in square
+# DEGREES, and the yaw dependence is the whole story for this bullet: the
+# coefficient changes sign a little above two degrees of yaw. Each row is
+# (Mach, α_t² breakpoints, values); the breakpoint itself moves with Mach.
+const MCCOY_308_168_CMPA_TABLE = [
+    (0.00, [0.0, 29.2, 400.0], [-2.60, 0.06, 0.06]),
+    (0.90, [0.0, 29.2, 400.0], [-2.60, 0.06, 0.06]),
+    (1.10, [0.0, 18.4, 400.0], [-1.35, 0.05, 0.05]),
+    (1.40, [0.0,  9.9, 400.0], [-0.51, 0.24, 0.24]),
+    (1.70, [0.0,  5.6, 400.0], [-0.33, 0.10, 0.10]),
+    (2.50, [0.0,  5.6, 400.0], [-0.33, 0.10, 0.10]),
+]
+
+"""Piecewise-linear lookup in a vector of breakpoints, clamped at both ends."""
+function _interp1(xs::Vector{Float64}, ys::Vector{Float64}, x::Real)
+    x <= xs[1] && return ys[1]
+    x >= xs[end] && return ys[end]
+    i = searchsortedlast(xs, Float64(x))
+    i = clamp(i, 1, length(xs) - 1)
+    return ys[i] + (x - xs[i]) / (xs[i+1] - xs[i]) * (ys[i+1] - ys[i])
+end
+
+"""
+    mccoy_308_168_cmpa(mach, alpha_t) -> C_Mpα
+
+Magnus moment coefficient of the reference bullet, interpolated in Mach and in
+total angle of attack. `alpha_t` is in radians; the table's yaw axis is in square
+degrees, so it is converted here.
+
+Interpolation is done along yaw first, inside each of the two bracketing Mach
+rows, then between them — the yaw breakpoints are not the same from one Mach to
+the next, so a plain rectangular bilinear scheme would not apply.
+"""
+function mccoy_308_168_cmpa(mach::Real, alpha_t::Real)
+    a2 = rad2deg(alpha_t)^2
+    rows = MCCOY_308_168_CMPA_TABLE
+    mach <= rows[1][1] && return _interp1(rows[1][2], rows[1][3], a2)
+    mach >= rows[end][1] && return _interp1(rows[end][2], rows[end][3], a2)
+    i = findlast(r -> r[1] <= mach, rows)
+    i = clamp(i, 1, length(rows) - 1)
+    lo = _interp1(rows[i][2],   rows[i][3],   a2)
+    hi = _interp1(rows[i+1][2], rows[i+1][3], a2)
+    f  = (mach - rows[i][1]) / (rows[i+1][1] - rows[i][1])
+    return lo + f * (hi - lo)
+end
+
+# Yaw dependence of the overturning moment: C_Mα = C_Mα0 + C_Mα2 sin²α_t.
+const MCCOY_308_168_CMA2 = [
+    0.0 -4.3; 0.95 -4.3; 1.0 -4.35; 1.05 -4.4; 2.5 -4.4]
 
 """
     mccoy_308_168_aero() -> AeroCoefficients6DOF
@@ -1637,10 +1688,11 @@ function mccoy_308_168_aero()
         Cd0_func = cd0,
         Cda2     = Ma -> DragModels.interp_table(MCCOY_308_168_CDD2, Ma),
         CNa      = Ma -> DragModels.interp_table(MCCOY_308_168_CLA, Ma) + cd0(Ma),
-        CMa      = Ma -> DragModels.interp_table(MCCOY_308_168_CMA0, Ma),
+        CMa      = (Ma, al) -> DragModels.interp_table(MCCOY_308_168_CMA0, Ma) +
+                               DragModels.interp_table(MCCOY_308_168_CMA2, Ma) * sin(al)^2,
         Clp      = Ma -> DragModels.interp_table(MCCOY_308_168_CLP, Ma),
         CMq_CMad = Ma -> DragModels.interp_table(MCCOY_308_168_CMQ, Ma),
-        CMpa     = Ma -> DragModels.interp_table(MCCOY_308_168_CMPA, Ma),
+        CMpa     = mccoy_308_168_cmpa,
     )
 end
 
@@ -1750,27 +1802,30 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
     |---|---:|---:|
     | muzzle Sg | 1.70 | **1.701** |
     | first maximum yaw | 2.0° | **2.02°** |
-    | 180–200 yd (Fig. 9.3) | ~1.75° | 3.44° |
-    | 580–600 yd (Fig. 9.4) | ~2.2° | 8.25° |
+    | 180–200 yd (Fig. 9.3) | ~1.75° | 10.5° |
+    | 580–600 yd (Fig. 9.4) | ~2.2° | 90° |
 
-    The first two lines say the static and the excitation are now right: a 25 rad/s
-    muzzle yaw rate produces the published first maximum, which it did not before
-    the overturning-moment sign was corrected. What remains is that the motion is
-    **not held near 2°** — it grows.
+    The static behaviour and the excitation are right: a 25 rad/s muzzle yaw rate
+    produces the published first maximum. Downrange the motion diverges instead of
+    holding near 2°, and the cause has **not** been found. What is established:
 
-    The most likely mechanism is one this module does not carry: the measured
-    Magnus moment coefficient of this bullet **changes sign with yaw**, from −0.33
-    below α_t ≈ 2.4° to +0.10 above it. On the low branch the linearized criterion
-    gives Sd = −0.046 against a required Sd(2−Sd) > 1/Sg = 0.588 — unstable, so the
-    yaw grows; on the high branch Sd = +0.584, Sd(2−Sd) = 0.827 — stable, so it
-    decays. That is a limit cycle sitting exactly where the published motion sits,
-    and reproducing it needs coefficients that depend on yaw as well as Mach.
+    * it is not the integrator (order 4 verified) nor the moments of inertia
+      (measured values, Sg reproduced to three digits) nor the excitation;
+    * six configurations were run against the three published amplitudes — the
+      Magnus moment sign either way, the normal force sign either way, C_Mpα
+      constant or yaw-dependent — and **none** reproduces them. Flipping the normal
+      force comes closest in spirit but over-damps to extinction (0.02° by 600 yd);
+    * the solver's response to C_Mpα runs **opposite** to the linearized criterion:
+      raising it toward the value that maximizes Sd makes the solver tumble;
+    * and the linearized theory of the source, fed the same zero-yaw coefficients,
+      itself predicts growth — λ_S = +8.4e-5 per caliber, a factor 7 over 200 yards.
+      So the published bounded motion cannot be recovered from the zero-yaw branch
+      by either route, which is what motivated carrying the yaw dependence.
 
-    Two sign hypotheses were tested against the published figures and **both were
-    refuted**, so neither has been applied: flipping the Magnus moment makes the
-    bullet tumble (28° by 200 yd), and flipping the normal force over-damps it to
-    nothing (0.02° by 600 yd). The attitude output therefore remains unvalidated
-    downrange, though the trajectory is unaffected at the yaw levels that matter."""
+    The next step is not another sign: it is to derive the moment terms one by one
+    from the source's own 6-DOF equations and check each against this code. Until
+    then the attitude output is unvalidated beyond the first cycle; the trajectory
+    is unaffected at the yaw levels that matter for shooting."""
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
     m   = grains_to_kg(sp.mass_grains)
@@ -1790,6 +1845,12 @@ function solve_6dof(sp::ShotParameters6DOF)
     end
     Ix, Iy = sp.Ix === nothing ? moments_of_inertia(m, d, L) : (sp.Ix, sp.Iy)
     aero = sp.aero
+
+    # Resolve every coefficient to a (Mach, alpha_t) function, once.
+    f_Cda2 = _as_coef(aero.Cda2);  f_CNa  = _as_coef(aero.CNa)
+    f_CMa  = _as_coef(aero.CMa);   f_Clp  = _as_coef(aero.Clp)
+    f_CMqa = _as_coef(aero.CMq_CMad)
+    f_CNpa = _as_coef(aero.CNpa);  f_CMpa = _as_coef(aero.CMpa)
     dt = sp.dt
 
     # Wind
@@ -1848,14 +1909,16 @@ function solve_6dof(sp::ShotParameters6DOF)
         qbar = 0.5 * rho * vrel_mag^2
         Ma = vrel_mag / a_s
 
-        # Coefficients at this Mach number (constants pass straight through).
-        c_Cda2 = _coef(aero.Cda2, Ma);  c_CNa  = _coef(aero.CNa, Ma)
-        c_CMa  = _coef(aero.CMa, Ma);   c_Clp  = _coef(aero.Clp, Ma)
-        c_CMqa = _coef(aero.CMq_CMad, Ma)
-        c_CNpa = _coef(aero.CNpa, Ma);  c_CMpa = _coef(aero.CMpa, Ma)
+        # Coefficients at this Mach number and angle of attack. Constants and
+        # Mach-only functions were wrapped once, before the loop.
+        c_Cda2 = f_Cda2(Ma, alpha_t);  c_CNa  = f_CNa(Ma, alpha_t)
+        c_CMa  = f_CMa(Ma, alpha_t);   c_Clp  = f_Clp(Ma, alpha_t)
+        c_CMqa = f_CMqa(Ma, alpha_t)
+        c_CNpa = f_CNpa(Ma, alpha_t);  c_CMpa = f_CMpa(Ma, alpha_t)
 
         # --- Forces (inertial frame) ---
-        Cd_total = aero.Cd0_func(Ma) + c_Cda2 * alpha_t^2
+        # Yaw drag follows the source's form, C_D = C_D0 + C_Dδ² sin²α_t.
+        Cd_total = aero.Cd0_func(Ma) + c_Cda2 * sin(alpha_t)^2
         F_drag = -qbar * A * Cd_total * vrel / (vrel_mag + 1e-20)
 
         v_perp = vrel - dot(vrel, b1) * b1
