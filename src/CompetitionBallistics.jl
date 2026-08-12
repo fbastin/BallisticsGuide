@@ -1374,7 +1374,7 @@ using LinearAlgebra
 
 export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
-       gyroscopic_stability_6dof, dynamic_stability_6dof
+       gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof
 
 """Aerodynamic coefficient set for 6-DOF simulation."""
 Base.@kwdef struct AeroCoefficients6DOF
@@ -1483,16 +1483,58 @@ function gyroscopic_stability_6dof(Ix::Real, p::Real, rho::Real, A::Real,
 end
 
 """
-    dynamic_stability_6dof(CNa, CMa, Sg, m, rho, A, d, kt2, CMq_CMad) -> Sd
+    dynamic_stability_6dof(CLa, CD, CMpa, CMq_CMad, kx_inv2, ky_inv2) -> Sd
 
-Dynamic stability factor from 6-DOF linearization.
+Dynamic stability factor of the linearized pitching and yawing motion,
+
+    Sd = 2T/H,   T = C_Lα + k_x⁻² C_Mpα,   H = C_Lα − C_D − k_y⁻² (C_Mq + C_Mα̇)
+
+where `kx_inv2` = m d²/Ix and `ky_inv2` = m d²/Iy are the inverse squared radii
+of gyration. McCoy states T, H and Sd in *starred* coefficients — each multiplied
+by the relative density factor ρSd/2m — but that factor is common to numerator and
+denominator and cancels, so plain coefficients are used here.
+
+`Sd` is of order one for a real projectile. Combine it with the gyroscopic
+stability factor through [`dynamically_stable_6dof`](@ref); neither number decides
+alone, and a gyroscopically stable projectile may still be dynamically unstable.
+
+!!! note "What this replaced"
+    Until 2026-08-12 this function returned an expression with no counterpart in the
+    literature: it added `2m·kt2/(ρAd)` — a quantity of order 10⁵ — to `C_Lα`, and
+    divided by `Sg(Sg−1)`, which belongs to the stability *criterion*, not to the
+    factor. With the module's own defaults it returned 7.2e8 where the answer is
+    0.31. Nothing in the repository called it, so no published figure depended on it.
 """
-function dynamic_stability_6dof(CNa::Real, CMa::Real, Sg::Real,
-                                 m::Real, rho::Real, A::Real, d::Real,
-                                 kt2::Real, CMq_CMad::Real)
-    num = CNa + 2m * kt2 / (rho * A * d)
-    return 2CNa / CMa * 1.0 / (Sg * (Sg - 1)) * (num / CMq_CMad)^2
+function dynamic_stability_6dof(CLa::Real, CD::Real, CMpa::Real,
+                                 CMq_CMad::Real, kx_inv2::Real, ky_inv2::Real)
+    T = CLa + kx_inv2 * CMpa
+    H = CLa - CD - ky_inv2 * CMq_CMad
+    return 2T / H
 end
+
+"""
+    dynamic_stability_6dof(aero, mach, m, d, Ix, Iy) -> Sd
+
+Convenience method taking the module's own coefficient set. The lift-curve slope
+is recovered from the normal-force slope as `C_Lα = C_Nα − C_D`, and the drag is
+read from `aero.Cd0_func` at the given Mach number.
+"""
+function dynamic_stability_6dof(aero::AeroCoefficients6DOF, mach::Real,
+                                 m::Real, d::Real, Ix::Real, Iy::Real)
+    CD = aero.Cd0_func(mach)
+    return dynamic_stability_6dof(aero.CNa - CD, CD, aero.CMpa, aero.CMq_CMad,
+                                  m * d^2 / Ix, m * d^2 / Iy)
+end
+
+"""
+    dynamically_stable_6dof(Sg, Sd) -> Bool
+
+The generalized dynamic stability criterion, `1/Sg < Sd(2 − Sd)`. It is symmetric
+about `Sd = 1`: a projectile is dynamically unstable when `Sd` strays far enough
+from unity in either direction, and a larger `Sg` widens the tolerated band. Note
+that `Sd ≤ 0` or `Sd ≥ 2` cannot be rescued by any amount of spin.
+"""
+dynamically_stable_6dof(Sg::Real, Sd::Real) = 1.0 / Sg < Sd * (2.0 - Sd)
 
 """Quaternion multiplication."""
 function quat_mult(a, b)
@@ -1556,10 +1598,25 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
 !!! note "Placeholder aerodynamic coefficients"
     With the library's default [`AeroCoefficients6DOF`](@ref) the computed total
     angle of attack **grows** along the trajectory (0.46° at the muzzle, 1.26° at
-    270 m, 18.7° at 1000 yd): the coefficient set describes a bullet whose yawing
-    motion is not damped. Those coefficients are placeholders, not measurements for
-    any particular bullet, and this is what that costs. Supply a measured set before
-    reading anything physical into a run.
+    270 m, 18.7° at 1000 yd). Those coefficients are placeholders, not measurements
+    for any particular bullet. Supply a measured set before reading anything
+    physical into a run.
+
+!!! danger "The yawing motion does not agree with the linear stability criterion"
+    Measured on 2026-08-12, after the integrator was fixed and verified: the yaw
+    **envelope** grows over 400 yd in every coefficient set tried — by a factor 2.1
+    to 6.4 — *including* sets that [`dynamically_stable_6dof`](@ref) places
+    comfortably inside the stable region (e.g. `CMpa = 0`, `CMq_CMad = -8`, where
+    Sd = 0.865 and Sd(2−Sd) = 0.98 against a required 0.67). Worse, the ordering is
+    inverted: the more negative the Magnus moment coefficient, the *slower* the
+    growth in the solver, where the linear theory has it the other way round.
+
+    The envelope was sampled at ~10 points per fast body cycle, so this is not an
+    aliasing artefact, and the integration itself converges at order 4. Something in
+    the rotational equations — the Magnus sign convention is the first suspect — does
+    not follow the reference. Until that is settled, treat the yaw history of this
+    module as unvalidated: the trajectory it produces is not affected in any way that
+    matters at small yaw, but the flight-dynamic output is what the module exists for.
 """
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
