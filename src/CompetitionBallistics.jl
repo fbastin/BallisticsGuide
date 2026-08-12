@@ -1505,8 +1505,18 @@ end
 """
     solve_6dof(p::ShotParameters6DOF) -> Vector{State6DOF}
 
-Full 6-DOF rigid-body trajectory solver with RK4 integration.
-Uses quaternion kinematics (singularity-free).
+Full 6-DOF rigid-body trajectory solver.
+Uses quaternion kinematics (singularity-free), renormalized at every step.
+
+!!! warning "Integration is first-order Euler, not RK4"
+    The 13-component state (position, velocity, quaternion, body rates) is advanced
+    by an explicit **Euler** step, and accuracy is bought with a short fixed step
+    (`dt = 1e-4 s` by default) rather than with a higher-order scheme. The zero-angle
+    search below is Euler as well. That is adequate for the stability and yaw work
+    this module targets, but it is *not* the RK4 integrator of
+    [`solve_trajectory`](@ref): at order 1 the error falls only as `dt`, where RK4
+    divides it by 16 each time the step is halved. Promoting this loop to RK4 on the
+    full state is the natural next step before the solver is put in front of users.
 """
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
