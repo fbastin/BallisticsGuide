@@ -17,7 +17,7 @@ function valider()
         gyroscopic_stability_6dof(ixf, p0, rho, A, d, iyf, v0, CMa) end
     println("=== 1. Facteur de stabilite gyroscopique a la bouche ===")
     @printf("   inerties mesurees   : Sg = %.3f     <- publie : 1.70\n", Sg)
-    @printf("   approximation cylindre : Sg = %.3f  (ecart %+.0f %%)\n", Sgf, 100*(Sgf/Sg-1))
+    @printf("   estimateur geometrique : Sg = %.3f  (ecart %+.0f %%)\n", Sgf, 100*(Sgf/Sg-1))
 
     println("\n=== 2. Amplitude du mouvement de tangage-lacet ===")
     tr = solve_6dof(mccoy_308_168_shot(record_every=5))

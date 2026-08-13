@@ -1374,6 +1374,7 @@ using LinearAlgebra
 
 export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
+       BulletGeometry, bullet_inertia, MCCOY_308_168_GEOMETRY,
        gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof,
        mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa
 
@@ -1407,6 +1408,52 @@ starts, so the inner loop never pays for the dispatch.
 """
 _as_coef(c::Float64) = (_ma, _al) -> c
 _as_coef(c::Function) = applicable(c, 1.0, 1.0) ? c : (ma, _al) -> c(ma)
+
+"""
+    BulletGeometry(; nose_frac, meplat_cal, bt_len_cal, bt_deg, jacket_cal, construction)
+
+External shape of a spitzer bullet, plus how its mass is laid out inside. Every
+length is in **calibers**, so one geometry describes a family across bore sizes.
+
+  - `nose_frac`   — ogive length as a fraction of total bullet length.
+  - `meplat_cal`  — diameter of the nose-tip flat.
+  - `bt_len_cal`  — boat-tail length (0 for a flat base).
+  - `bt_deg`      — boat-tail half-angle, measured from the axis.
+  - `jacket_cal`  — radial jacket thickness (`:jacketed_lead` only).
+  - `construction` — `:jacketed_lead` or `:homogeneous`.
+
+The ogive is taken **tangent**: given the nose length and the meplat, the radius
+follows from the tangency condition, `R = (Lₙ² + a²)/2a` with `a = (d − meplat)/2`.
+A secant ogive of the same nose length carries slightly more volume forward, so a
+VLD comes out marginally light in the nose here.
+
+Defaults describe a modern boat-tailed match bullet. They are *shape* defaults:
+supply the real numbers whenever a drawing or a caliper is at hand, because the
+estimate is only as good as the contour it is given.
+"""
+Base.@kwdef struct BulletGeometry
+    nose_frac::Float64    = 0.57
+    meplat_cal::Float64   = 0.22
+    bt_len_cal::Float64   = 0.50
+    bt_deg::Float64       = 9.0
+    jacket_cal::Float64   = 0.095
+    construction::Symbol  = :jacketed_lead
+end
+
+"""
+Contour of the .308", 168 gr Sierra International, read off the dimensioned
+sketch in Appendix A of McCoy chapter 9 (all cotes in calibers, 1 cal = 7.82 mm):
+total length 3.98, tangent ogive of 7.00 caliber radius over 2.26, 0.25 meplat,
+0.51 of boat tail at 13°. This is the reference case the estimator is checked
+against — see [`bullet_inertia`](@ref).
+"""
+const MCCOY_308_168_GEOMETRY = BulletGeometry(
+    nose_frac  = 2.26 / 3.98,
+    meplat_cal = 0.25,
+    bt_len_cal = 0.51,
+    bt_deg     = 13.0,
+    jacket_cal = 0.095,
+)
 
 """Parameters for a 6-DOF shot."""
 Base.@kwdef struct ShotParameters6DOF
@@ -1454,11 +1501,14 @@ Base.@kwdef struct ShotParameters6DOF
     record_every::Int           = 20        # sample the output every N steps
 
     # Measured moments of inertia [kg·m²], axial and transverse. Leave at
-    # `nothing` to fall back on the cylinder estimate of `moments_of_inertia`,
-    # which is badly wrong for a real bullet — see that function's docstring.
-    # Supply both or neither.
+    # `nothing` to have them estimated by `bullet_inertia` from `geometry`, which
+    # holds the published contour to a few percent — but measured beats estimated,
+    # so pass them when they exist. Supply both or neither.
     Ix::Union{Float64,Nothing}  = nothing
     Iy::Union{Float64,Nothing}  = nothing
+
+    # Bullet contour used for that estimate, ignored when Ix/Iy are given.
+    geometry::BulletGeometry    = BulletGeometry()
 end
 
 """Snapshot of the 6-DOF state at one time step."""
@@ -1475,36 +1525,173 @@ struct State6DOF
     v_total::Float64
 end
 
+
+const _RHO_LEAD   = 11340.0   # kg/m³
+const _RHO_JACKET = 8860.0    # kg/m³, gilding metal 95/5
+
+"""Outer radius in calibers at axial station `z` (calibers from the base)."""
+function _profile(g::BulletGeometry, L::Real, z::Real)
+    r_body   = 0.5
+    r_base   = r_body - g.bt_len_cal * tand(g.bt_deg)
+    nose     = g.nose_frac * L
+    z_should = L - nose
+    if g.bt_len_cal > 0 && z <= g.bt_len_cal
+        return r_base + (r_body - r_base) * (z / g.bt_len_cal)
+    elseif z <= z_should
+        return r_body
+    else
+        a = r_body - g.meplat_cal / 2          # radius drop over the ogive
+        R = (nose^2 + a^2) / (2a)              # tangency condition
+        return -(R - r_body) + sqrt(max(R^2 - (z - z_should)^2, 0.0))
+    end
+end
+
+"""Simpson's rule for `f` on `[a, b]` with `n` (even) subintervals."""
+function _simpson(f, a::Real, b::Real, n::Int)
+    b <= a && return 0.0
+    isodd(n) && (n += 1)
+    h = (b - a) / n
+    s = f(a) + f(b)
+    for i in 1:(n - 1)
+        s += (isodd(i) ? 4.0 : 2.0) * f(a + i * h)
+    end
+    return s * h / 3
+end
+
 """
-    moments_of_inertia(mass_kg, caliber_m, length_m) -> (Ix, Iy)
-
-Crude estimate of the moments of inertia of a rotationally symmetric bullet:
-`Ix` axial, from a solid cylinder; `Iy` transverse, from a uniform rod plus that
-cylinder. Both assume the mass is spread evenly along the body.
-
-!!! warning "Known to be badly wrong for a real bullet"
-    A pointed, boat-tailed match bullet carries its mass nowhere near uniformly.
-    Checked against the only measured pair available here — Table 9.2 of McCoy for
-    the .308", 168 gr Sierra International — this estimate gives
-
-    | | measured | this function | error |
-    |---|---:|---:|---:|
-    | Ix | 7.23e-8 | 8.33e-8 | +15 % |
-    | Iy | 5.38e-7 | 9.21e-7 | **+71 %** |
-    | Ix/Iy | 0.1344 | 0.0904 | −33 % |
-
-    Since `Sg ∝ Ix²/Iy`, the gyroscopic stability factor then comes out at 0.775 of
-    its true value — 1.32 instead of the 1.70 McCoy publishes for that bullet at a
-    12" twist. The ratio `Ix/Iy` also governs the gyroscopic coupling in the rate
-    equations, so the error propagates through the whole attitude solution.
-
-    **Pass measured values through `ShotParameters6DOF(Ix=…, Iy=…)` whenever they
-    exist.** With them, the module reproduces the published Sg to three digits.
+Integrate `f(z)` over the whole bullet, splitting at every slope or density
+break so Simpson never straddles a kink.
 """
-function moments_of_inertia(mass_kg::Real, caliber_m::Real, length_m::Real)
-    r = caliber_m / 2.0
-    Ix = 0.5 * mass_kg * r^2               # solid cylinder approximation
-    Iy = mass_kg * (length_m^2 / 12.0 + r^2 / 4.0)
+function _integrate(f, g::BulletGeometry, L::Real, breaks::Vector{Float64})
+    bounds = sort(unique(clamp.(vcat(0.0, g.bt_len_cal, (1 - g.nose_frac) * L,
+                                     L, breaks), 0.0, L)))
+    total = 0.0
+    for i in 1:(length(bounds) - 1)
+        total += _simpson(f, bounds[i], bounds[i + 1], 400)
+    end
+    return total
+end
+
+"""
+    bullet_inertia(mass_kg, caliber_m, length_m; geometry) -> (Ix, Iy, cg_m, density)
+
+Moments of inertia of a bullet from its **shape**, by integrating the solid of
+revolution rather than pretending it is a cylinder. `Ix` is axial, `Iy`
+transverse about the centre of gravity, `cg_m` is measured from the base, and
+`density` is the mean density the model implies — worth reading as a check, since
+a value far below the constituent materials means the real projectile carries a
+cavity the contour does not describe.
+
+For `:jacketed_lead` the bullet is a gilding-metal shell of constant radial
+thickness with an open base, a lead core rising from that base, and a cavity
+above it — the ordinary hollow-point match construction. **The core height is not
+a free parameter**: it is solved so the total comes to the given mass. Shape and
+mass together therefore determine the internal layout, and nothing is fitted to
+the inertias themselves.
+
+For `:homogeneous` — a monolithic turned-copper or solid-steel projectile — the
+density is simply mass over volume.
+
+If the mass falls outside what the jacketed model can reach (denser than a
+solid-lead fill, or lighter than the bare jacket), it silently falls back to a
+uniform density, which reproduces the mass by construction.
+
+# Accuracy
+Against the .308", 168 gr Sierra International of McCoy Table 9.2 — the one
+bullet here with measured values — using its published contour
+([`MCCOY_308_168_GEOMETRY`](@ref)):
+
+| | measured | this function | solid cylinder |
+|---|---:|---:|---:|
+| Ix | 7.23e-8 kg·m² | +0.4 % | +15 % |
+| Iy | 5.38e-7 kg·m² | +2 % | **+71 %** |
+| Iy/Ix | 7.44 | +2 % | +49 % |
+| CG from base | 0.474 in | −1 % | — |
+
+The `Iy/Ix` ratio is what governs both the gyroscopic coupling in the rate
+equations and the yaw of repose, so that is the column that matters. The
+integrator itself was checked separately on McCoy's Example 12.1, a homogeneous
+20 mm steel cone-cylinder of exactly known geometry: CG −0.4 %, Ix −0.5 %,
+Iy −4 %.
+
+Measured values still beat any estimate — pass them through
+`ShotParameters6DOF(Ix=…, Iy=…)` when they exist.
+"""
+function bullet_inertia(mass_kg::Real, caliber_m::Real, length_m::Real;
+                        geometry::BulletGeometry = BulletGeometry())
+    g = geometry
+    L = length_m / caliber_m                    # total length, in calibers
+    d3 = caliber_m^3                            # calibers³ → m³
+    r(z) = _profile(g, L, z)
+
+    # Volume-based quantities, all in caliber units; density restores the scale.
+    vol_of(rho) = π * _integrate(z -> rho(z) * r(z)^2, g, L, Float64[])
+
+    rho_body, cg_cal, Ix_cal, Iy_cal = if g.construction === :jacketed_lead
+        t = g.jacket_cal
+        # Mass carried below `zc`, as a function of core height.
+        mass_at(zc) = π * d3 * _integrate(g, L, [zc]) do z
+            ro = r(z); ri = max(ro - t, 0.0)
+            (ro^2 - ri^2) * _RHO_JACKET + ri^2 * (z <= zc ? _RHO_LEAD : 0.0)
+        end
+        m_hollow, m_full = mass_at(0.0), mass_at(L)
+        if mass_kg <= m_hollow || mass_kg >= m_full
+            (nothing, nothing, nothing, nothing)          # → uniform fallback
+        else
+            lo, hi = 0.0, L
+            for _ in 1:60
+                mid = (lo + hi) / 2
+                mass_at(mid) < mass_kg ? (lo = mid) : (hi = mid)
+            end
+            zc = (lo + hi) / 2
+            # Linear mass density and dIx/dz, both per caliber of length.
+            lam(z) = (ro = r(z); ri = max(ro - t, 0.0);
+                      π * ((ro^2 - ri^2) * _RHO_JACKET +
+                           ri^2 * (z <= zc ? _RHO_LEAD : 0.0)))
+            axi(z) = (ro = r(z); ri = max(ro - t, 0.0);
+                      (π / 2) * ((ro^4 - ri^4) * _RHO_JACKET +
+                                 ri^4 * (z <= zc ? _RHO_LEAD : 0.0)))
+            m  = _integrate(lam, g, L, [zc])
+            cg = _integrate(z -> lam(z) * z, g, L, [zc]) / m
+            Ia = _integrate(axi, g, L, [zc])
+            It = _integrate(z -> axi(z) / 2 + lam(z) * (z - cg)^2, g, L, [zc])
+            (m, cg, Ia, It)
+        end
+    else
+        (nothing, nothing, nothing, nothing)
+    end
+
+    if rho_body === nothing                      # uniform density
+        v  = _integrate(z -> r(z)^2, g, L, Float64[])
+        cg = _integrate(z -> r(z)^2 * z, g, L, Float64[]) / v
+        Ia = _integrate(z -> r(z)^4 / 2, g, L, Float64[])
+        It = _integrate(z -> r(z)^4 / 4 + r(z)^2 * (z - cg)^2, g, L, Float64[])
+        rho = mass_kg / (π * v * d3)
+        return (π * rho * Ia * d3 * caliber_m^2, π * rho * It * d3 * caliber_m^2,
+                cg * caliber_m, rho)
+    end
+
+    scale = d3 * caliber_m^2                     # calibers⁵ → m⁵
+    return (Ix_cal * scale, Iy_cal * scale, cg_cal * caliber_m,
+            rho_body * d3 / (π * _integrate(z -> r(z)^2, g, L, Float64[]) * d3))
+end
+
+"""
+    moments_of_inertia(mass_kg, caliber_m, length_m; geometry) -> (Ix, Iy)
+
+Axial and transverse moments of inertia of a bullet, from
+[`bullet_inertia`](@ref) with the default match-bullet contour. Kept as a
+two-value shorthand for the call sites that only need the pair.
+
+!!! note "The default contour is a guess, the mass is not"
+    Without a drawing, `nose_frac`, the boat tail and the jacket thickness are
+    assumptions; only mass, caliber and length are known. Passing a measured
+    contour through `geometry` tightens the answer considerably, and measured
+    inertias via `ShotParameters6DOF(Ix=…, Iy=…)` settle it outright.
+"""
+function moments_of_inertia(mass_kg::Real, caliber_m::Real, length_m::Real;
+                            geometry::BulletGeometry = BulletGeometry())
+    Ix, Iy, _, _ = bullet_inertia(mass_kg, caliber_m, length_m; geometry = geometry)
     return (Ix, Iy)
 end
 
@@ -1843,7 +2030,8 @@ function solve_6dof(sp::ShotParameters6DOF)
     if (sp.Ix === nothing) != (sp.Iy === nothing)
         throw(ArgumentError("supply both Ix and Iy, or neither"))
     end
-    Ix, Iy = sp.Ix === nothing ? moments_of_inertia(m, d, L) : (sp.Ix, sp.Iy)
+    Ix, Iy = sp.Ix === nothing ?
+             moments_of_inertia(m, d, L; geometry = sp.geometry) : (sp.Ix, sp.Iy)
     aero = sp.aero
 
     # Resolve every coefficient to a (Mach, alpha_t) function, once.
