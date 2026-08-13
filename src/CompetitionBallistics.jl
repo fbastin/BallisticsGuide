@@ -129,10 +129,14 @@ end
 
 """
     miller_stability(; mass_gr, caliber_in, bullet_length_in, twist_in,
-                       muzzle_vel_fps=2800, temp_F=59)
+                       muzzle_vel_fps=2800, temp_F=59, pressure_inhg=29.92)
 
 Gyroscopic stability factor Sg using the Miller twist rule.
 Returns Sg; values > 1.3 indicate adequate stability.
+
+The base formula is quoted at 2800 fps in standard atmosphere; the velocity and
+atmospheric corrections bring it to the actual conditions. Both are Miller's own
+and neither is optional at the edges of the envelope — see the comments below.
 """
 function miller_stability(;
     mass_gr::Real,
@@ -140,15 +144,21 @@ function miller_stability(;
     bullet_length_in::Real,
     twist_in::Real,
     muzzle_vel_fps::Real = 2800.0,
-    temp_F::Real = 59.0
+    temp_F::Real = 59.0,
+    pressure_inhg::Real = 29.92
 )
     d  = caliber_in
     l  = bullet_length_in / d       # length in calibers
     tw = twist_in / d               # twist in calibers per turn
     T_R = fahrenheit_to_rankine(temp_F)
     sg = 30.0 * mass_gr / (tw^2 * d^3 * l * (1.0 + l^2))
-    sg *= (muzzle_vel_fps / 2800.0)
-    sg *= (518.67 / T_R)
+    # Miller's velocity correction is the CUBE ROOT of the ratio to 2800 fps,
+    # not the ratio itself. The two agree near 2800 fps and part company at the
+    # edges: 27 % apart at 4000 fps.
+    sg *= cbrt(muzzle_vel_fps / 2800.0)
+    # Atmospheric correction: Sg varies as 1/ρ, and ρ ~ P/T. Warm or thin air
+    # (altitude) therefore RAISES Sg — the ratios go this way up, not the other.
+    sg *= (T_R / 518.67) * (29.92 / pressure_inhg)
     return sg
 end
 
@@ -804,6 +814,7 @@ function miller_sg(p::ShotParameters)
         twist_in        = p.twist_in,
         muzzle_vel_fps  = p.muzzle_vel_fps,
         temp_F          = p.temp_F,
+        pressure_inhg   = p.pressure_inhg,
     )
 end
 
