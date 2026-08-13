@@ -1992,38 +1992,39 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
     for any particular bullet. Supply a measured set before reading anything
     physical into a run.
 
-!!! warning "Excitation is right, downrange amplitude is not"
-    Checked on 2026-08-12 against the published reference case
-    ([`mccoy_308_168_shot`](@ref)):
+!!! note "Validated against the published reference case"
+    Checked on 2026-08-13 against [`mccoy_308_168_shot`](@ref):
 
     | | published | here |
     |---|---:|---:|
     | muzzle Sg | 1.70 | **1.701** |
-    | first maximum yaw | 2.0° | **2.02°** |
-    | 180–200 yd (Fig. 9.3) | ~1.75° | 10.5° |
-    | 580–600 yd (Fig. 9.4) | ~2.2° | 90° |
+    | first maximum yaw | 2.0° | **1.97°** |
+    | 180–200 yd (Fig. 9.3) | ~1.75° | **1.53°** |
+    | 580–600 yd (Fig. 9.4) | ~2.2° | **2.09°** |
+    | over 1000 yd | never > 5° | **5.19°** |
+    | drop at the 1000 yd zero | ≈ 0 | **−0.24 m** |
 
-    The static behaviour and the excitation are right: a 25 rad/s muzzle yaw rate
-    produces the published first maximum. Downrange the motion diverges instead of
-    holding near 2°, and the cause has **not** been found. What is established:
+    Getting here took **three** corrections, and no two of them were enough:
 
-    * it is not the integrator (order 4 verified) nor the moments of inertia
-      (measured values, Sg reproduced to three digits) nor the excitation;
-    * six configurations were run against the three published amplitudes — the
-      Magnus moment sign either way, the normal force sign either way, C_Mpα
-      constant or yaw-dependent — and **none** reproduces them. Flipping the normal
-      force comes closest in spirit but over-damps to extinction (0.02° by 600 yd);
-    * the solver's response to C_Mpα runs **opposite** to the linearized criterion:
-      raising it toward the value that maximizes Sd makes the solver tumble;
-    * and the linearized theory of the source, fed the same zero-yaw coefficients,
-      itself predicts growth — λ_S = +8.4e-5 per caliber, a factor 7 over 200 yards.
-      So the published bounded motion cannot be recovered from the zero-yaw branch
-      by either route, which is what motivated carrying the yaw dependence.
+    1. the normal force was applied along `+v_perp` — that is, along the bullet's
+       own crossflow rather than the air's, so the lift pointed the wrong way;
+    2. the Magnus moment carried the opposite sign, which reversed the roles of
+       the two branches of `C_Mpα` and turned the limit cycle into a runaway;
+    3. the rate-normalized coefficients were divided by `2V` (NACA convention)
+       instead of the `V` of the BRL system the source's tables are quoted in.
 
-    The next step is not another sign: it is to derive the moment terms one by one
-    from the source's own 6-DOF equations and check each against this code. Until
-    then the attitude output is unvalidated beyond the first cycle; the trajectory
-    is unaffected at the yaw levels that matter for shooting."""
+    All three spare the epicyclic frequency, which is set by `C_Mα` and the spin,
+    and land squarely on the damping exponents — which is why the beat validated
+    at 2 % throughout while the amplitude ran to 179°. An earlier pass tried each
+    sign **on its own** and drew the wrong conclusion from each: flipping only the
+    normal force over-damps to extinction (0.02° by 600 yd), which reads as a
+    refutation and is not one.
+
+    Cross-checks that now agree: the growth rate in the linear regime matches
+    McCoy's λ_S, and the amplitude settles inside the 1.90° limit cycle that eq.
+    (13.62)–(13.65) predict from the same coefficients. §10.11 states the mechanism
+    outright — the slow arm is undamped at small yaw, and `C_Mpα` becoming less
+    negative at larger yaw is what bounds it."""
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
     m   = grains_to_kg(sp.mass_grains)
@@ -2120,10 +2121,19 @@ function solve_6dof(sp::ShotParameters6DOF)
         Cd_total = aero.Cd0_func(Ma) + c_Cda2 * sin(alpha_t)^2
         F_drag = -qbar * A * Cd_total * vrel / (vrel_mag + 1e-20)
 
+        # `vrel` is the bullet's velocity THROUGH the air, so the crossflow the
+        # body actually meets is its negative — hence the leading minus. With the
+        # nose pitched up, `v_perp` points down while the normal force must point
+        # up. Taking `+v_perp` inverts the lift, and that inversion hides well: it
+        # leaves the epicyclic frequency untouched (P and M are set by C_Mα and
+        # the spin, not by the forces) and only flips the sign of the C_Lα term in
+        # McCoy's damping exponents — the yaw then grows where it should decay.
+        # `n_hat` also orients the Magnus force below, so both follow from this
+        # one direction.
         v_perp = vrel - dot(vrel, b1) * b1
         v_perp_mag = norm(v_perp)
         if v_perp_mag > 1e-10
-            n_hat = v_perp / v_perp_mag
+            n_hat = -v_perp / v_perp_mag
             F_lift = qbar * A * c_CNa * alpha_t * n_hat
         else
             n_hat = zeros(3)
@@ -2135,7 +2145,7 @@ function solve_6dof(sp::ShotParameters6DOF)
             magnus_dir = cross(b1, n_hat)
             magnus_dir_mag = norm(magnus_dir)
             if magnus_dir_mag > 1e-10
-                F_magnus = qbar * A * c_CNpa * (p_s * d / (2 * vrel_mag)) *
+                F_magnus = qbar * A * c_CNpa * (p_s * d / vrel_mag) *
                            alpha_t * (magnus_dir / magnus_dir_mag)
             end
         end
@@ -2144,7 +2154,13 @@ function solve_6dof(sp::ShotParameters6DOF)
         F_total = F_drag + F_lift + F_magnus + F_grav
 
         # --- Moments (body frame) ---
-        pd2v = p_s * d / (2 * vrel_mag + 1e-20)
+        # BRL aeroballistic normalization: angular rates are made dimensionless
+        # with (pd/V) and (q_t d/V), NOT the (pd/2V) of the NACA/aircraft
+        # convention. Every coefficient a spark range publishes — C_lp, C_Mpα,
+        # C_Mq+C_Mα̇, C_Npα — is quoted against that scale, so dividing by 2V
+        # silently halves all four. Like the lift sign above, the error spares the
+        # epicyclic frequency and lands entirely on the damping exponents.
+        pdv = p_s * d / (vrel_mag + 1e-20)
         v_body = R' * vrel
         alpha_p = -v_body[3] / (v_body[1] + 1e-20)   # pitch plane
         beta_y  =  v_body[2] / (v_body[1] + 1e-20)   # yaw plane
@@ -2156,13 +2172,20 @@ function solve_6dof(sp::ShotParameters6DOF)
         # Without it the solver treated the projectile as statically stable: with
         # spin removed the yaw oscillated instead of diverging, and with spin the
         # epicyclic beat came out at √(P²+4M) instead of √(P²−4M), 1.96× too fast.
-        Mx = qbar * A * d^2 * c_Clp * pd2v
-        Mq_body = qbar * A * d * (-c_CMa * alpha_p -
-                  c_CMpa * pd2v * beta_y +
-                  c_CMqa * q_p * d / (2 * vrel_mag + 1e-20))
-        Mr_body = qbar * A * d * (-c_CMa * beta_y +
-                  c_CMpa * pd2v * alpha_p +
-                  c_CMqa * r_y * d / (2 * vrel_mag + 1e-20))
+        #
+        # The Magnus moment carries the opposite sign to the one first written
+        # here. Its own sign decides the limit cycle: C_Mpα is negative at small
+        # yaw and positive past about 2.4° (Appendix A), so it must FEED the slow
+        # arm near zero and DAMP it once the yaw opens — that reversal is what
+        # caps the motion. Written the other way round the two roles swap and the
+        # yaw runs away, which is exactly what the solver used to do.
+        Mx = qbar * A * d^2 * c_Clp * pdv
+        Mq_body = qbar * A * d * (-c_CMa * alpha_p +
+                  c_CMpa * pdv * beta_y +
+                  c_CMqa * q_p * d / (vrel_mag + 1e-20))
+        Mr_body = qbar * A * d * (-c_CMa * beta_y -
+                  c_CMpa * pdv * alpha_p +
+                  c_CMqa * r_y * d / (vrel_mag + 1e-20))
 
         return (
             u, v_y, w_z,                                    # ẋ = v

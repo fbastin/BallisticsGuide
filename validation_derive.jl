@@ -138,7 +138,14 @@ println("""
      de 31,9), ce qui compte a cette distance. L'estimateur geometrique tombe a
      1,5 %, soit 0,5 cm -- sous le bruit de tout le reste.
 
-  3. Controle croise independant : la formule empirique de Litz, celle que sert
-     pas-de-rayure.php, donne 29,4 cm la ou l'integration de l'angle de repos
-     donne 31,9 cm. Deux chemins sans rien de commun se rejoignent a 8 %.
+  3. Controle croise a trois voies. La formule empirique de Litz, celle que sert
+     pas-de-rayure.php, donne 29,4 cm ; l'integration de l'angle de repos ci-dessus
+     31,9 cm ; et le solveur 6-DOF complet, une fois sa perturbation initiale
+     ramenee a peu de chose, 30 a 34 cm. Trois chemins sans rien de commun --
+     correlation ajustee sur des tirs, integration depuis les coefficients de
+     tunnel, integration rigide a six degres de liberte -- se rejoignent a 10 %.
+
+     (Au lacet initial publie de 25 rad/s le 6-DOF donne 52,8 cm : l'ecart est le
+     saut aerodynamique de la perturbation de bouche, un effet physique reel, et
+     non un desaccord entre les methodes.)
 """)
