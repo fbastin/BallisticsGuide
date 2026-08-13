@@ -1398,6 +1398,13 @@ Every coefficient may be given either as a **number** — held constant — or a
 [`mccoy_308_168_aero`](@ref) for a set built from published spark-range
 measurements, and note that the defaults below are none of that: they are
 placeholders that describe no particular bullet.
+
+!!! danger "A right solver fed placeholders is worse than a wrong one"
+    Now that [`solve_6dof`](@ref) reproduces both published cases, its output
+    *looks* credible whatever it is fed — and a wrong answer that looks credible
+    is the more dangerous failure. Set `provenance = :measured` on any set built
+    from real data; leaving the default makes the solver say once, per session,
+    that it is running on invented numbers.
 """
 Base.@kwdef struct AeroCoefficients6DOF
     # Cd0 as a function of Mach (zero-yaw drag); defaults to G7 × form factor
@@ -1409,6 +1416,10 @@ Base.@kwdef struct AeroCoefficients6DOF
     CMq_CMad::Union{Float64,Function} = -8.0    # pitch damping sum (C_{M,q} + C_{M,α̇})
     CNpa::Union{Float64,Function}     = 0.1     # Magnus force coefficient C_{N,pα}
     CMpa::Union{Float64,Function}     = -0.2    # Magnus moment coefficient C_{M,pα}
+
+    # `:measured` for a set built from spark-range or wind-tunnel data, whatever
+    # its source. Anything else is taken as invented and warned about.
+    provenance::Symbol                = :placeholder
 end
 
 """
@@ -1918,6 +1929,7 @@ function mccoy_308_168_aero()
         Clp      = Ma -> DragModels.interp_table(MCCOY_308_168_CLP, Ma),
         CMq_CMad = Ma -> DragModels.interp_table(MCCOY_308_168_CMQ, Ma),
         CMpa     = mccoy_308_168_cmpa,
+        provenance = :measured,
     )
 end
 
@@ -2015,6 +2027,7 @@ function mccoy_105mm_m1_aero()
         CMq_CMad = Ma -> DragModels.interp_table(MCCOY_105_CMQ, Ma),
         CNpa     = (Ma, al) -> _interp_yaw_table(MCCOY_105_CNPA_TABLE, Ma, al),
         CMpa     = (Ma, al) -> _interp_yaw_table(MCCOY_105_CMPA_TABLE, Ma, al),
+        provenance = :measured,
     )
 end
 
@@ -2256,6 +2269,14 @@ function solve_6dof(sp::ShotParameters6DOF)
     Ix, Iy = sp.Ix === nothing ?
              moments_of_inertia(m, d, L; geometry = sp.geometry) : (sp.Ix, sp.Iy)
     aero = sp.aero
+    if aero.provenance !== :measured
+        @warn """
+        6-DOF run on PLACEHOLDER aerodynamic coefficients — they describe no real
+        projectile. The solver is validated against two published cases, so its
+        output will look entirely plausible and mean nothing. Supply a measured
+        set (see `mccoy_308_168_aero`, `mccoy_105mm_m1_aero`) and mark it
+        `provenance = :measured`.""" maxlog=1
+    end
 
     # Resolve every coefficient to a (Mach, alpha_t) function, once.
     f_Cda2 = _as_coef(aero.Cda2);  f_CNa  = _as_coef(aero.CNa)
