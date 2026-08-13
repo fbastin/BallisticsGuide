@@ -1742,6 +1742,20 @@ denominator and cancels, so plain coefficients are used here.
 stability factor through [`dynamically_stable_6dof`](@ref); neither number decides
 alone, and a gyroscopically stable projectile may still be dynamically unstable.
 
+!!! warning "Feed it the cycle-averaged `C_Mpα`, not the zero-yaw value"
+    The Magnus moment coefficient is the one coefficient that goes markedly
+    nonlinear within the first couple of degrees of yaw, and `Sd` is a property of
+    a *motion*, not of an instant — so it wants `C_Mpα` averaged over the yaw
+    cycle being described. McCoy works the reference case at an average of −0.22
+    where the zero-yaw table value is −0.33, and the difference is not cosmetic:
+    the average gives `Sd = +0.1147`, the zero-yaw value `Sd = −0.047`. Those are
+    two different verdicts. A positive `Sd` says enough spin can stabilize the
+    motion — here `Sg > 4.63`, a 1:7 twist — while a negative one says no amount
+    of spin ever will. Reproduced in `validation_mccoy_1011.jl`.
+
+    The zero-yaw value is the right input for the *limit-cycle* formulas of §13.7
+    instead, where `λ_S = λ_S0 + λ_S2 δ²` carries the yaw dependence explicitly.
+
 !!! note "What this replaced"
     Until 2026-08-12 this function returned an expression with no counterpart in the
     literature: it added `2m·kt2/(ρAd)` — a quantity of order 10⁵ — to `C_Lα`, and
