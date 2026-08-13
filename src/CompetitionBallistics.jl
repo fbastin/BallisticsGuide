@@ -1387,7 +1387,8 @@ export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
        BulletGeometry, bullet_inertia, MCCOY_308_168_GEOMETRY,
        gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof,
-       mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa
+       mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa,
+       mccoy_105mm_m1_aero, mccoy_105mm_m1_shot
 
 """
 Aerodynamic coefficient set for 6-DOF simulation.
@@ -1520,6 +1521,16 @@ Base.@kwdef struct ShotParameters6DOF
 
     # Bullet contour used for that estimate, ignored when Ix/Iy are given.
     geometry::BulletGeometry    = BulletGeometry()
+
+    # Quadrant elevation [deg]. When given it replaces the zeroing: the piece is
+    # laid on this angle and `zero_range_yd` is ignored. Artillery, in short.
+    launch_angle_deg::Union{Float64,Nothing} = nothing
+    # Stop when the trajectory comes back to the muzzle horizontal, rather than at
+    # `target_range_yd`. The only sensible end for a lofted shot.
+    stop_on_impact::Bool        = false
+    # Hard cap on flight time [s]. 15 s covers any small-arms range; a 70° shell
+    # needs 80.
+    max_time_s::Float64         = 15.0
 end
 
 """Snapshot of the 6-DOF state at one time step."""
@@ -1869,9 +1880,8 @@ Interpolation is done along yaw first, inside each of the two bracketing Mach
 rows, then between them — the yaw breakpoints are not the same from one Mach to
 the next, so a plain rectangular bilinear scheme would not apply.
 """
-function mccoy_308_168_cmpa(mach::Real, alpha_t::Real)
+function _interp_yaw_table(rows, mach::Real, alpha_t::Real)
     a2 = rad2deg(alpha_t)^2
-    rows = MCCOY_308_168_CMPA_TABLE
     mach <= rows[1][1] && return _interp1(rows[1][2], rows[1][3], a2)
     mach >= rows[end][1] && return _interp1(rows[end][2], rows[end][3], a2)
     i = findlast(r -> r[1] <= mach, rows)
@@ -1881,6 +1891,9 @@ function mccoy_308_168_cmpa(mach::Real, alpha_t::Real)
     f  = (mach - rows[i][1]) / (rows[i+1][1] - rows[i][1])
     return lo + f * (hi - lo)
 end
+
+mccoy_308_168_cmpa(mach::Real, alpha_t::Real) =
+    _interp_yaw_table(MCCOY_308_168_CMPA_TABLE, mach, alpha_t)
 
 # Yaw dependence of the overturning moment: C_Mα = C_Mα0 + C_Mα2 sin²α_t.
 const MCCOY_308_168_CMA2 = [
@@ -1906,6 +1919,149 @@ function mccoy_308_168_aero()
         CMq_CMad = Ma -> DragModels.interp_table(MCCOY_308_168_CMQ, Ma),
         CMpa     = mccoy_308_168_cmpa,
     )
+end
+
+#  ────────────────────────────────────────────────────────────────────────────
+#  105 mm HE M1 — McCoy, Appendix B of chapter 9 (BRL aeroballistic nomenclature)
+#
+#  The second published 6-DOF case, and a deliberately unlike one: a 14.97 kg
+#  artillery shell instead of an 11 g bullet, fired subsonic (Charge 1, Mach
+#  0.602) as well as supersonic (Charge 7, Mach 1.449), at 45° and 70° quadrant
+#  elevation. Physical properties are Table 9.3, the eight runs Table 9.4.
+#
+#  Two differences from the bullet set are worth noting before use: here the
+#  LIFT varies with yaw too (C_Lα = C_Lα0 + C_Lα2 sin²α), and the Magnus moment
+#  is mostly POSITIVE where the bullet's is negative at small yaw.
+#  ────────────────────────────────────────────────────────────────────────────
+
+const MCCOY_105_CD0 = [
+    0.0 0.124; 0.875 0.124; 0.925 0.150; 0.965 0.200; 0.990 0.350;
+    1.025 0.375; 1.085 0.415; 1.19 0.415; 1.35 0.385; 1.80 0.335;
+    2.0 0.318; 2.5 0.276]
+
+const MCCOY_105_CDD2 = [
+    0.0 3.2; 0.88 3.2; 0.97 6.3; 0.99 4.0; 1.15 5.0; 1.25 5.4; 1.3 5.5; 2.5 5.5]
+
+const MCCOY_105_CLP = [
+    0.0 -0.0178; 0.43 -0.0149; 0.70 -0.0135; 0.91 -0.0126; 1.4 -0.0110;
+    1.75 -0.0101; 2.1 -0.0094; 2.5 -0.0087]
+
+const MCCOY_105_CLA0 = [
+    0.0 1.63; 0.4 1.63; 0.7 1.41; 0.89 1.22; 0.99 1.73; 1.09 1.57;
+    1.5 1.97; 2.0 2.25; 2.5 2.50]
+
+const MCCOY_105_CLA2 = [
+    0.0 0.1; 0.2 0.1; 0.6 3.5; 0.8 6.6; 0.985 9.2; 1.09 8.8; 1.3 12.0;
+    1.5 13.7; 2.0 16.0; 2.5 17.0]
+
+const MCCOY_105_CMA0 = [
+    0.0 3.55; 0.46 3.55; 0.61 3.76; 0.78 3.92; 0.87 3.96; 0.925 4.85;
+    0.97 4.0; 1.09 3.83; 1.5 3.75; 2.5 3.75]
+
+const MCCOY_105_CMA2 = [
+    0.0 -2.9; 0.4 -2.9; 0.45 -3.1; 0.65 -4.4; 0.78 -3.45; 0.885 -1.78;
+    0.98 -3.0; 1.075 -2.1; 1.25 -3.325; 1.5 -4.45; 2.0 -4.6; 2.5 -4.6]
+
+const MCCOY_105_CMQ = [0.0 -3.15; 0.79 -3.15; 1.15 -9.1; 1.55 -9.5]
+
+# Yaw-dependent tables: (Mach, α² breakpoints in deg², coefficient values).
+# Repeated Mach rows are McCoy's way of holding a curve flat between breakpoints.
+const MCCOY_105_CNPA_TABLE = [
+    (0.000, [0.0, 632.0, 908.0, 1316.0],          [-0.34, -0.91, -1.42, -2.63]),
+    (0.220, [0.0, 632.0, 908.0, 1316.0],          [-0.34, -0.91, -1.42, -2.63]),
+    (0.310, [0.0, 21.4, 364.5, 638.0, 1316.0],    [-0.125, -0.465, -0.503, -1.015, -2.92]),
+    (0.480, [0.0, 348.5, 1316.0],                 [-0.34, -0.591, -2.45]),
+    (0.999, [0.0, 348.5, 1316.0],                 [-0.34, -0.591, -2.45]),
+    (1.001, [0.0, 706.0],                         [-0.36, -1.68]),
+    (1.550, [0.0, 706.0],                         [-0.36, -1.68]),
+]
+
+const MCCOY_105_CMPA_TABLE = [
+    (0.000, [0.0, 403.6, 630.2, 1316.0],          [0.10, 0.173, 0.345, 2.35]),
+    (0.220, [0.0, 403.6, 630.2, 1316.0],          [0.10, 0.173, 0.345, 2.35]),
+    (0.310, [0.0, 410.8, 637.7, 915.9, 1316.0],   [0.10, 0.133, 0.471, 1.276, 2.35]),
+    (0.480, [0.0, 27.5, 375.2, 1316.0],           [-0.46, 0.08, 0.022, 0.94]),
+    (0.810, [0.0, 27.5, 375.2, 1316.0],           [-0.46, 0.08, 0.022, 0.94]),
+    (0.870, [0.0, 315.3, 743.9],                  [0.4175, 0.053, 0.285]),
+    (0.920, [0.0, 315.3, 743.9],                  [0.4175, 0.053, 0.285]),
+    (0.960, [0.0, 322.2, 1316.0],                 [0.3747, 0.05, 0.665]),
+    (0.995, [0.0, 322.2, 1316.0],                 [0.3747, 0.05, 0.665]),
+    (1.020, [0.0, 375.2],                         [0.20, 0.301]),
+    (1.100, [0.0, 375.2],                         [0.20, 0.301]),
+    (1.210, [0.0, 403.6, 705.7],                  [0.193, 0.50, 0.445]),
+    (1.280, [0.0, 403.6, 705.7],                  [0.193, 0.50, 0.445]),
+    (1.460, [0.0, 410.8],                         [0.215, 0.495]),
+    (1.550, [0.0, 410.8],                         [0.215, 0.495]),
+]
+
+"""
+    mccoy_105mm_m1_aero() -> AeroCoefficients6DOF
+
+Measured coefficient set for the 105 mm HE M1 shell, Appendix B of chapter 9.
+"""
+function mccoy_105mm_m1_aero()
+    cd0(Ma) = DragModels.interp_table(MCCOY_105_CD0, Ma)
+    return AeroCoefficients6DOF(
+        Cd0_func = cd0,
+        Cda2     = Ma -> DragModels.interp_table(MCCOY_105_CDD2, Ma),
+        # normal force from the tabulated lift-curve slope, which here is itself
+        # yaw-dependent: C_Nα = C_Lα0 + C_Lα2 sin²α + C_D
+        CNa      = (Ma, al) -> DragModels.interp_table(MCCOY_105_CLA0, Ma) +
+                               DragModels.interp_table(MCCOY_105_CLA2, Ma) * sin(al)^2 +
+                               cd0(Ma),
+        CMa      = (Ma, al) -> DragModels.interp_table(MCCOY_105_CMA0, Ma) +
+                               DragModels.interp_table(MCCOY_105_CMA2, Ma) * sin(al)^2,
+        Clp      = Ma -> DragModels.interp_table(MCCOY_105_CLP, Ma),
+        CMq_CMad = Ma -> DragModels.interp_table(MCCOY_105_CMQ, Ma),
+        CNpa     = (Ma, al) -> _interp_yaw_table(MCCOY_105_CNPA_TABLE, Ma, al),
+        CMpa     = (Ma, al) -> _interp_yaw_table(MCCOY_105_CMPA_TABLE, Ma, al),
+    )
+end
+
+"""
+    mccoy_105mm_m1_shot(; twist_cal=18.0, charge=7, qe_deg=70.0, kwargs...)
+
+One of the eight runs of Table 9.4. `twist_cal` is 18 or 25 calibers per turn,
+`charge` 1 (205 m/s) or 7 (493 m/s), `qe_deg` 45 or 70.
+
+The muzzle yaw *rate* is the published one for that run — McCoy chose each to
+produce a first maximum yaw of 3.0°, the value observed in field firings of the
+M103 howitzer.
+
+Published results to check a run against: muzzle gyroscopic stability factor
+**3.1** at 1/18 and **1.6** at 1/25, at either charge; first maximum yaw **3.0°**
+in all eight runs; and, for Charge 7 at 70° QE, a level-ground range of **7300 m**,
+a time of flight of about **70.5 s** and a summit **slightly over 6000 m**.
+"""
+function mccoy_105mm_m1_shot(; twist_cal::Real = 18.0, charge::Int = 7,
+                               qe_deg::Real = 70.0, kwargs...)
+    d_in = 104.8 / 25.4
+    v_ms = charge == 1 ? 205.0 : 493.0
+    yaw_rate = Dict((18, 1, 45) => 1.44, (18, 1, 70) => 1.47,
+                    (18, 7, 45) => 3.61, (18, 7, 70) => 3.64,
+                    (25, 1, 45) => 0.76, (25, 1, 70) => 0.79,
+                    (25, 7, 45) => 1.97, (25, 7, 70) => 1.98
+                   )[(round(Int, twist_cal), charge, round(Int, qe_deg))]
+    return ShotParameters6DOF(;
+        mass_grains        = 14.97 / 0.0647989e-3,   # 14.97 kg
+        caliber_in         = d_in,
+        bullet_length_in   = 49.47 / 2.54,           # 49.47 cm
+        muzzle_vel_fps     = v_ms / 0.3048,
+        twist_in           = twist_cal * d_in,
+        initial_yaw_deg    = 0.0,
+        initial_pitch_rate = yaw_rate,
+        aero               = mccoy_105mm_m1_aero(),
+        Ix                 = 0.02326,                # Table 9.3
+        Iy                 = 0.23118,
+        launch_angle_deg   = Float64(qe_deg),
+        stop_on_impact     = true,
+        max_time_s         = 120.0,
+        # The fast body-frame mode here turns at |(Ix−Iy)/Iy|·p ≈ 1500 rad/s, so
+        # 1e-4 s still gives ~40 steps per cycle — the bullet's 5e-6 would cost
+        # 14 million steps for a 70 s flight and buy nothing.
+        dt                 = 1.0e-4,
+        record_every       = 100,
+        kwargs...)
 end
 
 """
@@ -2038,7 +2194,34 @@ actually attained; the drop column reaches its round-off floor near 1e-6 m.
     McCoy's λ_S, and the amplitude settles inside the 1.90° limit cycle that eq.
     (13.62)–(13.65) predict from the same coefficients. §10.11 states the mechanism
     outright — the slow arm is undamped at small yaw, and `C_Mpα` becoming less
-    negative at larger yaw is what bounds it."""
+    negative at larger yaw is what bounds it.
+
+!!! note "Second published case, nothing tuned to it"
+    Example 9.2, the 105 mm HE M1 shell ([`mccoy_105mm_m1_shot`](@ref)), tests the
+    same three corrections on a deliberately unlike projectile: 14.97 kg against
+    11 g, 45° and 70° quadrant elevation against flat fire, subsonic as well as
+    supersonic, and a Magnus moment that is mostly *positive* where the bullet's is
+    negative. Against the four published trajectories of p. 201, at 1/18 twist:
+
+    | | range | time of flight | summit |
+    |---|---:|---:|---:|
+    | Charge 1, 45° | −0.3 % | +0.2 % | −0.3 % |
+    | Charge 1, 70° | −2.2 % | +0.2 % | −0.4 % |
+    | Charge 7, 45° | −0.5 % | −0.1 % | −0.6 % |
+    | Charge 7, 70° | −4.3 % | +0.0 % | −1.4 % |
+
+    Muzzle `Sg` comes out 3.13 and 1.62 against the published 3.1 and 1.6. The
+    sharpest check is Figure 9.11: at apogee the solver swings between **0.25° and
+    4.02°**, where the figure's inset gives a coning circle of `K_S` = 1.9° about a
+    yaw of repose of 2.1° — 0.2° to 4.0°.
+
+    The two 70° ranges are the weakest numbers here, and the cause is identified
+    rather than hidden: it is not base drag — no single factor on `C_D0` aligns all
+    four cases — but the summital yaw surge, which reaches 21–26° there against
+    1.5–4° at 45°, and where yaw drag runs three to five times `C_D0`. Range in that
+    regime is governed by the accuracy of a 20° yaw, not by the integration. Note
+    also that the solver still carries no Coriolis term; over these 70 s flights
+    the Eötvös contribution is only about 13 m in 7300."""
 function solve_6dof(sp::ShotParameters6DOF)
     # Convert to SI
     m   = grains_to_kg(sp.mass_grains)
@@ -2050,6 +2233,20 @@ function solve_6dof(sp::ShotParameters6DOF)
     P_Pa = inhg_to_pa(sp.pressure_inhg)
     rho = air_density(P=P_Pa, T=T_K, H=sp.humidity_pct)
     a_s = speed_of_sound(T_K)
+
+    # Air properties at height `h` above the muzzle. The given temperature and
+    # pressure describe the launch point; the ICAO lapse carries them upward from
+    # there, so this reduces exactly to the constants above at h = 0. Holding them
+    # constant is harmless over the few metres a flat-fire trajectory rises, and
+    # badly wrong for artillery: a 70° shot tops out near 6 km, where the density
+    # is half its sea-level value.
+    @inline function air_at(h::Float64)
+        h <= 0.0 && return (rho, a_s)
+        T = T_K - Atmosphere.L * h
+        T <= 1.0 && return (rho, a_s)
+        P = P_Pa * (T / T_K)^(Atmosphere.g0 / (Atmosphere.L * Atmosphere.R_air))
+        return (air_density(P=P, T=T, H=sp.humidity_pct), speed_of_sound(T))
+    end
     A   = π * d^2 / 4.0
     tr  = yards_to_m(sp.target_range_yd)
 
@@ -2080,9 +2277,12 @@ function solve_6dof(sp::ShotParameters6DOF)
     # deliberately so: this is a point-mass translation with no fast rotational
     # mode, where Euler at `dt` is accurate and the loop only has to land a
     # launch angle to 1e-6 m of drop at the zero range.
+    # A quadrant elevation, when given, replaces the zeroing entirely: artillery
+    # is laid on an angle, not sighted in on a target.
     zr = yards_to_m(sp.zero_range_yd)
-    theta0 = atan(Atmosphere.g0 * zr / (2 * v0^2))
-    for _ in 1:30
+    theta0 = sp.launch_angle_deg === nothing ?
+             atan(Atmosphere.g0 * zr / (2 * v0^2)) : deg2rad(sp.launch_angle_deg)
+    for _ in 1:(sp.launch_angle_deg === nothing ? 30 : 0)
         xt, yt = 0.0, 0.0
         vxt = v0 * cos(theta0); vyt = v0 * sin(theta0)
         while xt < zr
@@ -2108,6 +2308,7 @@ function solve_6dof(sp::ShotParameters6DOF)
     # this way is what lets an integrator sample the slope more than once inside
     # a step; everything else it needs is captured from the enclosing scope.
     function derivs6(s::NTuple{13,Float64})
+        y_pos = s[2]                        # height above the muzzle, for `air_at`
         u, v_y, w_z = s[4], s[5], s[6]
         q0_q, q1_q, q2_q, q3_q = s[7], s[8], s[9], s[10]
         p_s, q_p, r_y = s[11], s[12], s[13]
@@ -2120,8 +2321,9 @@ function solve_6dof(sp::ShotParameters6DOF)
         cos_alpha = clamp(dot(vrel, b1) / (vrel_mag + 1e-20), -1.0, 1.0)
         alpha_t = acos(cos_alpha)           # total angle of attack
 
-        qbar = 0.5 * rho * vrel_mag^2
-        Ma = vrel_mag / a_s
+        rho_h, a_h = air_at(y_pos)          # thins out with height; see `air_at`
+        qbar = 0.5 * rho_h * vrel_mag^2
+        Ma = vrel_mag / a_h
 
         # Coefficients at this Mach number and angle of attack. Constants and
         # Mach-only functions were wrapped once, before the loop.
@@ -2275,7 +2477,12 @@ function solve_6dof(sp::ShotParameters6DOF)
     t = 0.0
     n = 0
 
-    while s[1] <= tr && t < 15.0
+    # Flat fire stops at the target range; a lofted shot stops when it comes back
+    # down, which is the only end it has. `t > 0.1` keeps the muzzle out of it.
+    stop = sp.stop_on_impact ?
+           ((st, tt) -> st[2] < 0.0 && tt > 0.1) :
+           ((st, tt) -> st[1] > tr)
+    while !stop(s, t) && t < sp.max_time_s
         if n % sp.record_every == 0
             alpha_t, mach, v_total = diagnostics6(s)
             push!(results, State6DOF(t, s[1], s[2], s[3], s[4], s[5], s[6],
