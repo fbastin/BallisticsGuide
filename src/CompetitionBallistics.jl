@@ -1458,7 +1458,12 @@ placeholders that describe no particular bullet.
 """
 Base.@kwdef struct AeroCoefficients6DOF
     # Cd0 as a function of Mach (zero-yaw drag); defaults to G7 × form factor
-    Cd0_func::Function                = (Ma) -> cd_g7(Ma)
+    # Spline, comme `drag_coefficient` et comme le portage JS : sur un test de
+    # décimation (un nœud sur deux retiré puis reconstruit), elle retrouve les valeurs
+    # enlevées avec deux fois moins d'erreur médiane que l'interpolation linéaire sur
+    # G7, six fois moins sur G1. Ce défaut-ci reste de toute façon un bouche-trou,
+    # signalé par `provenance` — les jeux mesurés fournissent leur propre table.
+    Cd0_func::Function                = (Ma) -> cd_g7_spline(Ma)
     Cda2::Union{Float64,Function}     = 3.5     # yaw drag coefficient C_{D,δ²}
     CNa::Union{Float64,Function}      = 2.8     # normal force derivative C_{N,α} [per rad]
     CMa::Union{Float64,Function}      = 3.2     # overturning moment coeff C_{M,α} [per rad]
