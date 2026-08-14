@@ -1681,6 +1681,82 @@ Magnus moment & $C_{M_{p\alpha}}$ & $-0.5$ to $+0.5$ & Cross-spin moment \\
 
 \default{Values in the Julia implementation when not user-specified.}
 
+\subsection{Measured Sets: What Actually Exists}
+
+The table above is a range of plausible magnitudes, not a coefficient set. A 6-DOF
+run needs actual numbers, and the constraint is severe: the full set is measured in
+a spark photography range and published for almost no commercial bullet. The
+implementation therefore marks every set with a \texttt{provenance} field and warns
+once per session when a solver runs on placeholder values --- a right solver fed
+invented coefficients returns results that are \emph{credible and wrong}, which is a
+worse failure than a wrong solver returning visible nonsense.
+
+Seven projectiles are presently carried with a measured set, all from BRL spark-range
+reports by R.~L. McCoy and all in the public domain:
+
+\begin{table}[H]
+\centering
+\caption{Measured aerodynamic sets carried by the implementation}
+\label{tab:measured_sets}
+\begin{tabular}{@{}llcl@{}}
+\toprule
+\textbf{Projectile} & \textbf{Source} & \textbf{Mach range} & \textbf{Note} \\
+\midrule
+.308\,in 168\,gr Sierra Intl. & \citet{mccoy1999modern}, App.~A & 0.0--2.5 & Textbook case 9.1 \\
+105\,mm HE M1 & \citet{mccoy1999modern}, App.~B & 0.0--2.5 & Artillery, case 9.2 \\
+5.56\,mm SS-109 & BRL-MR-3476 (1985) & 0.74--2.63 & Ball \\
+5.56\,mm M855 & BRL-MR-3476 (1985) & 0.67--2.73 & Ball \\
+5.56\,mm L110 & BRL-MR-3476 (1985) & 1.89--2.54 & Tracer, thin \\
+5.56\,mm M856 & BRL-MR-3476 (1985) & 1.12--2.57 & Tracer \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The 5.56\,mm sets are the first \emph{small-arms} Magnus and pitch-damping data the
+library carries, and they cover the whole useful flight band of the cartridge. Their
+tables are transcribed round by round, exactly as printed, and every curve the
+library uses is derived from those rows at load time --- there is no second,
+hand-copied copy that can drift out of step.
+
+Three limits are recorded with them, and each is a trap for the unwary.
+
+\emph{The tabulated $C_D$ is measured at the round's own yaw}, not at zero yaw. It is
+reduced with $C_{D_0} = C_D - C_{D_{\alpha^2}}\sin^2\alpha_t$, taking
+$C_{D_{\alpha^2}} = 3.5$; that coefficient is not measured by the report, but pairs
+of rounds fired at the same Mach and different yaw bracket it between 3.4 and 5.
+Keeping only the near-zero-yaw rounds instead leaves \emph{two} points for the M855,
+both supersonic, and the curve then clamps a supersonic value straight across the
+transonic peak.
+
+\emph{These sets cannot produce a limit cycle.} Each $C_{M_{p\alpha}}$ value is a
+single round at a single angle of attack, so the curve is a function of Mach only and
+the yaw dependence is unresolved --- and it is precisely the sign change of the
+Magnus moment with yaw that fixes limit-cycle amplitude. The scatter hints at the
+behaviour (the M855 runs from $+0.10$ at $1.90^{\circ}$ to $-0.59$ at $2.87^{\circ}$)
+but three points cannot separate a Mach effect from a yaw effect, and pretending
+otherwise would be invention.
+
+\emph{Sparse tables extrapolate silently.} A table lookup clamps at its ends, which
+for nine rounds means answering confidently at a Mach nobody fired: the L110 tracer
+has three Magnus points, all above $\Mach 1.89$. The implementation returns the
+clamped value \emph{and warns once} outside the band actually fired, with 2\,\% of
+slack so that an edge case does not train the reader to ignore the warning.
+
+Physical characteristics --- mass, centre of gravity and both moments of inertia ---
+are additionally carried for the four 5.56\,mm projectiles, the M118 Match, the
+190\,gr Sierra MatchKing and the 168\,gr Sierra International (BRL-MR-3733, 1988),
+and for four .22\,LR match bullets (BRL-MR-3877, 1990). The last of these covers a
+regime none of the others do: entirely subsonic flight, $\Mach 0.77$ to $1.03$.
+
+\paragraph{Validation.} Feeding the measured coefficients of BRL-MR-3476 into the
+linearised theory of Section~\ref{sec:stability6dof} reproduces the
+gyroscopic stability factors that the same report publishes from the same firings, to
+3.5\,\% for the SS-109 and 5.3\,\% for the M855 (median 1.3\,\% and 0.5\,\%). The
+test barrel's twist is not published; the published $S_g$ implies $7.01''$ and
+$7.18''$, which is the $1{:}7''$ of the M16A2 and M249 that the report discusses in
+its dispersion section --- an independent check that the set and the theory are
+mutually consistent.
+
 \subsection{Deriving $C_{D_0}$ from the Ballistic Coefficient}
 
 The zero-yaw drag coefficient relates directly to the standard drag model and the ballistic coefficient:
@@ -1700,6 +1776,105 @@ For a rotationally symmetric bullet of mass $m$, length $L$, and diameter $d$:
 \end{align}
 where $r_g = d/2$ is the radius of gyration. For a typical match bullet, $I_y/I_x \approx 5$--$10$.
 
+\subsection{Why the Solid-Cylinder Form Is Not Good Enough}
+
+Equations~\eqref{eq:Ix} and~\eqref{eq:Iy} treat the bullet as a solid cylinder of
+uniform density. Against the measured inertias of the .308\,in 168\,gr Sierra
+International (McCoy's Table 9.2) that approximation returns $I_x$ high by
+15.2\,\%, $I_y$ high by 71.2\,\% and the ratio $I_y/I_x$ high by 48.7\,\%. Since
+$S_g \propto I_x^2/I_y$, the error propagates to a gyroscopic stability factor of
+1.32 where the published value is 1.70 --- a shortfall of 22\,\%, which is the
+difference between declaring a load stable and declaring it marginal.
+
+The cylinder is wrong for two independent reasons. It ignores the \emph{shape} ---
+a real bullet is an ogive over a cylinder over a boat tail, not a cylinder --- and
+it ignores the \emph{internal layout}, a gilding-metal jacket of nearly constant
+radial thickness around a lead core that does not fill it.
+
+\subsection{Integration over the Actual Contour}
+
+The companion implementation (\texttt{bullet\_inertia}) integrates the solid of
+revolution directly. The external contour is described in calibers by four numbers:
+the ogive length as a fraction of total length, the meplat diameter, the boat-tail
+length and the boat-tail half-angle. The ogive is taken \emph{tangent}, so its
+radius follows from the tangency condition
+\begin{equation}
+  R = \frac{L_n^2 + a^2}{2a}, \qquad a = \frac{d - d_{\mathrm{meplat}}}{2}
+  \label{eq:tangent_ogive}
+\end{equation}
+with $L_n$ the ogive length. For the jacketed-lead construction the body is a shell
+of constant radial thickness with an open base, a lead core rising from that base,
+and a cavity above it; the core height is solved by bisection so that the integrated
+mass matches the bullet's actual weight. If no core height reproduces the weight ---
+the bullet being denser than a solid-lead fill or lighter than the bare jacket ---
+the routine falls back to a uniform density and says so.
+
+Scored against the same reference bullet, given its published contour, this returns
+$I_x$ to $-0.2\,\%$, $I_y$ to $+2.4\,\%$, the ratio to $+2.6\,\%$ and the centre of
+gravity to $-0.5\,\%$; $S_g$ comes out at 1.693 against the published 1.70. On a
+20\,mm steel cone-cylinder of exactly known geometry (McCoy's Example 12.1) the
+integrator itself is good to $-0.5\,\%$ on $I_x$ and $-4.0\,\%$ on $I_y$, which
+bounds the numerical error and shows that what remained wrong in the cylinder
+approximation was the \emph{shape}, not the arithmetic.
+
+\subsection{Default Contour, and What It Costs}
+
+When no contour is supplied the defaults describe a modern boat-tailed match
+bullet: ogive fraction 0.541, boat tail 0.782 calibers at $7.5^{\circ}$, meplat
+0.22 calibers. The first three are medians of measured populations --- the ogive
+fraction and boat-tail length over 94 boat-tailed match bullets from a published
+manufacturer's dimension table, the boat-tail half-angle over 83 cones recorded by
+handloaders as two diameters and a height, from which the angle follows as
+$\arctan\!\bigl((d_{\mathrm{maj}} - d_{\mathrm{min}})/2h\bigr)$.
+
+Flat-base bullets are a separate family, not a boat tail with zero length: they are
+shorter ($L/d$ median 3.34 against 4.87) and carry proportionally longer ogives
+(0.638 against 0.541). Applying the boat-tail defaults to a flat base biases $S_g$
+by $-9.7\,\%$, always in the same direction.
+
+Two cautions follow from the calibration and are worth stating plainly.
+
+\emph{First, a default calibrated on one reference case is calibrated on its
+idiosyncrasy.} An earlier default boat-tail length of 0.50 calibers matched the
+Sierra International almost exactly --- and that bullet sits at the 2nd percentile
+of the modern match population, whose median is 0.782. It therefore scored well on
+the single case with published inertias while being wrong for the bullets the
+library is actually used on. The present defaults deliberately score \emph{worse}
+on that case ($-4.9\,\%$ on $S_g$ instead of $-0.5\,\%$) and better on the
+population.
+
+\emph{Second, the residual spread is irreducible by a better constant.} Against
+each bullet's own measured contour the defaults leave a median absolute error of
+3.8\,\% on $S_g$ for boat tails and 4.1\,\% for flat bases, with a third of the
+population outside $\pm 5\,\%$. A linear rule in $L/d$ was fitted and rejected: it
+bought 0.4 points of median error while widening the tails. What the spread wants
+is the dimension of the individual bullet, not a cleverer average.
+
+Of the four contour parameters only the meplat remains uncalibrated, no public
+source publishing it. Sweeping it over its plausible range now moves $I_x$ by
+1.9\,\%, $I_y$ by 3.2\,\% and $S_g$ by 0.9\,\% --- against 6.3 / 4.2 / 9.7\,\% when
+the boat-tail angle was a guess as well.
+
+\subsection{Constructions the Model Does Not Cover}
+
+Two measured cases fall outside the jacketed-lead assumption and are useful as
+declared limits rather than as failures.
+
+The 5.56\,mm SS-109 and M855 carry a \emph{steel penetrator} ahead of a lead rear
+core, so their mass is laid out in two materials. Given the published contour and
+true weight, the estimator lands 4--5\,\% low on $I_x$, 6--9\,\% low on $I_y$ and
+5--7\,\% low on the centre of gravity. That is the composite core showing.
+
+The .22\,LR match bullets are unjacketed lead, \emph{heeled} --- a rear section of
+reduced diameter --- with a round nose ending in a spherical cap rather than a
+meplat. Neither the heel nor the round nose is expressible in the four contour
+parameters, so no contour is offered for them; only their measured inertias are
+tabulated.
+
+In both cases the defaults happen to score better than the true contour. That is
+compensation between two errors, not accuracy, and it must not be read as a reason
+to prefer the defaults.
+
 \section{Spin Rate and Initial Conditions}
 
 The initial spin rate from the barrel twist rate $\tau$ (inches/turn):
@@ -1711,6 +1886,7 @@ The initial spin rate from the barrel twist rate $\tau$ (inches/turn):
 For a 1:8 twist barrel at 2700\,fps: $p_0 = 2\pi \times 2700/(8/12) = 2\pi \times 4050 \approx 25{,}447\;\text{rad/s}$ ($\approx 243{,}000\;\text{RPM}$).
 
 \section{Stability Revisited from 6-DOF Theory}
+\label{sec:stability6dof}
 
 \subsection{Gyroscopic Stability}
 
