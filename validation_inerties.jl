@@ -64,6 +64,17 @@ function cas_sierra()
                 nom, Sg(Ix, Iy), ecart(Sg(Ix, Iy), Sg(Ixr, Iyr)),
                 1e3 * aR(Ix, Iy), ecart(aR(Ix, Iy), aR(Ixr, Iyr)))
     end
+    println("""
+     Ce qui se juge ici est la ligne < contour publie > : donne la vraie cote,
+     l'estimateur rend Ix a -0,2 % et Iy a +2,4 %. La ligne < contour par defaut >
+     mesure autre chose -- l'ecart entre cette balle et la balle mediane -- et son
+     -4,9 % est ASSUME : la Sierra porte un bateau de 0,51 cal a 13 deg, quand les
+     medianes mesurees sont 0,782 et 7,5 deg. Elle est doublement atypique.
+     ATTENTION : ce -4,9 % vaut mieux que le -7,1 % d'avant le calage de bt_deg,
+     mais par COMPENSATION -- le bateau par defaut est trop long ET trop peu
+     incline pour cette balle, et les deux erreurs se soustraient. Ce n'est pas
+     une validation de bt_deg ; aucune population de moments d'inertie mesures
+     n'existe pour le valider.""")
 end
 
 function cas_cone_cylindre()

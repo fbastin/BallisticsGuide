@@ -18,6 +18,14 @@ function valider()
     println("=== 1. Facteur de stabilite gyroscopique a la bouche ===")
     @printf("   inerties mesurees   : Sg = %.3f     <- publie : 1.70\n", Sg)
     @printf("   estimateur geometrique : Sg = %.3f  (ecart %+.0f %%)\n", Sgf, 100*(Sgf/Sg-1))
+    println("""
+     Cet ecart est ASSUME, ne pas le rattraper en retouchant les defauts.
+     Les defauts de BulletGeometry sont des medianes de populations mesurees ;
+     celle-ci porte un bateau de 0,51 cal, le 2e percentile des balles match
+     modernes (mediane 0,782), et de 13 deg la ou la mediane est 7,5. Un defaut
+     qui la viserait serait faux partout ailleurs.
+     L'estimateur se juge sur la ligne < contour publie > de validation_inerties.jl,
+     qui lui donne la vraie cote : -0,2 % sur Ix et +2,4 % sur Iy.""")
 
     println("\n=== 2. Amplitude du mouvement de tangage-lacet ===")
     tr = solve_6dof(mccoy_308_168_shot(record_every=5))

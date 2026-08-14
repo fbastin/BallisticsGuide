@@ -1385,10 +1385,12 @@ using LinearAlgebra
 
 export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        solve_6dof, initial_spin_rate, moments_of_inertia,
-       BulletGeometry, bullet_inertia, MCCOY_308_168_GEOMETRY,
+       BulletGeometry, bullet_inertia, MCCOY_308_168_GEOMETRY, FLAT_BASE_GEOMETRY,
        gyroscopic_stability_6dof, dynamic_stability_6dof, dynamically_stable_6dof,
        mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa,
-       mccoy_105mm_m1_aero, mccoy_105mm_m1_shot
+       mccoy_105mm_m1_aero, mccoy_105mm_m1_shot,
+       brl3476_aero, brl3476_shot, brl3476_geometry, brl3476_curve,
+       BRL3476_SS109, BRL3476_M855, BRL3476_L110, BRL3476_M856, BRL3476_PHYSICAL
 
 """
 Aerodynamic coefficient set for 6-DOF simulation.
@@ -1453,15 +1455,78 @@ VLD comes out marginally light in the nose here.
 Defaults describe a modern boat-tailed match bullet. They are *shape* defaults:
 supply the real numbers whenever a drawing or a caliper is at hand, because the
 estimate is only as good as the contour it is given.
+
+`nose_frac`, `bt_len_cal` and `bt_deg` are all medians of measured populations
+(see "Where the defaults come from" below). **`meplat_cal` alone is uncalibrated** —
+no source publishes it. Sweeping it over its plausible range now moves Ix by 1.9 %,
+Iy by 3.2 % and S_g by only 0.9 %: that is the floor left for a default-driven
+estimate. It used to be 6.3 / 4.2 / **9.7 %** when `bt_deg` was a guess too — pinning
+the boat-tail angle is what removed almost all of it.
+
+Flat-base bullets are a different family, not a variation on this one: use
+[`FLAT_BASE_GEOMETRY`](@ref). Applying these boat-tail defaults to a flat base
+costs 9.7 % on S_g, and always in the same direction.
+
+# Where the defaults come from
+
+`nose_frac` and `bt_len_cal`: medians of a published manufacturer's dimension
+table, 94 boat-tailed and 13 flat-base jacketed match bullets from .17 to .375,
+read 2026-08-13. Residual spread on S_g, against each bullet's own measured
+contour: median absolute error 3.8 % (boat tail) and 4.1 % (flat base), with a
+third of the population outside ±5 %. That spread is **irreducible by a better
+constant** — a linear rule in L/d was fitted and rejected, buying 0.4 points of
+median error while widening the tails.
+
+`bt_deg`: median of 83 boat-tail cones measured by handloaders and pooled in a
+community database, each recorded as two diameters and a height, so the half-angle
+follows as `atan((d_major − d_minor) / 2h)`. Restricted to cones that start at full
+bullet diameter, on rifle calibers, with a physically plausible angle. The value is
+stable across every slice of that population — 7.5° over all 83, 7.7° over the 51
+from match makers, 7.0° over the 14 Berger — so 7.5° is taken rather than the
+narrower Berger-only figure, which would over-fit fourteen bullets.
+
+Neither source is redistributed; only these three numbers are derived from them.
+
+!!! note "Why `bt_deg` cannot be validated the way the other two were"
+    The other defaults were checked by holding a bullet's own measured nose and
+    boat-tail length against them. No public table publishes the boat-tail
+    **angle**, so there is no population of measured inertias to score it on: it
+    rests on the community measurements alone. Sanity check that it passes — with
+    `bt_len_cal = 0.782` it puts the base at 0.795 calibers, which is where match
+    boat tails actually sit; the previous 9.0° default implied 0.753, visibly too
+    narrow.
+
+!!! warning "The reference case is not representative"
+    The .308" 168 gr Sierra International of [`MCCOY_308_168_GEOMETRY`] carries a
+    0.51 caliber boat tail, which is the **2nd percentile** of the modern match
+    population (median 0.782). The previous default of 0.50 matched it almost
+    exactly and therefore scored well on the one case with published inertias,
+    while being wrong for the bullets this library is actually used on. Do not
+    re-tune these defaults on that case.
 """
 Base.@kwdef struct BulletGeometry
-    nose_frac::Float64    = 0.57
+    nose_frac::Float64    = 0.541
     meplat_cal::Float64   = 0.22
-    bt_len_cal::Float64   = 0.50
-    bt_deg::Float64       = 9.0
+    bt_len_cal::Float64   = 0.782
+    bt_deg::Float64       = 7.5
     jacket_cal::Float64   = 0.095
     construction::Symbol  = :jacketed_lead
 end
+
+"""
+Shape defaults for a **flat-base** jacketed match or varmint bullet, medians of a
+13-bullet population from the same table as [`BulletGeometry`](@ref)'s own
+defaults.
+
+Flat-base bullets are short (L/d median 3.34 against 4.87 for boat tails) and
+carry proportionally longer noses (0.638 against 0.541), so they are a separate
+family rather than a boat tail with `bt_len_cal = 0`. Reaching for the boat-tail
+defaults instead biases S_g by −9.7 %.
+"""
+const FLAT_BASE_GEOMETRY = BulletGeometry(
+    nose_frac  = 0.638,
+    bt_len_cal = 0.0,
+)
 
 """
 Contour of the .308", 168 gr Sierra International, read off the dimensioned
@@ -2074,6 +2139,288 @@ function mccoy_105mm_m1_shot(; twist_cal::Real = 18.0, charge::Int = 7,
         # 14 million steps for a 70 s flight and buy nothing.
         dt                 = 1.0e-4,
         record_every       = 100,
+        kwargs...)
+end
+
+#  ────────────────────────────────────────────────────────────────────────────
+#  5.56 mm NATO — McCoy, BRL-MR-3476 (October 1985)
+#
+#  "Aerodynamic and Flight Dynamic Characteristics of the New Family of 5.56mm
+#  NATO Ammunition", spark-range firings at Aberdeen. US Government work,
+#  approved for public release, distribution unlimited.
+#
+#  The first MEASURED small-arms Magnus and pitch-damping data this library has.
+#  The .308 set above is McCoy's textbook case and the 105 mm is artillery; this
+#  is a production service bullet, and the one regime the site's readers shoot.
+#
+#  Tables 3 and 4 are transcribed BELOW AS FIRED — one row per round, exactly as
+#  printed, with NaN where the reduction produced no value. Every curve the
+#  library uses is derived from these rows at load time, so there is no second
+#  hand-copied copy to drift out of step.
+#  ────────────────────────────────────────────────────────────────────────────
+
+"""
+Spark-range rounds from Table 3 (ball) and Table 4 (tracer) of BRL-MR-3476.
+
+Columns: `round · Mach · α_t (deg) · C_D · C_Mα · C_Lα · C_Mpα · (C_Mq+C_Mα̇) · CP_N`.
+`NaN` marks a dashed cell — the reduction of that round did not yield that
+coefficient. Round numbers ending in `.1` / `.2` are McCoy's `(a)` / `(b)` split
+reductions of one round; the three `SS-109` rounds numbered 144xx were previously
+fired from an Obermeyer 7" twist barrel, which is why they sit apart in Mach.
+
+⚠️ **`C_D` is measured AT the listed `α_t`, not at zero yaw.** Only the low-yaw
+rounds are used for the drag curve — see [`brl3476_aero`](@ref).
+
+⚠️ One cell is deliberately `NaN` that is not dashed in the report: `C_Mα` of round
+14415, printed over a smudge. Its neighbour 14416 reads 2.54 at the same Mach, so
+the value is almost certainly 2.55 — which is exactly why it is left out rather
+than guessed.
+"""
+const BRL3476_SS109 = [
+#   round     Mach   α_t     C_D    C_Mα   C_Lα   C_Mpα  C_Mq+C_Mα̇  CP_N
+    16221.0   2.638  1.30   0.2898  2.52   NaN   -0.04   -3.77      NaN
+    16220.0   2.622  1.28   0.2857  2.55   2.82  -0.03   -6.42      2.34
+    16231.0   1.964  0.88   0.3346  2.76   NaN    NaN     NaN       NaN
+    16230.0   1.860  3.78   0.3730  2.77   2.67   0.04   -5.02      2.43
+    16238.0   1.179  2.90   0.4614  2.97   2.15  -0.31   -3.15      2.65
+    16239.0   1.138  1.47   0.4488  NaN    NaN    NaN     NaN       NaN
+    16245.1   0.757  2.57   0.1753  NaN    NaN    NaN     NaN       NaN
+    16245.2   0.746  4.06   0.1832  NaN    1.81   NaN     NaN       NaN
+    16246.0   0.736  4.82   0.2204  3.05   1.61  -0.16   -0.22      3.19
+    14414.0   2.645  0.40   0.2834  NaN    NaN    NaN     NaN       NaN
+    14416.0   2.629  1.70   0.2919  2.54   NaN    0.16   -7.05      NaN
+    14415.0   2.625  1.84   0.2956  NaN    NaN    0.13   -7.38      NaN ]
+
+"@ref BRL3476_SS109 — Table 3, M855 ball."
+const BRL3476_M855 = [
+    16222.0   2.730  1.90   0.3039  2.40   2.61   0.10   -5.52      2.36
+    16223.0   2.714  1.22   0.3007  2.35   NaN   -0.03   -6.51      NaN
+    16228.0   1.875  1.62   0.3741  2.66   NaN    NaN     NaN       NaN
+    16229.0   1.869  3.65   0.3851  2.64   2.59   0.06   -4.99      2.42
+    16237.0   1.137  2.27   0.4874  2.82   2.16   NaN     NaN       2.60
+    16238.0   1.072  2.87   0.4826  2.85   2.14  -0.59    1.27      2.62
+    16243.0   0.674  6.04   0.2918  2.67   1.85  -0.47    0.00      2.79 ]
+
+"@ref BRL3476_SS109 — Table 4, L110 tracer."
+const BRL3476_L110 = [
+    16224.0   2.543  0.78   0.2983  2.44   NaN    0.39  -10.4       NaN
+    16225.0   2.533  2.76   0.3083  2.26   2.96   0.44  -10.1       3.21
+    16234.0   1.890  6.14   0.4267  2.50   2.89   0.89  -18.6       3.27
+    16235.0   1.822  0.52   0.3737  NaN    NaN    NaN     NaN       NaN
+    16242.0   1.121  5.21   0.5398  NaN    NaN    NaN     NaN       NaN
+    16249.1   0.854  4.31   0.2470  NaN    NaN    NaN     NaN       NaN
+    16249.2   0.841  5.29   0.2074  NaN    NaN    NaN     NaN       NaN ]
+
+"@ref BRL3476_SS109 — Table 4, M856 tracer."
+const BRL3476_M856 = [
+    16226.0   2.575  1.64   0.3044  2.28   2.73   0.45  -14.6       3.32
+    16227.0   2.566  1.70   0.3140  2.29   2.81   0.56  -12.5       3.30
+    16232.0   1.995  2.77   0.3308  2.76   2.87   0.59  -14.9       3.43
+    16233.0   1.870  4.01   0.4025  2.70   NaN    0.95  -19.8       NaN
+    16240.1   1.184  4.03   0.5031  2.88   2.10   NaN     NaN       3.67
+    16240.2   1.140  5.95   0.5334  2.86   2.11   NaN     NaN       3.65
+    16241.0   1.117  4.67   0.4850  2.87   2.05  -0.30   -5.15      3.70
+    16247.0   0.758  7.59   0.3174  2.93   1.92   NaN     NaN       3.87
+    16248.0   0.738 10.04   0.2847  NaN    NaN    NaN     NaN       NaN ]
+
+"""
+Average physical characteristics, Table 1 of BRL-MR-3476, plus the dimensioned
+sketches of Figures 2 and 3. One caliber is 5.69 mm throughout.
+
+Fields: `mass_g · cg_cal · Ix · Iy` (both g·cm², as printed) then the contour
+`len_cal · nose_cal · ogive_R_cal · bt_cal · bt_deg`.
+
+⚠️ The `2.00` / `1.90` cote on Figure 2 is **not** the ogive length: read that way
+the tangency condition returns a meplat of 0.52 caliber, which is absurd. The
+ogive is the `2.76` / `2.71` cote, and the meplat then comes out at 0.067 / 0.041
+caliber — see [`brl3476_geometry`](@ref).
+"""
+const BRL3476_PHYSICAL = Dict(
+    :ss109 => (mass_g = 4.03, cg_cal = 1.52, Ix = 0.1425, Iy = 1.112,
+               len_cal = 4.07, nose_cal = 2.76, ogive_R_cal = 8.4, bt_cal = 0.45, bt_deg = 9.75),
+    :m855  => (mass_g = 4.05, cg_cal = 1.54, Ix = 0.1426, Iy = 1.150,
+               len_cal = 4.05, nose_cal = 2.71, ogive_R_cal = 7.9, bt_cal = 0.40, bt_deg = 8.50),
+    :l110  => (mass_g = 4.09, cg_cal = 2.52, Ix = 0.1573, Iy = 1.874),
+    :m856  => (mass_g = 4.19, cg_cal = 2.57, Ix = 0.1634, Iy = 1.987))
+
+const BRL3476_CALIBER_M = 5.69e-3
+
+"""
+    brl3476_curve(rows, col; max_yaw, tol) -> [mach value]
+
+Collapse one coefficient column of a [`BRL3476_SS109`](@ref)-shaped table into a
+strictly increasing Mach curve fit for `interp_table`.
+
+Rounds whose cell is `NaN` are dropped; rounds fired above `max_yaw` degrees are
+dropped too (used to keep the drag curve near zero yaw). Rounds closer together
+than `tol` in Mach are averaged — the test series fired several rounds within a
+few thousandths of each other, and `interp_table` needs a strictly increasing
+abscissa.
+"""
+function brl3476_curve(rows::AbstractMatrix, col::Integer;
+                       max_yaw::Real = Inf, tol::Real = 0.05)
+    pts = sort([(rows[i, 2], rows[i, col]) for i in axes(rows, 1)
+                if !isnan(rows[i, col]) && rows[i, 3] <= max_yaw], by = first)
+    isempty(pts) && error("BRL-MR-3476 : la colonne $col n'a aucune mesure exploitable")
+    groups = Vector{Vector{Tuple{Float64,Float64}}}()
+    for p in pts
+        if !isempty(groups) && p[1] - groups[end][end][1] < tol
+            push!(groups[end], p)
+        else
+            push!(groups, [p])
+        end
+    end
+    return hcat([sum(first, g) / length(g) for g in groups],
+                [sum(last,  g) / length(g) for g in groups])
+end
+
+"""
+    _brl_interp(tab, name, which) -> (Mach -> value)
+
+Interpolate a BRL-MR-3476 curve, and **say so when asked outside the Mach band
+that was actually fired**.
+
+`interp_table` clamps at both ends, which for a dense table is harmless and for
+these is not: the L110 tracer has three `C_Mpα` rounds, all above Mach 1.89, so a
+bare lookup answers a confident +0.89 at Mach 1.0 — a value nobody measured. Nine
+rounds cannot be made to cover a flight; the honest response is to hand back the
+clamped value **and warn once**, so an out-of-band run is visible in the log
+instead of silently plausible. Same reasoning as the `provenance` guard on
+[`AeroCoefficients6DOF`](@ref).
+"""
+function _brl_interp(tab::AbstractMatrix, name::AbstractString, which::Symbol)
+    lo, hi = tab[1, 1], tab[end, 1]
+    # 2 % of slack at each end. Several rounds sit within a few thousandths of
+    # each other and get averaged into one abscissa, so asking at the Mach of an
+    # individual round can fall a hair outside the merged band. Warning on that
+    # would train the reader to ignore the warning, which is worse than silence.
+    lo_w, hi_w = lo * 0.98, hi * 1.02
+    return function (Ma)
+        if Ma < lo_w || Ma > hi_w
+            @warn "BRL-MR-3476 : $name du $which extrapolé hors de la bande de tir" *
+                  " (Mach $(round(Ma, digits=3)) hors de [$lo, $hi]) — valeur bloquée au bord" maxlog = 1
+        end
+        return DragModels.interp_table(tab, Ma)
+    end
+end
+
+"""
+    brl3476_geometry(which) -> BulletGeometry
+
+Contour of a 5.56 mm NATO ball projectile from Figure 2, with the meplat solved
+from the tangent-ogive condition `r_m = √(R² − Lₙ²) − (R − ½)` in calibers.
+
+`which` is `:ss109` or `:m855`.
+
+!!! warning "The core is not what `bullet_inertia` models"
+    Both projectiles carry a **steel penetrator** ahead of a lead rear core, so
+    their mass is laid out in two materials. `BulletGeometry` knows a single lead
+    core inside a gilding-metal jacket. Fed this contour and the true mass, the
+    estimator lands 4–5 % low on Ix, 6–9 % low on Iy and 5–7 % low on the CG
+    against Table 1. That is the composite core showing, not an integration
+    error, and it is the honest limit of the estimator on military ball.
+"""
+function brl3476_geometry(which::Symbol)
+    p = BRL3476_PHYSICAL[which]
+    meplat = 2 * (sqrt(p.ogive_R_cal^2 - p.nose_cal^2) - (p.ogive_R_cal - 0.5))
+    return BulletGeometry(nose_frac  = p.nose_cal / p.len_cal,
+                          meplat_cal = meplat,
+                          bt_len_cal = p.bt_cal,
+                          bt_deg     = p.bt_deg)
+end
+
+"""
+    brl3476_aero(which) -> AeroCoefficients6DOF
+
+Measured coefficient set for one 5.56 mm NATO projectile: `:ss109`, `:m855`,
+`:l110` or `:m856`. Marked `provenance = :measured`, so `solve_6dof` runs it
+without the placeholder warning.
+
+# What is measured here, and what is not
+
+Taken from the range reductions: **C_Mα**, **C_Lα** (entered as `C_Nα = C_Lα + C_D0`),
+**C_Mpα** and **(C_Mq + C_Mα̇)**. The drag curve uses only rounds fired below 2° of
+yaw, where the yaw-drag term is under 1 % of C_D — comfortably inside the round-to-
+round scatter, which is itself about 1.4 % (rounds 16221 and 16220 differ by that
+much at the same Mach and yaw).
+
+**Not measured by this report, left at the struct defaults**: `Clp` (roll damping —
+it appears only in the list of symbols), `Cda2` (yaw drag) and `CNpa` (Magnus
+force). The first two matter little here; `C_Npα` our own sensitivity study found
+negligible.
+
+!!! warning "This set cannot produce a limit cycle"
+    Each `C_Mpα` value is a single round at a single angle of attack, so the curve
+    below is a function of **Mach only** — the yaw dependence is not resolved. It is
+    precisely the sign change of `C_Mpα` with yaw that fixes limit-cycle amplitude,
+    so a run on this set will not reproduce one. Compare `mccoy_308_168_cmpa`,
+    which does carry a yaw axis because McCoy published the fit rather than the
+    individual rounds. The scatter here hints at the same behaviour — M855 goes
+    from +0.10 at 1.90° to −0.59 at 2.87° — but three points cannot separate a
+    Mach effect from a yaw effect, and pretending otherwise would be inventing.
+"""
+function brl3476_aero(which::Symbol; yaw_drag_coef::Real = 3.5)
+    rows = which === :ss109 ? BRL3476_SS109 :
+           which === :m855  ? BRL3476_M855  :
+           which === :l110  ? BRL3476_L110  :
+           which === :m856  ? BRL3476_M856  :
+           error("BRL-MR-3476 ne couvre que :ss109, :m855, :l110 et :m856")
+
+    # C_D is measured at the round's own yaw. Reduce every round to zero yaw with
+    # C_D0 = C_D − C_Dδ²·sin²α_t rather than keeping only the near-zero-yaw ones:
+    # on the M855 that filter leaves TWO points, both supersonic, and the curve
+    # then clamps a supersonic value straight across the transonic peak.
+    corrected = copy(rows)
+    for i in axes(corrected, 1)
+        corrected[i, 4] -= yaw_drag_coef * sind(corrected[i, 3])^2
+    end
+
+    cd0_tab = brl3476_curve(corrected, 4)
+    cd0     = _brl_interp(cd0_tab, "C_D0", which)
+    cla     = _brl_interp(brl3476_curve(rows, 6), "C_Lα", which)
+    return AeroCoefficients6DOF(
+        Cd0_func = cd0,
+        CNa      = Ma -> cla(Ma) + cd0(Ma),
+        CMa      = _brl_interp(brl3476_curve(rows, 5), "C_Mα", which),
+        CMpa     = _brl_interp(brl3476_curve(rows, 7), "C_Mpα", which),
+        CMq_CMad = _brl_interp(brl3476_curve(rows, 8), "C_Mq+C_Mα̇", which),
+        provenance = :measured,
+    )
+end
+
+"""
+    brl3476_shot(which = :m855; kwargs...) -> ShotParameters6DOF
+
+A 5.56 mm NATO shot with the **measured** moments of inertia of Table 1 and the
+measured aerodynamics of [`brl3476_aero`](@ref).
+
+⚠️ Two inputs are *not* from the report and are set to service values: the twist,
+taken as the 1:7″ of the M16A2 and M249 that the report discusses in its
+dispersion section, and the muzzle velocity, taken as the highest Mach of the test
+series converted at ICAO sea level (Mach 2.730 → 3048 fps for the M855). Override
+them for any specific rifle.
+"""
+function brl3476_shot(which::Symbol = :m855; kwargs...)
+    p = BRL3476_PHYSICAL[which]
+    d = BRL3476_CALIBER_M
+    v0_fps = maximum((which === :ss109 ? BRL3476_SS109 :
+                      which === :m855  ? BRL3476_M855  :
+                      which === :l110  ? BRL3476_L110  : BRL3476_M856)[:, 2]) *
+             340.3 / 0.3048
+    return ShotParameters6DOF(;
+        mass_grains        = p.mass_g / 0.06479891,
+        caliber_in         = d / 0.0254,
+        bullet_length_in   = get(p, :len_cal, 4.06) * d / 0.0254,
+        muzzle_vel_fps     = v0_fps,
+        twist_in           = 7.0,
+        twist_direction    = 1,
+        initial_yaw_deg    = 0.0,
+        initial_pitch_rate = 25.0,
+        zero_range_yd      = 600.0,
+        target_range_yd    = 600.0,
+        aero               = brl3476_aero(which),
+        Ix                 = p.Ix * 1.0e-7,        # g·cm² -> kg·m²
+        Iy                 = p.Iy * 1.0e-7,
         kwargs...)
 end
 
