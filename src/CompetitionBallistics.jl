@@ -740,7 +740,8 @@ struct TrajectoryPoint
     time::Float64           # s
     range_m::Float64        # m (downrange)
     drop_m::Float64         # m (vertical, relative to line of sight)
-    windage_m::Float64      # m (cross-range, positive = right)
+    windage_m::Float64      # m (cross-range, positive = right) — TOTAL
+    spin_drift_m::Float64   # m, part of windage_m due to spin drift alone
     vx::Float64             # m/s
     vy::Float64             # m/s
     vz::Float64             # m/s
@@ -1053,7 +1054,7 @@ function solve_trajectory(p::ShotParameters)
         ek    = 0.5 * si.m * v_tot^2
 
         push!(results, TrajectoryPoint(
-            t, x, y, z,
+            t, x, y, z, 0.0,          # spin_drift_m rempli après l'intégration
             vx, vy, vz, v_tot, mach, ek
         ))
 
@@ -1083,7 +1084,7 @@ function solve_trajectory(p::ShotParameters)
             sd_m = spin_drift_inches(pt.time, sg, p.twist_direction) * 0.0254
             results[i] = TrajectoryPoint(
                 pt.time, pt.range_m, pt.drop_m,
-                pt.windage_m + sd_m,
+                pt.windage_m + sd_m, sd_m,
                 pt.vx, pt.vy, pt.vz,
                 pt.v_total, pt.mach, pt.energy_J
             )
@@ -1102,9 +1103,9 @@ function trajectory_table(p::ShotParameters; step_yd::Real=100.0)
     traj = solve_trajectory(p)
     step_m = yards_to_m(step_yd)
 
-    println("┌────────┬──────────┬──────────┬──────────┬──────────┬────────┬──────────┐")
-    println("│Rng (yd)│ Drop (in)│ Elev(MOA)│ Wind (in)│ Vel(fps) │ ToF(s) │ Eng(ftlb)│")
-    println("├────────┼──────────┼──────────┼──────────┼──────────┼────────┼──────────┤")
+    println("┌────────┬──────────┬──────────┬──────────┬──────────┬──────────┬────────┬──────────┐")
+    println("│Rng (yd)│ Drop (in)│ Elev(MOA)│ Wind (in)│ Spin (in)│ Vel(fps) │ ToF(s) │ Eng(ftlb)│")
+    println("├────────┼──────────┼──────────┼──────────┼──────────┼──────────┼────────┼──────────┤")
 
     next_r = step_m
     for pt in traj
@@ -1112,18 +1113,19 @@ function trajectory_table(p::ShotParameters; step_yd::Real=100.0)
             r_yd   = m_to_yards(pt.range_m)
             drop_in = m_to_inches(pt.drop_m)
             wind_in = m_to_inches(pt.windage_m)
+            spin_in = m_to_inches(pt.spin_drift_m)
             elev    = drop_to_moa(abs(drop_in), r_yd)
             elev    = pt.drop_m < 0 ? elev : -elev
             v_fps   = ms_to_fps(pt.v_total)
             ek_ftlb = pt.energy_J / 1.35582
 
-            @printf("│ %6.0f │ %+8.1f │ %+8.1f │ %+8.1f │ %8.0f │ %6.3f │ %8.0f │\n",
-                    r_yd, drop_in, elev, wind_in, v_fps, pt.time, ek_ftlb)
+            @printf("│ %6.0f │ %+8.1f │ %+8.1f │ %+8.1f │ %+8.1f │ %8.0f │ %6.3f │ %8.0f │\n",
+                    r_yd, drop_in, elev, wind_in, spin_in, v_fps, pt.time, ek_ftlb)
 
             next_r += step_m
         end
     end
-    println("└────────┴──────────┴──────────┴──────────┴──────────┴────────┴──────────┘")
+    println("└────────┴──────────┴──────────┴──────────┴──────────┴──────────┴────────┴──────────┘")
 end
 
 end # module ExteriorBallistics

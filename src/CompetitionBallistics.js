@@ -853,7 +853,8 @@ const ExteriorBallistics = (() => {
         time:     t,
         rangeM:   x,
         dropM:    y,
-        windageM: z,
+        windageM: z,          // TOTAL : vent + Coriolis + dérive gyroscopique
+        spinDriftM: 0.0,      // rempli après l'intégration
         vx, vy, vz,
         vTotal:   vTot,
         mach,
@@ -885,6 +886,7 @@ const ExteriorBallistics = (() => {
         const pt = results[i];
         const sdM = spinDriftInches(pt.time, sg, p.twistDirection) * 0.0254;
         pt.windageM += sdM;
+        pt.spinDriftM = sdM;
       }
     }
 
@@ -904,6 +906,7 @@ const ExteriorBallistics = (() => {
         const rYd    = mToYards(pt.rangeM);
         const dropIn = mToInches(pt.dropM);
         const windIn = mToInches(pt.windageM);
+        const spinIn = mToInches(pt.spinDriftM || 0);
         let   elev   = dropToMoa(Math.abs(dropIn), rYd);
         elev = pt.dropM < 0 ? elev : -elev;
         const vFps   = msToFps(pt.vTotal);
@@ -914,6 +917,7 @@ const ExteriorBallistics = (() => {
           dropIn:     +dropIn.toFixed(1),
           elevMoa:    +elev.toFixed(1),
           windIn:     +windIn.toFixed(1),
+          spinDriftIn: +spinIn.toFixed(1),
           velFps:     Math.round(vFps),
           tofS:       +pt.time.toFixed(3),
           energyFtlb: Math.round(ekFtlb),
