@@ -623,13 +623,23 @@ cd_g1_spline(mach::Real) = eval_spline(G1_SPLINE, mach)
 cd_g7_spline(mach::Real) = eval_spline(G7_SPLINE, mach)
 
 """
-    drag_coefficient(model, mach; spline=false) -> Cd
+    drag_coefficient(model, mach; spline=true) -> Cd
 
-Return drag coefficient for `:G1` or `:G7` at `mach`.
-Set `spline=true` for C²-continuous cubic spline interpolation
-(recommended for transonic accuracy).
+Return drag coefficient for `:G1` or `:G7` at `mach`, by C²-continuous cubic
+spline. Pass `spline=false` for raw linear interpolation of the table.
+
+!!! warning "Le défaut était `false` jusqu'au 2026-08-14"
+    Le portage JS a `spline = true` par défaut, et le README de la bibliothèque
+    annonce l'interpolation « C²-continuous cubic spline ». Le Julia interpolait
+    donc LINÉAIREMENT, en contradiction avec sa propre documentation et avec le
+    code que le site sert. Aux nœuds de la table les deux coïncident — c'est
+    pourquoi un balayage grossier n'y voyait rien —, mais entre deux nœuds l'écart
+    atteint 0,6 % : à Mach 2,866 le linéaire rend 0,14612 et la spline 0,14524.
+
+    C'était la source unique de TOUT le résidu observé entre les deux solveurs 3-DOF,
+    dès le premier pas d'intégration. Trouvé par le contrôle de parité Julia ↔ JS.
 """
-function drag_coefficient(model::Symbol, mach::Real; spline::Bool=false)
+function drag_coefficient(model::Symbol, mach::Real; spline::Bool=true)
     if model == :G1
         return spline ? cd_g1_spline(mach) : cd_g1(mach)
     elseif model == :G7
@@ -842,13 +852,27 @@ end
 """
     eotvos_vertical(range_m, tof, latitude_deg, azimuth_deg) -> Δy [m]
 
-Eötvös vertical deflection.
-Δy ≈ -ω_E · cos(φ) · sin(ψ) · R · t
+Eötvös vertical deflection, **positive up** — the same convention as the solver's
+`drop_m`.
+
+    Δy ≈ +ω_E · cos(φ) · sin(ψ) · R · t
+
+ψ is the firing azimuth clockwise from North, so ψ = 90° is due East: firing east
+lands **high**, firing west lands low. That is the sense the full solver produces
+when its Coriolis term is switched on — a .308 at 1000 yd and 50° latitude comes
+in 0.058 m high to the east and 0.052 m low to the west.
+
+!!! warning "This carried the opposite sign until 2026-08-14"
+    Both the code and the line above read `-ω_E`, and were self-consistent, which
+    is why nothing looked wrong. The JS port had the correct sign all along; the
+    Julia ↔ JS parity check is what surfaced it. Neither version is called by
+    anything, so the error was latent — but it was the reference implementation
+    that was wrong, and it would have been copied the first time someone used it.
 """
 function eotvos_vertical(range_m::Real, tof::Real,
                          latitude_deg::Real, azimuth_deg::Real)
     ω = 7.2921e-5
-    return -ω * cos(deg2rad(latitude_deg)) * sin(deg2rad(azimuth_deg)) *
+    return ω * cos(deg2rad(latitude_deg)) * sin(deg2rad(azimuth_deg)) *
            range_m * tof
 end
 
@@ -951,14 +975,32 @@ function solve_trajectory(p::ShotParameters)
     lat = deg2rad(p.latitude_deg)
     azi = deg2rad(p.azimuth_deg)
 
+    # Earth-rotation vector in the shot frame (x = downrange/LOS, y = up, z = right).
+    # Ω in (East, North, Up) = ω(0, cos lat, sin lat); projected onto a shot frame
+    # whose downrange axis points at azimuth `azi` from North:
+    #   downrange = (sin azi, cos azi, 0), up = (0,0,1), right = (cos azi, -sin azi, 0).
+    #
+    # Missing alongside `g_along`/`g_perp` since 4c2343c — same cause, same silence.
+    oe_x =  ω_E * cos(lat) * cos(azi)
+    oe_y =  ω_E * sin(lat)
+    oe_z = -ω_E * cos(lat) * sin(azi)
+
     # Wind components
     w_ang = deg2rad(p.wind_angle_deg)
     wx = -si.w * cos(w_ang)
     wz =  si.w * sin(w_ang)
     wy = 0.0
 
-    # Incline
-    inc = deg2rad(p.incline_deg)
+    # Incline: resolve gravity in the LOS frame. The component perpendicular to the
+    # line of sight (g·cos α) drives the drop — the physical basis of the
+    # "rifleman's rule" — while g·sin α acts along the flight path. α = 0 ⇒ flat fire.
+    #
+    # These two were MISSING and `solve_trajectory` threw `UndefVarError: g_along`
+    # on every call, from commit 4c2343c until the Julia ↔ JS parity check found it
+    # on 2026-08-14. The JS port carried them all along; nothing compared the two.
+    inc    = deg2rad(p.incline_deg)
+    g_along = -Atmosphere.g0 * sin(inc)
+    g_perp  = -Atmosphere.g0 * cos(inc)
 
     # Zero angle + dialed elevation/windage
     θ0 = find_zero_angle(p)
@@ -971,7 +1013,13 @@ function solve_trajectory(p::ShotParameters)
 
     # Initial state
     x, y, z = 0.0, -si.sh, 0.0
-    vx = si.v0 * cos(θ0) * cos(inc) * cos(ψ0)
+    # Pas de cos(inc) ici : la vitesse initiale est portée par l'axe du canon, qui
+    # pointe θ0 au-dessus de la ligne de visée quelle que soit l'inclinaison de
+    # l'ensemble. Incliner l'arme ne ralentit pas la balle — le dévers n'entre que
+    # par la décomposition de la gravité (g_along / g_perp) posée plus haut.
+    # Le facteur cos(inc) était présent jusqu'au 2026-08-14 : à 30° il retirait 13 %
+    # de vitesse initiale et 30 % sur la chute à 600 yd. Trouvé par la parité avec le JS.
+    vx = si.v0 * cos(θ0) * cos(ψ0)
     vy = si.v0 * sin(θ0)
     vz = si.v0 * cos(θ0) * sin(ψ0)
     t  = 0.0
