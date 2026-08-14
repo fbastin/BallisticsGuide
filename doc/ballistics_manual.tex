@@ -1121,7 +1121,35 @@ where the coefficients $\{a_k, b_k, c_k, d_k\}$ are determined by enforcing cont
 
 Cubic spline interpolation is particularly important in the transonic region ($0.9 < \Mach < 1.2$) where the $\Cd$ curve has its steepest gradient. The smooth derivative ensures that the drag force varies smoothly as the bullet decelerates through the sound barrier, eliminating artificial trajectory perturbations.
 
-The companion Julia implementation (Appendix~\ref{app:julia_file}) provides both linear and cubic spline interpolation via the \texttt{DragModels} module.
+\subsubsection*{The spline is better only where the table is dense}
+
+This recommendation holds for the \emph{standard} tables and must not be carried over
+to sparse measured ones. A decimation test --- remove every second node, rebuild both
+interpolants on what remains, and score them on the removed values, whose truth is
+known --- reverses the verdict according to the sampling:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Table & Nodes & Linear & Spline \\
+\midrule
+G7 standard      & 65 & 0.099\,\% & \textbf{0.049\,\%} \\
+G1 standard      & 53 & 0.424\,\% & \textbf{0.069\,\%} \\
+McCoy .308 $C_{D_0}$ & 15 & \textbf{0.68\,\%} & 8.89\,\% \\
+McCoy 105\,mm $C_{D_0}$ & 12 & \textbf{2.86\,\%} & 6.93\,\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The criterion is not ``spline versus linear'' but \emph{sampling density relative to
+curvature}. McCoy's range-reduced tables are sparse and deliberately clustered on the
+transonic knee --- his points sit at $\Mach = 0.90$, $0.95$, $1.00$, $1.05$, $1.10$,
+$1.20$ --- so the steep rise imposes derivatives that the spline propagates as
+oscillation into the neighbouring intervals, where it becomes up to thirteen times
+worse than a straight line. The 6-DOF coefficient sets therefore read their tables
+\emph{linearly}, on purpose.
+
+The companion Julia implementation (Appendix~\ref{app:julia_file}) provides both linear and cubic spline interpolation via the \texttt{DragModels} module. Since 2026-08-14 \texttt{drag\_coefficient} defaults to the spline, matching the JavaScript port and this section; it previously defaulted to linear, in contradiction with both.
 
 \section{Equations of Motion: 3-DOF Point-Mass Model}
 \label{sec:3dof}
@@ -2273,8 +2301,14 @@ sight line and $g_{\parallel} = g\sin\alpha$ along the flight path, then integra
 normally. This captures the slight up/down asymmetry (the along-path component
 accelerates a descending shot and decelerates a climbing one) that the pure
 cosine rule omits. For the reference 6.5\,mm load at $\pm 30^{\circ}$ and
-\SI{1000}{\yard}, the drop along the sight line falls from $-272$ inches (flat) to
-roughly $-233$ inches (uphill) and $-228$ inches (downhill).
+\SI{1000}{\yard}, the drop along the sight line falls from $-300.6$ inches (flat) to
+$-258.4$ inches (uphill) and $-252.2$ inches (downhill).
+
+These three figures were $-272$, $-233$ and $-228$ until 2026-08-14 --- about
+10\,\% shallower, in a constant ratio. They predate the reference-area correction
+on $\Cd$ (the BRL tables refer drag to $\pi d^2/4$, so the solver carries a factor
+$4/\pi$; omitting it understates drag by 27\,\%). Both implementations now return
+the values above, to the digit.
 
 \section{Barrel Harmonics and Optimal Charge Weight}
 
