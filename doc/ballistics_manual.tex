@@ -146,11 +146,13 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.1 (Updated) --- \today}
+{\large Version 3.2 --- \today}
 \end{titlepage}
 
 \begin{abstract}
-This manual provides a rigorous mathematical treatment of competition rifle ballistics. The current version (v3.1) includes significant precision improvements to the 3-DOF engine (Coordinate System alignment and 4/$\pi$ drag scaling) and outlines the roadmap for the implementation of a 6-DOF McCoy expert mode.
+This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought precision improvements to the 3-DOF engine (coordinate-system alignment and $4/\pi$ drag scaling) and outlined a roadmap for a 6-DOF expert mode.
+
+Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and validated against three published cases --- McCoy's .308\,in 168\,gr textbook example, the 105\,mm HE M1 shell, and the 5.56\,mm NATO family measured at the Ballistic Research Laboratory. This edition adds the moment-of-inertia estimator that feeds it (Section~\ref{sec:inertia}), the measured coefficient sets it can be run on, and the reasons a set may not be trusted. It also corrects an inclined-fire example that had drifted 10\,\% from what both implementations return, and qualifies the recommendation of spline interpolation, which is right for the dense standard drag tables and wrong for sparse measured ones.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -1768,6 +1770,7 @@ The zero-yaw drag coefficient relates directly to the standard drag model and th
 This allows the 6-DOF model to use the same BC input as the 3-DOF model for the dominant drag term.
 
 \section{Moments of Inertia}
+\label{sec:inertia}
 
 For a rotationally symmetric bullet of mass $m$, length $L$, and diameter $d$:
 \begin{align}
