@@ -2035,6 +2035,32 @@ Measured coefficient set for the .308", 168 gr Sierra International bullet.
 
 The normal-force slope the solver wants is recovered from the tabulated lift-curve
 slope as `C_Nα = C_Lα + C_D`, both read at the same Mach number.
+
+!!! danger "Ne pas « améliorer » ces tables en spline"
+    Toutes les lectures ci-dessous passent par `interp_table`, c'est-à-dire une
+    interpolation **linéaire**, alors que `drag_coefficient` et le G7 standard sont
+    passés à la spline le 2026-08-14. Ce n'est pas un oubli.
+
+    Un test de décimation — un nœud sur deux retiré puis reconstruit — donne des
+    verdicts **opposés** selon la table :
+
+    | table | nœuds | linéaire | spline |
+    |---|---|---|---|
+    | G7 standard | 65 | 0,099 % | **0,049 %** |
+    | G1 standard | 53 | 0,424 % | **0,069 %** |
+    | McCoy .308 C_D0 | 15 | **0,68 %** | 8,89 % |
+    | McCoy 105 C_D0 | 12 | **2,86 %** | 6,93 % |
+
+    Le critère n'est pas « spline contre linéaire » mais **la densité
+    d'échantillonnage rapportée à la courbure**. Les tables standard sont denses et
+    régulières : la spline y suit la courbe. Les tables de McCoy sont creuses et
+    **volontairement resserrées sur le genou transsonique** — ses points sont à
+    0,90 / 0,95 / 1,00 / 1,05 / 1,10 / 1,20 —, si bien que la montée brutale impose
+    des dérivées que la spline propage en oscillant dans les intervalles voisins.
+    Elle y est jusqu'à **treize fois pire** que la ligne droite.
+
+    Les validations publiées ont par ailleurs été calées avec ces lectures
+    linéaires : les changer obligerait à tout revalider pour un résultat moins bon.
 """
 function mccoy_308_168_aero()
     cd0(Ma) = DragModels.interp_table(MCCOY_308_168_CD0, Ma)
