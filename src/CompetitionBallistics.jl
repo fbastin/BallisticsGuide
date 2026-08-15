@@ -1574,12 +1574,29 @@ Neither source is redistributed; only these three numbers are derived from them.
 
     Measured `Iy/Ix` is **7.45**. So 0.085 would hit exactly the ratio this
     docstring calls the column that matters, and both inertias inside 0.6 %.
-    **It is deliberately NOT applied.** Gilding-metal jackets run 0.025–0.030″
-    (0.081–0.098 cal), so physics does not choose between the two values, and the
-    calibration set is **one bullet** — the very trap the warning above describes.
-    What would settle it: a second bullet carrying both a measured inertia and a
-    contour. The Sierra 190 gr HPBT MatchKing (#2210) already has the BRL inertias
-    and a JBM length; only its contour is missing.
+    **It is deliberately NOT applied**, and a second case has since confirmed that.
+    The Sierra 190 gr HPBT MatchKing (#2210) was added on 2026-08-15 — BRL inertias,
+    JBM length, contour from Litz's *Ballistic Performance of Rifle Bullets* 3rd ed.
+    The two bullets want **different** thicknesses:
+
+    | best-fit `jacket_cal` on Iy/Ix | | ΔIx | ΔIy |
+    |---|---|---:|---:|
+    | 168 gr | 0.085 → 0.66 mm | +0.5 % | +0.5 % |
+    | 190 gr | 0.0625 → **0.49 mm** | −1.6 % | −1.8 % |
+
+    A 36 % spread, and the 190's optimum is 0.019″ — **thinner than any real gilding
+    metal jacket** (0.025–0.030″). So the parameter is absorbing something that is
+    not jacket thickness, and fitting it on either bullet alone calibrates on that
+    bullet's idiosyncrasy. Leave 0.095.
+
+    ⚠️ One confound worth keeping in view: for the 168 the contour and the inertia
+    both come from McCoy at the same date, whereas the 190 pairs a **2015 contour
+    with a 1980s measurement**. Sierra has re-tooled in between, so that pair may
+    not describe one object. In calibration terms we are still nearer n = 1 than
+    n = 2.
+
+    At the current default the estimator scores ΔIx −4.8 %, ΔIy +6.1 % on the 190 —
+    its second validation point, whatever the calibration question.
 """
 Base.@kwdef struct BulletGeometry
     nose_frac::Float64    = 0.541
