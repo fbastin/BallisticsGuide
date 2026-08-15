@@ -1558,6 +1558,28 @@ Neither source is redistributed; only these three numbers are derived from them.
     exactly and therefore scored well on the one case with published inertias,
     while being wrong for the bullets this library is actually used on. Do not
     re-tune these defaults on that case.
+
+!!! note "Where the residual +2.4 % on `Iy` comes from — measured, not fixed"
+    Investigated 2026-08-15. It is **not** an unmodelled tip cavity: the cavity is
+    part of the `:jacketed_lead` construction, and the core height is solved from
+    the mass. The residual tracks `jacket_cal`, and that parameter trades the two
+    inertias against each other — a thicker shell loads the nose (`Iy` up) and
+    lightens the axis (`Ix` down), so no single scalar zeroes both:
+
+    | `jacket_cal` | | ΔIx | ΔIy | Iy/Ix |
+    |---|---|---:|---:|---:|
+    | 0.080 | 0.63 mm | +0.9 % | −0.5 % | 7.35 |
+    | **0.085** | **0.66 mm** | **+0.6 %** | **+0.5 %** | **7.45** |
+    | 0.095 *(current)* | 0.74 mm | −0.1 % | +2.4 % | 7.64 |
+
+    Measured `Iy/Ix` is **7.45**. So 0.085 would hit exactly the ratio this
+    docstring calls the column that matters, and both inertias inside 0.6 %.
+    **It is deliberately NOT applied.** Gilding-metal jackets run 0.025–0.030″
+    (0.081–0.098 cal), so physics does not choose between the two values, and the
+    calibration set is **one bullet** — the very trap the warning above describes.
+    What would settle it: a second bullet carrying both a measured inertia and a
+    contour. The Sierra 190 gr HPBT MatchKing (#2210) already has the BRL inertias
+    and a JBM length; only its contour is missing.
 """
 Base.@kwdef struct BulletGeometry
     nose_frac::Float64    = 0.541
