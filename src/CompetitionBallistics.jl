@@ -1597,6 +1597,35 @@ Neither source is redistributed; only these three numbers are derived from them.
 
     At the current default the estimator scores ΔIx −4.8 %, ΔIy +6.1 % on the 190 —
     its second validation point, whatever the calibration question.
+
+!!! note "Three candidate refinements, tested 2026-08-15 — and only one survives"
+    `_profile` forces a **tangent** ogive: `R` follows from the tangency condition,
+    so nose length and meplat fully determine the arc, with no shape freedom. That
+    is the obvious suspect, and it is **not** the culprit. Errors on `Iy/Ix`:
+
+    | | 168 gr | 190 gr |
+    |---|---:|---:|
+    | current (tangent, constant jacket) | +2.5 % | +11.5 % |
+    | secant ogive, R = 1.25 R_tangent | +7.9 % | +13.8 % |
+    | thinner jacket, 0.0625 | −6.3 % | −0.2 % |
+    | **tapered jacket, τ = 0.8** | **−0.1 %** | +11.1 % |
+
+    A secant ogive makes **both** bullets worse; the direction that would help is
+    an arc blunter than tangent, which no match bullet has. McCoy's sketch confirms
+    the 168 is a pure tangent ogive (printed 7.00 cal, tangency gives 6.998).
+
+    The survivor is a **tapered jacket** — thickness `τ` times the shank value at
+    the tip, linearly over the ogive. This is how a drawn cup actually thins toward
+    the nose, so it is physics rather than a fitted knob, and at τ = 0.8 it takes
+    the 168 to ΔIx −0.3 %, ΔIy −0.5 %, ratio −0.1 %. **Not implemented**: it moves
+    the 190 barely at all (+11.5 → +11.1 %), so it rests on the same single clean
+    case as everything else here.
+
+    That the 190 resists ogive *and* taper, while yielding only to an unphysically
+    thin jacket, points back at its pairing rather than at the model. The reading
+    that would settle all of this at once: a bullet whose contour and inertia come
+    from the same decade — e.g. the BRL M118 (173.9 gr), which has the 1988
+    measurement and no contour yet.
 """
 Base.@kwdef struct BulletGeometry
     nose_frac::Float64    = 0.541
