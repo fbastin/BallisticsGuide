@@ -2410,16 +2410,32 @@ sketches of Figures 2 and 3. One caliber is 5.69 mm throughout.
 Fields: `mass_g · cg_cal · Ix · Iy` (both g·cm², as printed) then the contour
 `len_cal · nose_cal · ogive_R_cal · bt_cal · bt_deg`.
 
-⚠️ The `2.00` / `1.90` cote on Figure 2 is **not** the ogive length: read that way
-the tangency condition returns a meplat of 0.52 caliber, which is absurd. The
-ogive is the `2.76` / `2.71` cote, and the meplat then comes out at 0.067 / 0.041
-caliber — see [`brl3476_geometry`](@ref).
+⚠️ **Figure 2 was read backwards until 2026-08-18, and the argument for it was
+circular.** The note here used to say that `2.00` / `1.90` could not be the ogive,
+because tangency then gives an absurd 0.52 caliber meplat — so `2.76` / `2.71` was
+taken as the ogive instead. But the absurdity came from the tangency assumption,
+not from the reading. Figure 2 uses the same draughting convention as Figures 3–5
+of BRL-MR-3733 by the same author: one cote for the ogive, a **second for the
+axial station of the arc centre**, printed only when the arc is not tangent. The
+`R=8.4` leader terminates on the `2.76` station, exactly as it does there.
+
+So `2.00` / `1.90` **is** the ogive, `2.76` / `2.71` is the arc centre
+(`ogive_xc_cal`), and both ogives are **secant** — a tangent arc over a 2.00
+caliber nose would need R = 4.85, not 8.4. The meplat follows from the arc rather
+than being manufactured to keep a false assumption self-consistent: 0.136 / 0.125
+caliber, not 0.067 / 0.041.
+
+The inertias cannot arbitrate this and were never asked to: both projectiles carry
+a steel penetrator that `bullet_inertia` does not model, so their residual answers
+a different question. The drawing settles it.
 """
 const BRL3476_PHYSICAL = Dict(
     :ss109 => (mass_g = 4.03, cg_cal = 1.52, Ix = 0.1425, Iy = 1.112,
-               len_cal = 4.07, nose_cal = 2.76, ogive_R_cal = 8.4, bt_cal = 0.45, bt_deg = 9.75),
+               len_cal = 4.07, nose_cal = 2.00, ogive_R_cal = 8.4, ogive_xc_cal = 2.76,
+               bt_cal = 0.45, bt_deg = 9.75),
     :m855  => (mass_g = 4.05, cg_cal = 1.54, Ix = 0.1426, Iy = 1.150,
-               len_cal = 4.05, nose_cal = 2.71, ogive_R_cal = 7.9, bt_cal = 0.40, bt_deg = 8.50),
+               len_cal = 4.05, nose_cal = 1.90, ogive_R_cal = 7.9, ogive_xc_cal = 2.71,
+               bt_cal = 0.40, bt_deg = 8.50),
     :l110  => (mass_g = 4.09, cg_cal = 2.52, Ix = 0.1573, Iy = 1.874),
     :m856  => (mass_g = 4.19, cg_cal = 2.57, Ix = 0.1634, Iy = 1.987))
 
@@ -2488,21 +2504,40 @@ end
     brl3476_geometry(which) -> BulletGeometry
 
 Contour of a 5.56 mm NATO ball projectile from Figure 2, with the meplat solved
-from the tangent-ogive condition `r_m = √(R² − Lₙ²) − (R − ½)` in calibers.
+from the **secant** arc the drawing actually specifies: the circle of radius
+`ogive_R_cal` centred `ogive_xc_cal` back from the tip, which passes through the
+ogive/shank junction at `nose_cal`. In calibers,
+`y_c = ½ − √(R² − (x_c − Lₙ)²)` and then `r_m = y_c + √(R² − x_c²)`.
 
 `which` is `:ss109` or `:m855`.
+
+!!! warning "The returned contour is still an approximation, and now says so"
+    [`BulletGeometry`](@ref) has no field for an ogive radius and imposes a tangent
+    arc, so what comes back keeps the true nose length, meplat and boat tail while
+    redrawing the nose tangent. That is a *known* approximation. What it replaces
+    was worse: a nose length taken from the wrong cote, plus a meplat computed to
+    make that reading self-consistent. Cf. [`BRL3733_PHYSICAL`](@ref), where the
+    same convention is verified against a printed arc-centre cote to 0.1 %.
 
 !!! warning "The core is not what `bullet_inertia` models"
     Both projectiles carry a **steel penetrator** ahead of a lead rear core, so
     their mass is laid out in two materials. `BulletGeometry` knows a single lead
     core inside a gilding-metal jacket. Fed this contour and the true mass, the
-    estimator lands 4–5 % low on Ix, 6–9 % low on Iy and 5–7 % low on the CG
+    estimator lands 6–8 % **high** on Ix, 4–6 % low on Iy and 5–7 % low on the CG
     against Table 1. That is the composite core showing, not an integration
     error, and it is the honest limit of the estimator on military ball.
+
+    Those figures moved on 2026-08-18 with the corrected reading of Figure 2 (they
+    were 4–5 % low on Ix, 6–9 % low on Iy). Iy improved and Ix got worse, which
+    proves nothing either way — with a steel penetrator unmodelled, any single
+    score here is a compensation of errors. The reading was corrected because the
+    drawing says so, not because it scored better.
 """
 function brl3476_geometry(which::Symbol)
     p = BRL3476_PHYSICAL[which]
-    meplat = 2 * (sqrt(p.ogive_R_cal^2 - p.nose_cal^2) - (p.ogive_R_cal - 0.5))
+    R, xc = p.ogive_R_cal, p.ogive_xc_cal
+    yc = 0.5 - sqrt(R^2 - (xc - p.nose_cal)^2)      # centre de l'arc, sous l'axe
+    meplat = 2 * (yc + sqrt(R^2 - xc^2))
     return BulletGeometry(nose_frac  = p.nose_cal / p.len_cal,
                           meplat_cal = meplat,
                           bt_len_cal = p.bt_cal,
