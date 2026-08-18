@@ -1440,7 +1440,8 @@ export AeroCoefficients6DOF, ShotParameters6DOF, State6DOF,
        mccoy_308_168_aero, mccoy_308_168_shot, mccoy_308_168_cmpa,
        mccoy_105mm_m1_aero, mccoy_105mm_m1_shot,
        brl3476_aero, brl3476_shot, brl3476_geometry, brl3476_curve,
-       BRL3476_SS109, BRL3476_M855, BRL3476_L110, BRL3476_M856, BRL3476_PHYSICAL
+       BRL3476_SS109, BRL3476_M855, BRL3476_L110, BRL3476_M856, BRL3476_PHYSICAL,
+       BRL3733_PHYSICAL, brl3733_geometry
 
 """
 Aerodynamic coefficient set for 6-DOF simulation.
@@ -1504,8 +1505,14 @@ length is in **calibers**, so one geometry describes a family across bore sizes.
 
 The ogive is taken **tangent**: given the nose length and the meplat, the radius
 follows from the tangency condition, `R = (Lₙ² + a²)/2a` with `a = (d − meplat)/2`.
-A secant ogive of the same nose length carries slightly more volume forward, so a
-VLD comes out marginally light in the nose here.
+A secant ogive is drawn on a **larger** radius than the tangent one through the
+same two endpoints, so its arc bows less and its nose is *slimmer*, not fuller —
+measured on the two secant bullets of BRL-MR-3733, the real nose holds 5.6 % less
+volume than the tangent arc this struct imposes on the M118, and 11.6 % less on
+the 190 gr Sierra. This modelled nose is therefore too full for a secant bullet,
+and since the core height is solved to conserve total mass, that surplus forward
+volume is paid for by seating the core lower. What it costs on the inertias is
+measured in `validation_brl3733.jl`.
 
 Defaults describe a modern boat-tailed match bullet. They are *shape* defaults:
 supply the real numbers whenever a drawing or a caliper is at hand, because the
@@ -1598,34 +1605,58 @@ Neither source is redistributed; only these three numbers are derived from them.
     At the current default the estimator scores ΔIx −4.8 %, ΔIy +6.1 % on the 190 —
     its second validation point, whatever the calibration question.
 
-!!! note "Three candidate refinements, tested 2026-08-15 — and only one survives"
-    `_profile` forces a **tangent** ogive: `R` follows from the tangency condition,
-    so nose length and meplat fully determine the arc, with no shape freedom. That
-    is the obvious suspect, and it is **not** the culprit. Errors on `Iy/Ix`:
+!!! note "Candidate refinements — settled 2026-08-18 on three measured bullets"
+    The paragraph above once ended by naming the reading that would settle this:
+    a bullet whose contour and inertia come from the same decade, e.g. the BRL
+    M118. It was in **BRL-MR-3733 all along**, whose Table 1 we were already
+    quoting — Figure 3, page 11, dimensioned. Reading it turns n = 2 (one clean
+    case plus a mismatched pair) into **n = 3, all from one campaign of five
+    measured samples each**. Two conclusions reverse.
 
-    | | 168 gr | 190 gr |
-    |---|---:|---:|
-    | current (tangent, constant jacket) | +2.5 % | +11.5 % |
-    | secant ogive, R = 1.25 R_tangent | +7.9 % | +13.8 % |
-    | thinner jacket, 0.0625 | −6.3 % | −0.2 % |
-    | **tapered jacket, τ = 0.8** | **−0.1 %** | +11.1 % |
+    **The ogive was acquitted on bad evidence.** The 2026-08-15 sweep added
+    secancy on top of a nose length taken from a commercial database — 2.69 cal
+    for the 190, where BRL draws 2.09. It was slimming an already-too-long nose,
+    so of course it made things worse. BRL dimensions the arc centre whenever the
+    arc is not tangent, and two of the three ogives are secant. Given the real
+    arc, on `Iy`:
 
-    A secant ogive makes **both** bullets worse; the direction that would help is
-    an arc blunter than tangent, which no match bullet has. McCoy's sketch confirms
-    the 168 is a pure tangent ogive (printed 7.00 cal, tangency gives 6.998).
+    | | M118 | 190 gr | 168 gr |
+    |---|---:|---:|---:|
+    | true contour, true arc | −10.1 % | **+0.7 %** | +2.4 % |
+    | true contour, tangent forced | −10.5 % | −3.5 % | +2.4 % |
+    | default contour throughout | −9.1 % | −0.9 % | +2.4 % |
 
-    The survivor is a **tapered jacket** — thickness `τ` times the shank value at
-    the tip, linearly over the ogive. This is how a drawn cup actually thins toward
-    the nose, so it is physics rather than a fitted knob, and at τ = 0.8 it takes
-    the 168 to ΔIx −0.3 %, ΔIy −0.5 %, ratio −0.1 %. **Not implemented**: it moves
-    the 190 barely at all (+11.5 → +11.1 %), so it rests on the same single clean
-    case as everything else here.
+    The 168, genuinely tangent, does not move by a digit — the built-in control.
 
-    That the 190 resists ogive *and* taper, while yielding only to an unphysically
-    thin jacket, points back at its pairing rather than at the model. The reading
-    that would settle all of this at once: a bullet whose contour and inertia come
-    from the same decade — e.g. the BRL M118 (173.9 gr), which has the 1988
-    measurement and no contour yet.
+    **And yet the parameter is still not added**, for a reason that has nothing to
+    do with whether the ogive matters. Read the third row: the *generic* contour
+    does as well as the true one. `Iy` is pinned mostly by mass and length, the
+    contour is second-order, and `S_g` is exactly `∝ 1/Iy`, so the 4-point gain on
+    the 190 buys ~4 % of `S_g` — inside an estimate that already carries +20/−16 %
+    from the mass↔length family constant. Meanwhile the radius is unobtainable:
+    of 3528 bullets in the database, 2.3 % carry a nose length, **0.1 % a meplat**,
+    and three carry the full contour this struct consumes; no usable source
+    publishes the radius at all. A field nobody can fill invites being filled from
+    a form-factor slider that is not a radius.
+
+    Note the middle row against the third: **half-right geometry is worse than
+    frankly generic geometry**. Giving the true nose length while imposing a
+    tangent arc is worse on the 190 than leaving everything at defaults. That is
+    the argument against the knob, not an argument that shape is irrelevant.
+
+    **The tapered jacket is dead.** It survived at n = 2 and looked physical — a
+    drawn cup does thin toward the nose. Swept jointly on all three bullets the
+    optimum is τ = 1.0, i.e. no taper at all (RMS on `Iy`: 4.46 at τ = 1.0, rising
+    monotonically to 6.21 at τ = 0.6). It was an artefact of two points. Jacket
+    thickness is no better: 0.075 → 0.115 leaves RMS flat between 4.46 and 4.32,
+    trading the M118 against the other two. **Leave `jacket_cal` at 0.095.**
+
+    **What is left open** is the M118's −10 % on `Iy` and −9 % on its CG, which no
+    contour or jacket setting reaches. At equal envelope it is ~0.5 g lighter than
+    an interpolation between the 168 and the 190; the model sheds that mass by
+    seating the core lower, which is exactly the sign of the error. That points at
+    internal construction, and MR-3733 does not describe it. See
+    `validation_brl3733.jl`.
 """
 Base.@kwdef struct BulletGeometry
     nose_frac::Float64    = 0.541
@@ -2474,6 +2505,70 @@ function brl3476_geometry(which::Symbol)
     meplat = 2 * (sqrt(p.ogive_R_cal^2 - p.nose_cal^2) - (p.ogive_R_cal - 0.5))
     return BulletGeometry(nose_frac  = p.nose_cal / p.len_cal,
                           meplat_cal = meplat,
+                          bt_len_cal = p.bt_cal,
+                          bt_deg     = p.bt_deg)
+end
+
+"""
+Measured physical characteristics of the three 7.62 mm match bullets of
+**BRL-MR-3733** (McCoy, December 1988), `:m118`, `:sierra190` and `:sierra168`.
+
+Table 1 gives mass, CG and both moments of inertia — averages over **five
+measured samples of each type** — and Figures 3, 4 and 5 give the matching
+dimensioned contours. Same lot, same campaign, one document: this is the only
+place in the library where contour and inertia are known to describe the same
+objects. `Ix`/`Iy` are in g·cm² as printed (×1e-7 for kg·m²), `cg_cal` is from
+the base, and every length is in calibers of 7.82 mm.
+
+The report is a work of the U.S. federal government — performing organization on
+the DD-1473 is the Ballistic Research Laboratory — so it carries no U.S. copyright
+under 17 U.S.C. § 105: there is no copyright notice anywhere in it and no
+third-party material is credited. Note that the cover's *approved for public
+release, distribution unlimited* is a **dissemination** control (Distribution
+Statement A), not a statement about rights; the two are routinely conflated. What
+is taken here is measured values, which are facts either way.
+
+!!! warning "Two of these three ogives are SECANT, and `BulletGeometry` cannot say so"
+    Each sketch dimensions the ogive radius *and*, when the arc is not tangent,
+    the axial station of its centre. The M118 is drawn 7.00 cal where tangency
+    would give 5.89, the 190 is drawn 8.80 where tangency would give 5.73; only
+    the 168 is a true tangent ogive (7.00 drawn, 7.00 solved). The cotes are
+    self-checking — the printed radius replaces the centre at the printed station
+    to 0.1 % on the 190 and 1.3 % on the M118.
+
+    `brl3733_geometry` therefore returns an **approximation**: it keeps the true
+    nose length, meplat and boat tail, and lets `_profile` impose its tangent arc.
+    What that costs is measured in `validation_brl3733.jl`, and the answer is the
+    reason no secant parameter was added — see the note on `BulletGeometry`.
+"""
+const BRL3733_PHYSICAL = Dict(
+    :m118      => (mass_g = 11.27, cg_cal = 1.80, Ix = 0.716, Iy = 6.78,
+                   len_cal = 4.19, nose_cal = 2.16, meplat_cal = 0.18,
+                   ogive_R_cal = 7.00, ogive_xc_cal = 2.40, bt_cal = 0.74, bt_deg = 9.50),
+    :sierra190 => (mass_g = 12.27, cg_cal = 1.81, Ix = 0.787, Iy = 7.68,
+                   len_cal = 4.31, nose_cal = 2.09, meplat_cal = 0.21,
+                   ogive_R_cal = 8.80, ogive_xc_cal = 2.67, bt_cal = 0.69, bt_deg = 11.00),
+    :sierra168 => (mass_g = 10.89, cg_cal = 1.54, Ix = 0.722, Iy = 5.38,
+                   len_cal = 3.98, nose_cal = 2.26, meplat_cal = 0.25,
+                   ogive_R_cal = 7.00, ogive_xc_cal = NaN, bt_cal = 0.51, bt_deg = 13.00))
+
+const BRL3733_CALIBER_M = 7.82e-3
+
+"""
+    brl3733_geometry(which) -> BulletGeometry
+
+Contour of one BRL-MR-3733 match bullet — `:m118`, `:sierra190` or `:sierra168` —
+taken straight off its dimensioned sketch, with the **ogive radius dropped**
+because [`BulletGeometry`](@ref) has nowhere to put it.
+
+For `:sierra168` nothing is lost: that ogive is genuinely tangent. For the other
+two the returned contour is a documented approximation; see
+[`BRL3733_PHYSICAL`](@ref).
+"""
+function brl3733_geometry(which::Symbol)
+    p = BRL3733_PHYSICAL[which]
+    return BulletGeometry(nose_frac  = p.nose_cal / p.len_cal,
+                          meplat_cal = p.meplat_cal,
                           bt_len_cal = p.bt_cal,
                           bt_deg     = p.bt_deg)
 end
