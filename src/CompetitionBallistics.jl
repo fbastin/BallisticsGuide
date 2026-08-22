@@ -454,7 +454,21 @@ module DragModels
 
 # Exports are at the bottom of this module after all definitions
 
-# G7 BRL tabular data: [Mach  Cd]
+# Fonctions de traînée étalons BRL G7 et G1 (C_D en fonction du nombre de Mach).
+#
+# ⚠️ CES VALEURS SE RECOPIENT, ELLES NE SE PROLONGENT PAS. Jusqu'au 2026-08-22 les deux
+# tables étaient exactes dans leur partie basse puis INVENTÉES au-delà — G7 à partir de
+# Mach 1,05, G1 dès Mach 0,75, où la fin du domaine subsonique reprenait en miroir les
+# valeurs du début. L'écart atteignait −33 % (G7) et −45 % (G1) à Mach 2, et le solveur
+# portait par-dessus un facteur 4/π calé pour qu'UNE .308 arrive à 1000 yd sur une
+# vitesse plausible.
+#
+# La parité Julia↔JS ne pouvait rien y voir : les deux copies portaient la même faute.
+# C'est `scripts/check_ballistics_reference.py` (référence tierce) qui l'a sortie, et
+# l'arbitrage s'est fait sur McCoy, « Modern Exterior Ballistics », figure 4.6 p. 56 :
+# le BRL-1, décrit comme *very low drag* et plus fin que l'étalon G7, y tient
+# C_D ≈ 0,26 à Mach 3, quand notre table en annonçait 0,140.
+
 const G7_TABLE = Float64[
     0.000 0.1198;  0.050 0.1197;  0.100 0.1196;
     0.150 0.1194;  0.200 0.1193;  0.250 0.1194;
@@ -465,41 +479,55 @@ const G7_TABLE = Float64[
     0.800 0.1242;  0.825 0.1266;  0.850 0.1306;
     0.875 0.1368;  0.900 0.1464;  0.925 0.1660;
     0.950 0.2054;  0.975 0.2993;  1.000 0.3803;
-    1.025 0.4015;  1.050 0.3845;  1.075 0.3710;
-    1.100 0.3597;  1.125 0.3497;  1.150 0.3405;
-    1.200 0.3250;  1.250 0.3131;  1.300 0.2992;
-    1.350 0.2880;  1.400 0.2778;  1.450 0.2686;
-    1.500 0.2602;  1.550 0.2525;  1.600 0.2452;
-    1.650 0.2383;  1.700 0.2321;  1.750 0.2261;
-    1.800 0.2204;  1.850 0.2147;  1.900 0.2093;
-    1.950 0.2042;  2.000 0.1993;  2.050 0.1947;
-    2.100 0.1905;  2.150 0.1866;  2.200 0.1830;
-    2.250 0.1796;  2.300 0.1763;  2.350 0.1729;
-    2.400 0.1695;  2.450 0.1660;  2.500 0.1629;
-    3.000 0.1400;  3.500 0.1225;  4.000 0.1090;
-    4.500 0.0980;  5.000 0.0893
+    1.025 0.4015;  1.050 0.4043;  1.075 0.4034;
+    1.100 0.4014;  1.125 0.3987;  1.150 0.3955;
+    1.200 0.3884;  1.250 0.3810;  1.300 0.3732;
+    1.350 0.3657;  1.400 0.3580;  1.500 0.3440;
+    1.550 0.3376;  1.600 0.3315;  1.650 0.3260;
+    1.700 0.3209;  1.750 0.3160;  1.800 0.3117;
+    1.850 0.3078;  1.900 0.3042;  1.950 0.3010;
+    2.000 0.2980;  2.050 0.2951;  2.100 0.2922;
+    2.150 0.2892;  2.200 0.2864;  2.250 0.2835;
+    2.300 0.2807;  2.350 0.2779;  2.400 0.2752;
+    2.450 0.2725;  2.500 0.2697;  2.550 0.2670;
+    2.600 0.2643;  2.650 0.2615;  2.700 0.2588;
+    2.750 0.2561;  2.800 0.2533;  2.850 0.2506;
+    2.900 0.2479;  2.950 0.2451;  3.000 0.2424;
+    3.100 0.2368;  3.200 0.2313;  3.300 0.2258;
+    3.400 0.2205;  3.500 0.2154;  3.600 0.2106;
+    3.700 0.2060;  3.800 0.2017;  3.900 0.1975;
+    4.000 0.1935;  4.200 0.1861;  4.400 0.1793;
+    4.600 0.1730;  4.800 0.1672;  5.000 0.1618
 ]
 
-# G1 BRL tabular data: [Mach  Cd]
 const G1_TABLE = Float64[
     0.000 0.2629;  0.050 0.2558;  0.100 0.2487;
     0.150 0.2413;  0.200 0.2344;  0.250 0.2278;
     0.300 0.2214;  0.350 0.2155;  0.400 0.2104;
     0.450 0.2061;  0.500 0.2032;  0.550 0.2020;
-    0.600 0.2034;  0.650 0.2085;  0.700 0.2165;
-    0.750 0.2230;  0.800 0.2313;  0.850 0.2417;
-    0.875 0.2487;  0.900 0.2558;  0.925 0.2705;
-    0.950 0.2939;  0.975 0.3200;  1.000 0.4528;
-    1.025 0.4748;  1.050 0.4888;  1.075 0.4951;
-    1.100 0.4992;  1.125 0.4973;  1.150 0.4950;
-    1.200 0.4790;  1.250 0.4621;  1.300 0.4493;
-    1.350 0.4369;  1.400 0.4253;  1.450 0.4145;
-    1.500 0.4042;  1.550 0.3945;  1.600 0.3855;
-    1.650 0.3769;  1.700 0.3687;  1.750 0.3608;
-    1.800 0.3532;  1.850 0.3460;  1.900 0.3392;
-    1.950 0.3326;  2.000 0.3264;  2.500 0.2756;
-    3.000 0.2394;  3.500 0.2126;  4.000 0.1923;
-    4.500 0.1765;  5.000 0.1637
+    0.600 0.2034;  0.700 0.2165;  0.725 0.2230;
+    0.750 0.2313;  0.775 0.2417;  0.800 0.2546;
+    0.825 0.2706;  0.850 0.2901;  0.875 0.3136;
+    0.900 0.3415;  0.925 0.3734;  0.950 0.4084;
+    0.975 0.4448;  1.000 0.4805;  1.025 0.5136;
+    1.050 0.5427;  1.075 0.5677;  1.100 0.5883;
+    1.125 0.6053;  1.150 0.6191;  1.200 0.6393;
+    1.250 0.6518;  1.300 0.6589;  1.350 0.6621;
+    1.400 0.6625;  1.450 0.6607;  1.500 0.6573;
+    1.550 0.6528;  1.600 0.6474;  1.650 0.6413;
+    1.700 0.6347;  1.750 0.6280;  1.800 0.6210;
+    1.850 0.6141;  1.900 0.6072;  1.950 0.6003;
+    2.000 0.5934;  2.050 0.5867;  2.100 0.5804;
+    2.150 0.5743;  2.200 0.5685;  2.250 0.5630;
+    2.300 0.5577;  2.350 0.5527;  2.400 0.5481;
+    2.450 0.5438;  2.500 0.5397;  2.600 0.5325;
+    2.700 0.5264;  2.800 0.5211;  2.900 0.5168;
+    3.000 0.5133;  3.100 0.5105;  3.200 0.5084;
+    3.300 0.5067;  3.400 0.5054;  3.500 0.5040;
+    3.600 0.5030;  3.700 0.5022;  3.800 0.5016;
+    3.900 0.5010;  4.000 0.5006;  4.200 0.4998;
+    4.400 0.4995;  4.600 0.4992;  4.800 0.4990;
+    5.000 0.4988
 ]
 
 """
@@ -936,7 +964,7 @@ function find_zero_angle(p::ShotParameters; tol::Real=1e-6, max_iter::Int=50)
             v = sqrt(_vx^2 + _vy^2)
             Ma = v / a_s
             cd = drag_coefficient(p.drag_model, Ma)
-            df = (ρ * cd * A * ff) / (2.0 * si.m) * (4.0 / π)
+            df = (ρ * cd * A * ff) / (2.0 * si.m)   # cf. `derivs` : plus de 4/π
             return (_vx, _vy, 0.0, -df * v * _vx, -df * v * _vy - Atmosphere.g0, 0.0)
         end
 
@@ -1034,7 +1062,11 @@ function solve_trajectory(p::ShotParameters)
         vrel = sqrt(vrx^2 + vry^2 + vrz^2)
         Ma = vrel / a_s
         cd = drag_coefficient(p.drag_model, Ma)
-        D = (ρ * cd * A * ff) / (2.0 * si.m) * (4.0 / π)
+        # Équation de traînée point-masse : a = ρ·C_D·i·A·v²/(2m), A = πd²/4, i = SD/BC.
+        # ⚠️ IL Y AVAIT ICI UN FACTEUR 4/π, retiré le 2026-08-22 : il ne sort pas de la
+        # dérivation et compensait des tables de traînée supersoniques fausses, calé pour
+        # qu'UNE .308 arrive à 1000 yd sur une vitesse plausible.
+        D = (ρ * cd * A * ff) / (2.0 * si.m)
 
         ax = -D * vrel * vrx + g_along
         ay = -D * vrel * vry + g_perp
@@ -1048,7 +1080,11 @@ function solve_trajectory(p::ShotParameters)
         return (_vx, _vy, _vz, ax, ay, az)
     end
 
-    while x <= si.tr && t < 15.0
+    # ⚠️ LA BOUCLE ENREGISTRE AVANT D'INTÉGRER, et doit donc dépasser la cible d'UN pas.
+    # Écrite `while x <= si.tr`, elle s'arrêtait au dernier point situé AVANT la portée
+    # demandée, si bien que la dernière ligne de `trajectory_table` manquait toujours.
+    # Corrigé le 2026-08-22.
+    while t < 15.0
         v_tot = sqrt(vx^2 + vy^2 + vz^2)
         mach  = v_tot / a_s
         ek    = 0.5 * si.m * v_tot^2
@@ -1057,6 +1093,8 @@ function solve_trajectory(p::ShotParameters)
             t, x, y, z, 0.0,          # spin_drift_m rempli après l'intégration
             vx, vy, vz, v_tot, mach, ek
         ))
+
+        x > si.tr && break   # un point au-delà de la cible est enregistré, pas deux
 
         # RK4 integration for state vector [x, y, z, vx, vy, vz]
         s1 = (x, y, z, vx, vy, vz)
