@@ -150,7 +150,7 @@ Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
 \end{titlepage}
 
 \begin{abstract}
-This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought precision improvements to the 3-DOF engine (coordinate-system alignment and $4/\pi$ drag scaling) and outlined a roadmap for a 6-DOF expert mode.
+This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought precision improvements to the 3-DOF engine (coordinate-system alignment) and outlined a roadmap for a 6-DOF expert mode. Version 3.2 (2026-08-22) replaced the G1 and G7 drag tables, whose supersonic branches had been fabricated, and removed the $4/\pi$ factor that had been masking them; every trajectory figure in this manual was recomputed.
 
 Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and validated against three published cases --- McCoy's .308\,in 168\,gr textbook example, the 105\,mm HE M1 shell, and the 5.56\,mm NATO family measured at the Ballistic Research Laboratory. This edition adds the moment-of-inertia estimator that feeds it (Section~\ref{sec:inertia}), the measured coefficient sets it can be run on, and the reasons a set may not be trusted. It also corrects an inclined-fire example that had drifted 10\,\% from what both implementations return, and qualifies the recommendation of spline interpolation, which is right for the dense standard drag tables and wrong for sparse measured ones.
 \end{abstract}
@@ -991,14 +991,14 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \fill[orange!15] (axis cs:0.8,0) rectangle (axis cs:1.2,0.66);
 \node[font=\scriptsize, orange!60!black] at (axis cs:1.0,0.635) {transonic};
 \addplot[thick, red!80!black] coordinates {
-  (0,0.2629)(0.5,0.2253)(0.7,0.2300)(0.8,0.2622)(0.9,0.3200)(0.95,0.4000)
-  (1.0,0.5950)(1.05,0.6280)(1.1,0.6230)(1.2,0.6010)(1.5,0.5430)
-  (2.0,0.4640)(2.5,0.4080)(3.0,0.3700)};
+  (0,0.2629)(0.5,0.2032)(0.7,0.2165)(0.8,0.2546)(0.9,0.3415)(0.95,0.4084)
+  (1.0,0.4805)(1.05,0.5427)(1.1,0.5883)(1.2,0.6393)(1.5,0.6573)
+  (2.0,0.5934)(2.5,0.5397)(3.0,0.5133)};
 \addlegendentry{G1 (blunt, flat base)}
 \addplot[thick, blue!70!black] coordinates {
   (0,0.1198)(0.5,0.1194)(0.8,0.1242)(0.9,0.1464)(0.95,0.2054)
-  (1.0,0.3803)(1.05,0.3845)(1.1,0.3597)(1.2,0.3250)(1.5,0.2602)
-  (2.0,0.1993)(2.5,0.1629)(3.0,0.1400)};
+  (1.0,0.3803)(1.05,0.4043)(1.1,0.4014)(1.2,0.3884)(1.5,0.3440)
+  (2.0,0.2980)(2.5,0.2697)(3.0,0.2424)};
 \addlegendentry{G7 (streamlined, boat-tail)}
 \end{axis}
 \end{tikzpicture}
@@ -1016,11 +1016,11 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \toprule
 $\Mach$ & $\Cd^{\mathrm{G7}}$ & $\Mach$ & $\Cd^{\mathrm{G7}}$ & $\Mach$ & $\Cd^{\mathrm{G7}}$ \\
 \midrule
-0.00 & 0.1198 & 1.00 & 0.3803 & 2.00 & 0.1993 \\
-0.50 & 0.1194 & 1.05 & 0.3845 & 2.50 & 0.1629 \\
-0.80 & 0.1242 & 1.10 & 0.3597 & 3.00 & 0.1400 \\
-0.90 & 0.1464 & 1.20 & 0.3250 & 3.50 & 0.1225 \\
-0.95 & 0.2054 & 1.50 & 0.2602 & 4.00 & 0.1090 \\
+0.00 & 0.1198 & 1.00 & 0.3803 & 2.00 & 0.2980 \\
+0.50 & 0.1194 & 1.05 & 0.4043 & 2.50 & 0.2697 \\
+0.80 & 0.1242 & 1.10 & 0.4014 & 3.00 & 0.2424 \\
+0.90 & 0.1464 & 1.20 & 0.3884 & 3.50 & 0.2154 \\
+0.95 & 0.2054 & 1.50 & 0.3440 & 4.00 & 0.1935 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1036,7 +1036,7 @@ guaranteed to agree.
 The $\Cd(\Mach)$ tables (G1, G7, \dots) are \emph{aerodynamic} data: $\Cd$ is
 dimensionless and depends only on the projectile geometry and the Mach number,
 \emph{not} on the atmosphere. They are therefore identical whether one takes them
-from McCoy~\citep{mccoy1999modern} or from a tabulation such as JBM's. The
+from McCoy~\citep{mccoy1999modern} or from an equivalent published tabulation. The
 atmosphere only enters our solver through the \emph{actual} air density $\rho$ and
 speed of sound $a(T)$, both recomputed from the ICAO model
 (\S\ref{sec:icao}) at every step via
@@ -1056,7 +1056,7 @@ Modern G7 values (Berger, Hornady, Litz/Applied Ballistics) are all
 ICAO-referenced. Older \emph{Army Standard Metro} (ASM) $\Bc$ values
 (\SI{29.53}{inHg}, 78\,\% RH) carry a $\approx 0.4$--$0.5\,\%$ density offset.
 
-\paragraph{Warning on Legacy Calculators (e.g., JBM):} Many legacy ballistic calculators, such as JBM Ballistics, enable the Army Standard Metro atmosphere by default. If a modern ICAO-referenced G7 BC is input into an ASM-default calculator without explicitly disabling the Metro setting, the solver will silently apply a density offset. Because ASM air is lighter than ICAO air, this introduces an artificial trajectory error that grows significantly at extended ranges. The \texttt{CompetitionBallistics} engine exclusively uses the modern ICAO standard, ensuring native 1:1 compatibility with all contemporary manufacturer BCs without requiring any error-prone conversions.
+\paragraph{Warning on Legacy Calculators:} Many legacy ballistic calculators --- JBM Ballistics among them, until it withdrew its online calculators in 2026 --- enable the Army Standard Metro atmosphere by default. If a modern ICAO-referenced G7 BC is input into an ASM-default calculator without explicitly disabling the Metro setting, the solver will silently apply a density offset. Because ASM air is lighter than ICAO air, this introduces an artificial trajectory error that grows significantly at extended ranges. The \texttt{CompetitionBallistics} engine exclusively uses the modern ICAO standard, ensuring native 1:1 compatibility with all contemporary manufacturer BCs without requiring any error-prone conversions.
 
 \section{Doppler Radar Drag Measurement}
 \label{sec:doppler}
@@ -1216,7 +1216,22 @@ Modern ballistic solvers use higher-order methods, typically the 4th-order Runge
 where $h$ is the time step, $\bm{y}_n$ is the full state vector $(x, y, z, v_x, v_y, v_z)$ at time $t_n$, and $\bm{f}$ is the vector of derivatives (velocities and accelerations).
 
 \paragraph{Version 3.1 Mathematical Corrections:} 
-It is critical to apply the RK4 integration to the \emph{full state vector} rather than decoupling position and velocity (a common error that degrades long-range accuracy). Furthermore, when scaling the reference drag by the Ballistic Coefficient ($\text{BC} = m / i d^2$), one must account for the physical area $A = \pi d^2 / 4$. Thus, the effective deceleration must be multiplied by a geometric correction factor of $4/\pi$ to bridge the shooting definition of sectional density and the physical drag force. These corrections ensure sub-MOA consistency with industry reference tools like JBM Ballistics at ranges exceeding 1,000 yards.
+It is critical to apply the RK4 integration to the \emph{full state vector} rather
+than decoupling position and velocity (a common error that degrades long-range
+accuracy). The drag term itself carries no free parameter: with $A = \pi d^2/4$ the
+physical frontal area and $i = \mathrm{SD}/\Bc$ the form factor, both $d^2$ and $m$
+cancel out of $a = \rho\,\Cd\,i\,A\,v^2/(2m)$, leaving the ballistic coefficient alone
+in control of the trajectory---exactly as it should be.
+
+\paragraph{A correction factor that should never have been there.} Until 2026-08-22
+this section justified multiplying the deceleration by $4/\pi$, on the grounds that
+the shooting definition of sectional density (referred to $d^2$) had to be bridged to
+the BRL tables (referred to $\pi d^2/4$). The derivation above does not produce that
+factor. What it actually did was compensate for supersonic drag-table values that were
+wrong (see the warning in \texttt{G7\_RAW}), tuned so that one particular .308 load
+arrived at 1000 yards near a plausible velocity. A global factor calibrated on a single
+operating point is right at that point and wrong everywhere else. Both the factor and
+the bad table data have been removed.
 
 A typical time step of $h = \SI{0.0005}{\second}$ to $\SI{0.001}{\second}$ is sufficient.
 
@@ -1410,7 +1425,18 @@ To actually predict the trajectory, we cannot just plug numbers into a single al
 
 The complete 3-DOF ballistic solver is implemented in the companion file \texttt{CompetitionBallistics.jl} (see Appendix~\ref{app:julia_file}). The solver includes: G1/G7 drag model interpolation from BRL tables, full Runge-Kutta 4th order (RK4) integration of the 3-DOF equations of motion, automatic zero-angle finding (sighting-in), Coriolis and E\"otv\"os corrections, post-hoc spin drift calculations, and wind deflection. 
 
-To ensure the physical integrity of our implementation, the results of this solver have been cross-validated against industry-standard tools, most notably \textbf{JBM Ballistics} (jbmballistics.com). Users are encouraged to compare their specific trajectories with JBM for independent verification of ballistic profiles.
+To ensure the physical integrity of our implementation, every trajectory in this
+manual is checked nightly against an independent third-party point-mass solver
+(\texttt{py-ballisticcalc}), on a frozen grid of fourteen cases covering three drag
+models, three atmospheres, wind, spin drift and Coriolis. The comparison is a second
+opinion, not an oracle: when it disagrees, the arbiter is published data (McCoy, Litz)
+or measured DOPE.
+
+Earlier editions of this section claimed cross-validation against JBM Ballistics. That
+claim did not survive scrutiny --- the first genuine third-party comparison, on
+2026-08-22, showed velocity errors of 6 to 9\,\% at 1000 yards --- and JBM withdrew its
+online calculators in 2026 in any case. A validation claim that nothing re-checks is
+worth exactly nothing; that is why the check is now automated and runs every night.
 
 The \texttt{ShotParameters} struct accepts all physical inputs (bullet mass, Ballistic Coefficient, muzzle velocity, atmospheric conditions, wind, latitude, twist rate, etc.) and the \texttt{solve\_trajectory()} function returns a vector of \texttt{TrajectoryPoint} records containing time, position, velocity, Mach number, and kinetic energy at each integration step.
 
@@ -2263,37 +2289,37 @@ The solver output for this configuration:
 \textbf{Range} & \textbf{Drop} & \textbf{Elev} & \textbf{Vel} & \textbf{Mach} & \textbf{Energy} & \textbf{ToF} & \textbf{Wind} & \textbf{Spin} \\
 \textbf{(yd)} & \textbf{(in)} & \textbf{(MOA)} & \textbf{(fps)} & & \textbf{(ft-lb)} & \textbf{(s)} & \textbf{(in)} & \textbf{(in)} \\
 \midrule
-100  &    0.0 &   0.0 & 2766 & 2.43 & 1784 & 0.106 &   0.3 & 0.0 \\
-200  &  $-$2.3 &   1.1 & 2617 & 2.30 & 1597 & 0.219 &   1.5 & 0.1 \\
-300  &  $-$9.0 &   2.9 & 2473 & 2.17 & 1427 & 0.339 &   3.6 & 0.2 \\
-400  & $-$20.7 &   5.0 & 2334 & 2.05 & 1271 & 0.466 &   6.8 & 0.4 \\
-500  & $-$38.2 &   7.3 & 2200 & 1.93 & 1129 & 0.602 &  11.1 & 0.7 \\
-600  & $-$62.5 &  10.0 & 2070 & 1.82 & 1000 & 0.747 &  16.8 & 1.1 \\
-700  & $-$94.8 &  12.9 & 1945 & 1.71 &  883 & 0.903 &  24.0 & 1.6 \\
-800  &$-$136.5 &  16.3 & 1824 & 1.60 &  776 & 1.070 &  32.9 & 2.3 \\
-900  &$-$189.5 &  20.1 & 1708 & 1.50 &  681 & 1.250 &  43.9 & 3.1 \\
-1000 &$-$256.0 &  24.5 & 1596 & 1.40 &  594 & 1.445 &  57.0 & 4.1 \\
+100  &    0.0 &   0.0 & 2754 & 2.41 & 1768 & 0.106 &   0.4 & 0.1 \\
+200  &  $-$3.2 &   1.5 & 2593 & 2.27 & 1568 & 0.219 &   1.6 & 0.3 \\
+300  & $-$11.5 &   3.7 & 2439 & 2.14 & 1386 & 0.338 &   3.8 & 0.6 \\
+400  & $-$25.8 &   6.2 & 2289 & 2.01 & 1221 & 0.465 &   6.9 & 1.1 \\
+500  & $-$46.8 &   8.9 & 2145 & 1.88 & 1072 & 0.600 &  11.0 & 1.8 \\
+600  & $-$75.4 &  12.0 & 2006 & 1.76 &  938 & 0.744 &  16.4 & 2.7 \\
+700  &$-$112.7 &  15.4 & 1871 & 1.64 &  816 & 0.899 &  23.0 & 3.8 \\
+800  &$-$160.0 &  19.1 & 1741 & 1.53 &  707 & 1.065 &  31.1 & 5.2 \\
+900  &$-$218.9 &  23.2 & 1615 & 1.42 &  608 & 1.244 &  40.8 & 6.9 \\
+1000 &$-$291.1 &  27.8 & 1493 & 1.31 &  520 & 1.437 &  52.3 & 9.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Step 5: Analysis of Results}
 
-\textbf{Velocity retention.} The bullet arrives at 1000 yards at 1596 fps (Mach 1.40), still well above the transonic threshold ($\approx$1340 fps). The 6mm BR with a high-BC 105\,gr bullet retains adequate supersonic margin.
+\textbf{Velocity retention.} The bullet arrives at 1000 yards at 1493 fps (Mach 1.31), still above the transonic threshold ($\approx$1340 fps), but with less margin than the older editions of this manual reported: the corrected drag tables cost roughly 100 fps at this range. The 6mm BR with a high-BC 105\,gr bullet remains supersonic to 1000 yards, and not much beyond.
 
-\textbf{Total elevation.} From the 100-yard zero, the shooter dials 24.5 MOA of elevation (approximately 7.1 mils). This is competitive with the 6.5 Creedmoor (28.5 MOA for 140 gr, Table~\ref{tab:drop_65cm}) despite the lighter bullet, thanks to the higher muzzle velocity.
+\textbf{Total elevation.} From the 100-yard zero, the shooter dials 27.8 MOA of elevation (approximately 8.1 mils). This is competitive with the 6.5 Creedmoor (31.6 MOA for 140 gr, Table~\ref{tab:drop_65cm}) despite the lighter bullet, thanks to the higher muzzle velocity.
 
-\textbf{Wind deflection.} The 8 mph wind at $60^{\circ}$ produces a crosswind component $W_{\mathrm{cross}} = 8 \sin 60^{\circ} = 6.93$ mph and a headwind component $W_{\mathrm{head}} = 8 \cos 60^{\circ} = 4.0$ mph. The total wind deflection at 1000 yards is 57.0 inches (5.4 MOA). For a full-value 10 mph crosswind, this would scale to approximately 74 inches --- about 4\% more than the 6.5 Creedmoor (77.1 in.) but comparable, illustrating that the 6mm BR's higher velocity partly compensates for the lower BC.
+\textbf{Wind deflection.} The 8 mph wind at $60^{\circ}$ produces a crosswind component $W_{\mathrm{cross}} = 8 \sin 60^{\circ} = 6.93$ mph and a headwind component $W_{\mathrm{head}} = 8 \cos 60^{\circ} = 4.0$ mph. The total wind deflection at 1000 yards is 52.3 inches (5.0 MOA). For a full-value 10 mph crosswind, this would scale to approximately 75.5 inches --- about 3\% more than the 6.5 Creedmoor (73.5 in.) but comparable, illustrating that the 6mm BR's higher velocity partly compensates for the lower BC.
 
-\textbf{Spin drift.} The 1:7.5 RH twist produces 4.1 inches of rightward drift at 1000 yards (0.39 MOA). This is a systematic bias that should be dialed into the scope or included in the wind hold.
+\textbf{Spin drift.} The 1:7.5 RH twist produces 9.0 inches of rightward drift at 1000 yards (0.86 MOA). This is a systematic bias that should be dialed into the scope or included in the wind hold.
 
 \textbf{Coriolis and E\"otv\"os.} Firing West at $45.4^{\circ}$N latitude:
 \begin{itemize}[nosep]
-  \item Horizontal Coriolis: $\approx 2.7$ inches right (0.26 MOA), same direction as spin drift.
-  \item E\"otv\"os (firing West): $\approx 3.4$ inches \emph{down} (the bullet loses the ``boost'' of the Earth's rotation), adding about 0.3 MOA to the required elevation.
+  \item Horizontal Coriolis: $\approx 2.4$ inches right (0.23 MOA), same direction as spin drift.
+  \item E\"otv\"os (firing West): $\approx 2.4$ inches \emph{down} (the bullet loses the ``boost'' of the Earth's rotation), adding about 0.2 MOA to the required elevation.
 \end{itemize}
 
-\textbf{Total horizontal correction:} Wind 57.0 in.\ $+$ spin drift 4.1 in.\ $+$ Coriolis 2.7 in.\ $= 63.8$ inches total rightward deflection (6.1 MOA).
+\textbf{Total horizontal correction:} Wind 52.3 in.\ $+$ spin drift 9.0 in.\ $+$ Coriolis 2.4 in.\ $= 63.7$ inches total rightward deflection (6.1 MOA).
 
 \subsection{Step 6: Chronograph Validation}
 
@@ -2321,15 +2347,15 @@ This is well below the F-Class X-ring diameter (2.5 inches) and represents a ben
 \toprule
 \textbf{Range (yd)} & \textbf{Elevation (MOA)} & \textbf{Wind/1 mph (MOA)} & \textbf{Spin+Cor (MOA)} \\
 \midrule
-200 &  1.1 & 0.07 & 0.01 \\
-300 &  2.9 & 0.11 & 0.03 \\
-400 &  5.0 & 0.16 & 0.05 \\
-500 &  7.3 & 0.21 & 0.08 \\
-600 & 10.0 & 0.27 & 0.12 \\
-700 & 12.9 & 0.33 & 0.17 \\
-800 & 16.3 & 0.39 & 0.23 \\
-900 & 20.1 & 0.47 & 0.30 \\
-1000 & 24.5 & 0.54 & 0.39 \\
+200 &  1.5 & 0.10 & 0.19 \\
+300 &  3.7 & 0.17 & 0.25 \\
+400 &  6.2 & 0.22 & 0.36 \\
+500 &  8.9 & 0.29 & 0.46 \\
+600 & 12.0 & 0.36 & 0.56 \\
+700 & 15.4 & 0.43 & 0.67 \\
+800 & 19.1 & 0.51 & 0.80 \\
+900 & 23.2 & 0.60 & 0.93 \\
+1000 & 27.8 & 0.69 & 1.09 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2414,16 +2440,16 @@ Berger 300 Hyb .338 & 300 & .338 & 0.818 & 0.419 & 0.375 & 1:9.4 \\
 \textbf{Range} & \textbf{Drop} & \textbf{Come-Up} & \textbf{Velocity} & \textbf{Energy} & \textbf{ToF} & \textbf{10 mph Wind} & \textbf{Spin Drift} \\
 \textbf{(yd)} & \textbf{(in)} & \textbf{(MOA)} & \textbf{(fps)} & \textbf{(ft-lb)} & \textbf{(s)} & \textbf{(in)} & \textbf{(in)} \\
 \midrule
-100 & 0.0 & 0.0 & 2545 & 2015 & 0.115 & 0.5 & 0.0 \\
-200 & $-$2.8 & 1.3 & 2396 & 1786 & 0.237 & 2.1 & 0.1 \\
-300 & $-$10.7 & 3.4 & 2252 & 1578 & 0.365 & 5.0 & 0.3 \\
-400 & $-$24.5 & 5.9 & 2113 & 1389 & 0.501 & 9.2 & 0.5 \\
-500 & $-$45.0 & 8.6 & 1979 & 1219 & 0.646 & 15.1 & 0.9 \\
-600 & $-$73.4 & 11.7 & 1851 & 1066 & 0.800 & 22.8 & 1.4 \\
-700 & $-$111.0 & 15.1 & 1728 & 929 & 0.965 & 32.5 & 2.0 \\
-800 & $-$159.5 & 19.0 & 1610 & 807 & 1.143 & 44.6 & 2.8 \\
-900 & $-$221.1 & 23.5 & 1498 & 698 & 1.334 & 59.3 & 3.8 \\
-1000 & $-$298.0 & 28.5 & 1393 & 604 & 1.541 & 77.1 & 5.1 \\
+100 & 0.0 & 0.0 & 2553 & 2026 & 0.115 & 0.5 & 0.1 \\
+200 & $-$3.9 & 1.8 & 2411 & 1806 & 0.236 & 2.3 & 0.3 \\
+300 & $-$13.7 & 4.3 & 2273 & 1606 & 0.364 & 5.3 & 0.6 \\
+400 & $-$30.2 & 7.2 & 2140 & 1424 & 0.500 & 9.6 & 1.1 \\
+500 & $-$54.4 & 10.4 & 2012 & 1258 & 0.644 & 15.5 & 1.7 \\
+600 & $-$87.2 & 13.9 & 1888 & 1108 & 0.798 & 23.1 & 2.5 \\
+700 & $-$129.8 & 17.7 & 1767 & 971 & 0.962 & 32.5 & 3.5 \\
+800 & $-$183.4 & 21.9 & 1651 & 847 & 1.138 & 43.8 & 4.8 \\
+900 & $-$249.7 & 26.5 & 1538 & 735 & 1.326 & 57.4 & 6.3 \\
+1000 & $-$331.1 & 31.6 & 1427 & 633 & 1.529 & 73.5 & 8.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2445,19 +2471,19 @@ As a bullet decelerates through the transonic zone ($0.9 \lesssim \Mach \lesssim
 
 \begin{table}[H]
 \centering
-\caption{Approximate transonic transition ranges for common competition cartridges at sea-level standard conditions. The transonic zone is defined as $0.9 \leq \Mach \leq 1.1$ ($\approx\SI{310}{}$--$\SI{380}{\meter\per\second}$).}
+\caption{Transonic transition ranges for common competition cartridges at sea-level standard conditions, \emph{computed with the solver of Chapter~\ref{ch:solver}} rather than quoted. The transonic zone is defined as $0.9 \leq \Mach \leq 1.1$ ($\approx\SI{310}{}$--$\SI{380}{\meter\per\second}$). Ballistic coefficients from Table~\ref{tab:bullet_data} where listed, otherwise from \citet{litz2015ballistic}.}
 \label{tab:transonic_ranges}
 \small
-\begin{tabular}{@{}llccc@{}}
+\begin{tabular}{@{}llcccc@{}}
 \toprule
-\textbf{Cartridge} & \textbf{Bullet (gr)} & \textbf{$v_0$ (m/s)} & \textbf{Enters transonic (m)} & \textbf{Subsonic (m)} \\
+\textbf{Cartridge} & \textbf{Bullet (gr)} & \textbf{$\Bc$ (G7)} & \textbf{$v_0$ (m/s)} & \textbf{Enters transonic (m)} & \textbf{Subsonic (m)} \\
 \midrule
-.223 Rem        & 77 SMK          & 838  & $\approx$600  & $\approx$750 \\
-.308 Win        & 155 Lapua Scenar & 860 & $\approx$750  & $\approx$950 \\
-.308 Win        & 175 SMK         & 775  & $\approx$820  & $\approx$1075 \\
-6.5 Creedmoor   & 140 Berger Hybrid & 823 & $\approx$950 & $\approx$1200 \\
-.300 Win Mag    & 185 Berger Jugg  & 943  & $\approx$1275 & $\approx$1600 \\
-.338 Lapua Mag  & 300 Berger Hybrid & 838 & $\approx$1500 & $\approx$1900 \\
+.223 Rem        & 77 SMK            & 0.191 & 838 & $\approx$690  & $\approx$750 \\
+.308 Win        & 155 Lapua Scenar  & 0.237 & 860 & $\approx$890  & $\approx$970 \\
+.308 Win        & 175 SMK           & 0.259 & 775 & $\approx$830  & $\approx$920 \\
+6.5 Creedmoor   & 140 Berger Hybrid & 0.311 & 823 & $\approx$1090 & $\approx$1200 \\
+.300 Win Mag    & 185 Berger Jugg   & 0.283 & 943 & $\approx$1210 & $\approx$1300 \\
+.338 Lapua Mag  & 300 Berger Hybrid & 0.419 & 838 & $\approx$1510 & $\approx$1660 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2480,14 +2506,16 @@ sight line and $g_{\parallel} = g\sin\alpha$ along the flight path, then integra
 normally. This captures the slight up/down asymmetry (the along-path component
 accelerates a descending shot and decelerates a climbing one) that the pure
 cosine rule omits. For the reference 6.5\,mm load at $\pm 30^{\circ}$ and
-\SI{1000}{\yard}, the drop along the sight line falls from $-300.6$ inches (flat) to
-$-258.4$ inches (uphill) and $-252.2$ inches (downhill).
+\SI{1000}{\yard}, the drop along the sight line falls from $-331.1$ inches (flat) to
+$-285.2$ inches (uphill) and $-277.8$ inches (downhill).
 
-These three figures were $-272$, $-233$ and $-228$ until 2026-08-14 --- about
-10\,\% shallower, in a constant ratio. They predate the reference-area correction
-on $\Cd$ (the BRL tables refer drag to $\pi d^2/4$, so the solver carries a factor
-$4/\pi$; omitting it understates drag by 27\,\%). Both implementations now return
-the values above, to the digit.
+These figures have moved twice. They were $-272$, $-233$ and $-228$ until 2026-08-14,
+then $-300.6$, $-258.4$ and $-252.2$ once a $4/\pi$ factor was introduced on $\Cd$.
+That factor was itself an error, compensating fabricated supersonic drag tables; both
+were removed on 2026-08-22, and the values above come from the corrected solver. The
+lesson is worth stating plainly: a global scale factor tuned to make one trajectory
+look right will hide a data error indefinitely, because it leaves the shape of the
+error untouched while moving its level.
 
 \section{Barrel Harmonics and Optimal Charge Weight}
 
