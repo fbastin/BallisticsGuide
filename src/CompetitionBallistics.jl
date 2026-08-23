@@ -1145,20 +1145,35 @@ function trajectory_table(p::ShotParameters; step_yd::Real=100.0)
     println("│Rng (yd)│ Drop (in)│ Elev(MOA)│ Wind (in)│ Spin (in)│ Vel(fps) │ ToF(s) │ Eng(ftlb)│")
     println("├────────┼──────────┼──────────┼──────────┼──────────┼──────────┼────────┼──────────┤")
 
+    # Chaque ligne est INTERPOLÉE à la distance demandée, elle n'est pas le point
+    # d'intégration le plus proche. Le premier point vérifiant `range_m >= next_r`
+    # dépasse toujours un peu — d'un pas d'intégration — et un pas de table serré
+    # affichait « 275, 300, 326, 350, 375, 401 » là où le tireur avait demandé 25.
+    # Entre deux points séparés de moins d'un mètre, l'interpolation linéaire est sans
+    # conséquence physique : la RK4 elle-même n'est pas plus fine.
     next_r = step_m
-    for pt in traj
-        if pt.range_m >= next_r
-            r_yd   = m_to_yards(pt.range_m)
-            drop_in = m_to_inches(pt.drop_m)
-            wind_in = m_to_inches(pt.windage_m)
-            spin_in = m_to_inches(pt.spin_drift_m)
+    for i in 2:length(traj)
+        a, b = traj[i - 1], traj[i]
+        # `while` et non `if` : près de la bouche, un pas d'intégration peut franchir
+        # deux distances demandées d'un coup si le pas de table est très serré.
+        while b.range_m >= next_r && a.range_m < next_r
+            span = b.range_m - a.range_m
+            f    = span > 0 ? (next_r - a.range_m) / span : 0.0
+            lerp(u, v) = u + (v - u) * f
+
+            r_yd    = m_to_yards(next_r)
+            drop_m  = lerp(a.drop_m, b.drop_m)
+            drop_in = m_to_inches(drop_m)
+            wind_in = m_to_inches(lerp(a.windage_m, b.windage_m))
+            spin_in = m_to_inches(lerp(a.spin_drift_m, b.spin_drift_m))
             elev    = drop_to_moa(abs(drop_in), r_yd)
-            elev    = pt.drop_m < 0 ? elev : -elev
-            v_fps   = ms_to_fps(pt.v_total)
-            ek_ftlb = pt.energy_J / 1.35582
+            elev    = drop_m < 0 ? elev : -elev
+            v_fps   = ms_to_fps(lerp(a.v_total, b.v_total))
+            ek_ftlb = lerp(a.energy_J, b.energy_J) / 1.35582
+            tof     = lerp(a.time, b.time)
 
             @printf("│ %6.0f │ %+8.1f │ %+8.1f │ %+8.1f │ %+8.1f │ %8.0f │ %6.3f │ %8.0f │\n",
-                    r_yd, drop_in, elev, wind_in, spin_in, v_fps, pt.time, ek_ftlb)
+                    r_yd, drop_in, elev, wind_in, spin_in, v_fps, tof, ek_ftlb)
 
             next_r += step_m
         end

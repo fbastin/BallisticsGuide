@@ -936,6 +936,18 @@ const ExteriorBallistics = (() => {
   }
 
   // -- Trajectory table at regular range intervals --
+  // Chaque ligne est INTERPOLÉE à la distance demandée, elle n'est pas le point
+  // d'intégration le plus proche.
+  //
+  // La table retenait auparavant le premier point vérifiant `rangeM >= nextR`, donc un
+  // point qui dépasse toujours un peu — d'un pas d'intégration, soit ~0,8 m à 800 m/s.
+  // Une demande à 25 m d'intervalle rendait « 275, 300, 326, 350, 375, 401, 425 » :
+  // l'écart est minuscule, mais une DOPE se recopie à la main et ces 326 et 401 n'ont
+  // aucun sens pour le tireur qui a demandé un pas de 25. Le dépassement se cumulait
+  // en outre avec un second arrondi côté affichage, l'aller-retour mètres → yards.
+  //
+  // Entre deux points d'intégration séparés de moins d'un mètre, l'interpolation
+  // linéaire est sans conséquence physique : la RK4 elle-même n'est pas plus fine.
   function trajectoryTable(params, stepYd = 100.0) {
     const p    = makeShotParams(params);
     const traj = solveTrajectory(p);
@@ -943,25 +955,34 @@ const ExteriorBallistics = (() => {
     const rows  = [];
     let nextR = stepM;
 
-    for (const pt of traj) {
-      if (pt.rangeM >= nextR) {
-        const rYd    = mToYards(pt.rangeM);
-        const dropIn = mToInches(pt.dropM);
-        const windIn = mToInches(pt.windageM);
-        const spinIn = mToInches(pt.spinDriftM || 0);
+    for (let i = 1; i < traj.length; i++) {
+      const a = traj[i - 1], b = traj[i];
+      // `while` et non `if` : près de la bouche, un pas d'intégration peut franchir
+      // deux distances demandées d'un coup si le pas de table est très serré.
+      while (b.rangeM >= nextR && a.rangeM < nextR) {
+        const span = b.rangeM - a.rangeM;
+        const f    = span > 0 ? (nextR - a.rangeM) / span : 0;
+        const lerp = (u, v) => u + (v - u) * f;
+
+        const rYd    = mToYards(nextR);
+        const dropM  = lerp(a.dropM, b.dropM);
+        const dropIn = mToInches(dropM);
+        const windIn = mToInches(lerp(a.windageM, b.windageM));
+        const spinIn = mToInches(lerp(a.spinDriftM || 0, b.spinDriftM || 0));
         let   elev   = dropToMoa(Math.abs(dropIn), rYd);
-        elev = pt.dropM < 0 ? elev : -elev;
-        const vFps   = msToFps(pt.vTotal);
-        const ekFtlb = pt.energyJ / 1.35582;
+        elev = dropM < 0 ? elev : -elev;
+        const vFps   = msToFps(lerp(a.vTotal, b.vTotal));
+        const ekFtlb = lerp(a.energyJ, b.energyJ) / 1.35582;
 
         rows.push({
+          rangeM:     +nextR.toFixed(2),   // exact : la distance DEMANDÉE
           rangeYd:    Math.round(rYd),
           dropIn:     +dropIn.toFixed(1),
           elevMoa:    +elev.toFixed(1),
           windIn:     +windIn.toFixed(1),
           spinDriftIn: +spinIn.toFixed(1),
           velFps:     Math.round(vFps),
-          tofS:       +pt.time.toFixed(3),
+          tofS:       +lerp(a.time, b.time).toFixed(3),
           energyFtlb: Math.round(ekFtlb),
         });
         nextR += stepM;
