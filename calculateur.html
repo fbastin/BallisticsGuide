@@ -147,14 +147,23 @@
           <label for="stepYd">Pas (yd)</label>
           <input type="number" id="stepYd" value="100" step="25">
         </div>
-        <div class="field">
+        <div class="field" id="fieldLat">
           <label for="latDeg">Latitude (&deg;)</label>
           <input type="number" id="latDeg" value="45" step="1">
         </div>
-        <div class="field">
+        <div class="field" id="fieldAz">
           <label for="azDeg">Azimut (&deg;)</label>
           <input type="number" id="azDeg" value="90" step="15">
         </div>
+      </div>
+
+      <!-- Effets : ils se decochent. Confronter un calcul a une DOPE relevee au stand,
+           ou a un autre solveur, suppose de comparer la meme physique -- et la plupart
+           des calculateurs ignorent Coriolis, ou l'appliquent autrement. -->
+      <h3>Effets</h3>
+      <div class="switch-row">
+        <label class="switch"><input type="checkbox" id="optCoriolis" checked onchange="syncEffects()"> Coriolis</label>
+        <label class="switch"><input type="checkbox" id="optSpin" checked onchange="syncEffects()"> D&eacute;rive gyroscopique</label>
       </div>
 
       <button class="btn btn-primary btn-calc" onclick="compute()">Calculer la trajectoire</button>
@@ -213,6 +222,17 @@ document.getElementById('preset').addEventListener('change', function() {
 
 function val(id) { return parseFloat(document.getElementById(id).value); }
 
+// Latitude et azimut ne servent qu'a Coriolis : les laisser actifs quand l'effet est
+// coupe laisse croire qu'ils agissent encore.
+function syncEffects() {
+  const on = document.getElementById('optCoriolis').checked;
+  document.getElementById('fieldLat').classList.toggle('is-inert', !on);
+  document.getElementById('fieldAz').classList.toggle('is-inert', !on);
+  document.getElementById('latDeg').disabled = !on;
+  document.getElementById('azDeg').disabled  = !on;
+}
+syncEffects();
+
 function compute() {
   const params = {
     massGrains:    val('massGr'),
@@ -234,8 +254,8 @@ function compute() {
     twistDirection:1,
     latitudeDeg:   val('latDeg'),
     azimuthDeg:    val('azDeg'),
-    enableCoriolis:true,
-    enableSpinDrift:true,
+    enableCoriolis: document.getElementById('optCoriolis').checked,
+    enableSpinDrift:document.getElementById('optSpin').checked,
   };
 
   const stepYd = val('stepYd');
@@ -278,10 +298,13 @@ function compute() {
 
   // Table
   html += '<h3>Table de trajectoire</h3>';
-  html += '<div style="overflow-x:auto">';
+  html += '<div class="table-scroll">';
   html += '<table class="result-table"><thead><tr>';
   html += '<th>Dist (yd)</th><th>Drop (in)</th><th>&Eacute;lev (MOA)</th>';
-  html += '<th>Vent (in)</th><th>Vel (fps)</th><th>ToF (s)</th><th>&Eacute;nergie (ft&middot;lb)</th>';
+  // La derive gyroscopique est deja COMPRISE dans la colonne Vent, qui est le total.
+  // On l'isole parce qu'elle ne se corrige pas comme le vent : le vent change d'un
+  // coup a l'autre, elle est fixe pour une balle, un pas et une vitesse donnes.
+  html += '<th>Vent (in)</th><th>D&eacute;rive (in)</th><th>Vel (fps)</th><th>ToF (s)</th><th>&Eacute;nergie (ft&middot;lb)</th>';
   html += '</tr></thead><tbody>';
 
   for (const r of table) {
@@ -290,6 +313,7 @@ function compute() {
     html += '<td>' + fmt(r.dropIn, 1) + '</td>';
     html += '<td>' + fmt(r.elevMoa, 1) + '</td>';
     html += '<td>' + fmt(r.windIn, 1) + '</td>';
+    html += '<td>' + (params.enableSpinDrift ? fmt(r.spinDriftIn || 0, 1) : '&mdash;') + '</td>';
     html += '<td>' + r.velFps + '</td>';
     html += '<td>' + r.tofS.toFixed(3) + '</td>';
     html += '<td>' + r.energyFtlb + '</td>';

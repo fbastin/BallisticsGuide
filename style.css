@@ -205,6 +205,12 @@ a:hover { text-decoration: underline; }
 }
 
 .calc-panel {
+  /* `min-width: 0` : un element de grille vaut `min-width: auto`, donc il refuse de
+     descendre sous la largeur intrinseque de son contenu. Un `<select>` se dimensionne
+     sur son option la plus longue -- ici 554 px -- et poussait tout le panneau a
+     596 px dans une colonne de 342 sur un ecran de 390. La page defilait
+     horizontalement des le chargement. */
+  min-width: 0;
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius);
@@ -229,12 +235,17 @@ a:hover { text-decoration: underline; }
 
 .field {
   display: flex; flex-direction: column; margin-bottom: .4rem;
+  min-width: 0;
 }
 .field label {
   font-size: .78rem; font-weight: 600; color: var(--clr-muted);
   margin-bottom: .15rem;
 }
 .field input, .field select {
+  /* Sans largeur declaree, un `<input type=number>` prend sa taille par defaut
+     (~177 px) et un `<select>` celle de sa plus longue option : ils imposaient au
+     panneau une largeur minimale que la grille ne pouvait pas reduire. */
+  width: 100%; min-width: 0;
   font-family: var(--font-mono); font-size: .88rem;
   padding: .35rem .5rem; border: 1px solid var(--clr-border);
   border-radius: 4px; background: var(--clr-bg);
@@ -247,6 +258,27 @@ a:hover { text-decoration: underline; }
 
 .field-full { grid-column: 1 / -1; }
 
+/* Interrupteurs d'effets. Ils existent pour pouvoir NEUTRALISER un effet : confronter
+   le calcul a une DOPE mesuree, ou a un autre solveur, suppose de comparer la meme
+   physique. Le nombre de colonnes suit la place disponible : « Derive gyroscopique »
+   ne tient pas dans une demi-colonne du panneau. */
+.switch-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: .5rem;
+  margin: .5rem 0 .25rem;
+}
+.switch {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .78rem; font-weight: 600; color: var(--clr-muted);
+  cursor: pointer; min-width: 0;
+}
+.switch input { accent-color: var(--clr-accent); cursor: pointer; flex: none; width: auto; }
+
+/* Champ neutralise : latitude et azimut n'agissent plus quand Coriolis est decoche. */
+.field.is-inert { opacity: .45; }
+.field.is-inert input { pointer-events: none; }
+
 .btn-calc {
   width: 100%; margin-top: 1rem; padding: .7rem;
   font-size: 1rem;
@@ -254,6 +286,7 @@ a:hover { text-decoration: underline; }
 
 /* --- Results area --- */
 .calc-results {
+  min-width: 0;   /* meme raison : la table de trajectoire poussait la grille */
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius);
@@ -284,7 +317,20 @@ a:hover { text-decoration: underline; }
   width: 100%; border-collapse: collapse; font-size: .88rem;
   font-family: var(--font-mono);
 }
-.result-table thead { position: sticky; top: 56px; z-index: 5; }
+/* Le tableau defile dans son propre cadre, sur les deux axes, et son en-tete y reste
+   fige.
+   Il etait `position: sticky; top: 56px`, cale sous l'en-tete du site -- et ne collait
+   a rien. Un conteneur en `overflow-x: auto` calcule `overflow-y: auto` : il devient
+   lui-meme la zone de defilement de reference, et un `top` compte alors depuis SON
+   bord, pas depuis la fenetre. L'en-tete des colonnes partait donc avec le
+   defilement, et les lignes passaient derriere l'en-tete du site, qui est colle en
+   haut. En donnant au cadre une hauteur maximale, ce meme mecanisme joue enfin dans
+   le bon sens : `top: 0` fige l'en-tete au bord du cadre. */
+.table-scroll {
+  max-height: 65vh;
+  overflow: auto;
+}
+.result-table thead { position: sticky; top: 0; z-index: 5; }
 .result-table th {
   text-align: right; font-weight: 700; background: var(--clr-primary);
   color: #fff; padding: .5rem .6rem; font-size: .8rem;
