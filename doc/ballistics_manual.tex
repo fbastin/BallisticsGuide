@@ -146,13 +146,15 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.2 --- \today}
+{\large Version 3.3 --- \today}
 \end{titlepage}
 
 \begin{abstract}
 This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought precision improvements to the 3-DOF engine (coordinate-system alignment) and outlined a roadmap for a 6-DOF expert mode. Version 3.2 (2026-08-22) replaced the G1 and G7 drag tables, whose supersonic branches had been fabricated, and removed the $4/\pi$ factor that had been masking them; every trajectory figure in this manual was recomputed.
 
 Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and validated against three published cases --- McCoy's .308\,in 168\,gr textbook example, the 105\,mm HE M1 shell, and the 5.56\,mm NATO family measured at the Ballistic Research Laboratory. This edition adds the moment-of-inertia estimator that feeds it (Section~\ref{sec:inertia}), the measured coefficient sets it can be run on, and the reasons a set may not be trusted. It also corrects an inclined-fire example that had drifted 10\,\% from what both implementations return, and qualifies the recommendation of spline interpolation, which is right for the dense standard drag tables and wrong for sparse measured ones.
+
+Version 3.3 (2026-08-25) corrects the G7 ballistic coefficient of the Sierra 175\,gr MatchKing in the bullet data table (0.259 to 0.243, the value published by the sources that table cites) and the transonic ranges derived from it. It also adds Chapter~\ref{chap:dispersion}: the dispersion statistics, hit-probability model and Bayesian muzzle-velocity truing behind the analysis tools of the online calculator.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -2571,6 +2573,100 @@ Coriolis ($45^{\circ}$N, uncomp.) & --- & $<$1.0 & 2.8 \\
 
 \textbf{Key insight:} Wind reading dominates the error budget at long range. Wind-related errors are 3--5 times larger than all other sources combined.
 
+
+% ============================================================================
+% CHAPTER: DISPERSION, HIT PROBABILITY AND VELOCITY TRUING
+% ============================================================================
+\chapter{Dispersion, Hit Probability and Velocity Truing}
+\label{chap:dispersion}
+
+\section{Motivation: From Groups to Decisions}
+
+The sensitivity coefficients of Chapter~\ref{ch:sensitivity} describe the weapon. This chapter adds the shooter and the conditions, and answers the two questions a competitor ultimately faces. First: given my measured dispersion and my uncertainty about the wind, what is my probability of hitting a target of a given size? Second: my chronograph and my impacts disagree about the muzzle velocity --- which one should I believe, and by how much?
+
+Both questions have closed-form answers under a single assumption: the impact point is a bivariate normal random variable, independent on the horizontal and vertical axes, with the same standard deviation $\sigma$ on each axis. Almost every dispersion model used in the shooting sports reduces to this assumption, so it is worth deriving its consequences once, carefully.
+
+\section{The Rayleigh Model of a Centered Group}
+
+Let the impact coordinates $(x, y)$ be independent normal with mean zero and standard deviation $\sigma$ on each axis. The radial distance of an impact from the group center,
+\begin{equation}
+  R = \sqrt{x^2 + y^2},
+\end{equation}
+then follows the \textbf{Rayleigh distribution}, whose cumulative form gives the probability of landing inside a circle of radius $r$:
+\begin{equation}
+  P(R \le r) = 1 - \exp\!\left(-\frac{r^2}{2\sigma^2}\right).
+  \label{eq:rayleigh}
+\end{equation}
+
+Two closed-form summaries follow directly:
+\begin{equation}
+  \mathrm{CEP}_{50} = \sigma\sqrt{2\ln 2} \approx 1.1774\,\sigma,
+  \qquad
+  \mathbb{E}[R] = \sigma\sqrt{\pi/2} \approx 1.2533\,\sigma,
+\end{equation}
+where $\mathrm{CEP}_{50}$ (Circular Error Probable) is the radius containing half of all impacts, and $\mathbb{E}[R]$ is the mean radius of the group.
+
+\section{From Group Size to Sigma}
+
+Shooters measure the \emph{extreme spread} (ES) of a group, not $\sigma$. For $n$ shots from the same bivariate normal, the expected extreme spread is a known multiple of $\sigma$:
+\begin{equation}
+  \mathbb{E}[\mathrm{ES}] = k_n\,\sigma,
+  \qquad
+  \sigma = \frac{\mathrm{ES}}{k_n}.
+  \label{eq:es_to_sigma}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Expected extreme spread of an $n$-shot group, in units of $\sigma$}
+\label{tab:es_factors}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+$n$ & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\midrule
+$k_n$ & 1.693 & 2.058 & 2.326 & 2.534 & 2.704 & 2.847 & 2.970 & 3.078 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large, and it systematically underestimates $\sigma$. Average several groups before dividing.
+
+\section{Composing Independent Variance Sources}
+
+Wind-reading uncertainty behaves as an additional lateral dispersion. If the wind speed is uncertain by $\sigma_w$ (in speed units) and the solver's wind sensitivity at the target is $S_w$ (lateral displacement per speed unit, measured by the finite differences of Eq.~\eqref{eq:sensitivity}), then
+\begin{equation}
+  \sigma_{\text{total}}^2 = \sigma_{\text{disp}}^2 + \left(S_w\,\sigma_w\right)^2 + \cdots
+  \label{eq:quadrature}
+\end{equation}
+Independent sources compose in \emph{quadrature}: variances add, standard deviations do not.
+
+\section{Hit Probability on a Circular Target}
+
+Inserting the target radius and the composed $\sigma_{\text{total}}$ into Eq.~\eqref{eq:rayleigh} gives the single-shot hit probability.
+
+\paragraph{Worked example.} A .308\,in, 175\,gr at 600\,yd groups 20\,cm extreme spread on 5 shots: $\sigma_{\text{disp}} = 20/2.326 = 8.60$\,cm. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity at that range is 13.5\,cm per km/h, so $\sigma_{\text{wind}} = 40.5$\,cm. In quadrature, $\sigma_{\text{total}} = 41.4$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:rayleigh} gives $P = 6\,\%$ --- against $78\,\%$ with a perfectly known wind. The wind accounts for 96\,\% of the variance: at this range, progress comes from reading the wind, not from tighter groups.
+
+\section{Bayesian Truing of the Muzzle Velocity}
+
+The chronograph provides a prior: $v_0 \sim \mathcal{N}(\bar{v}_0, \sigma_{\text{chrono}}^2)$. The observation is the vertical offset $\Delta h$ (signed) of the impact relative to the predicted point at range $R$, with reading uncertainty $\sigma_h$. The forward sensitivity $\partial h/\partial v_0$ is measured by central finite differences on the solver, Eq.~\eqref{eq:sensitivity}. The velocity implied by the observation is
+\begin{equation}
+  \hat{v}_0 = v_0 + \frac{\Delta h}{\partial h/\partial v_0},
+\end{equation}
+with observation-equivalent uncertainty $\sigma_{\text{obs}} = \sigma_h / \left|\partial h/\partial v_0\right|$. The conjugate Gaussian update combines prior and observation by adding their precisions:
+\begin{equation}
+  v_0^{\text{post}} = \frac{\bar{v}_0/\sigma_{\text{chrono}}^2 + \hat{v}_0/\sigma_{\text{obs}}^2}{1/\sigma_{\text{chrono}}^2 + 1/\sigma_{\text{obs}}^2},
+  \qquad
+  \sigma^{\text{post}} = \left(\frac{1}{\sigma_{\text{chrono}}^2} + \frac{1}{\sigma_{\text{obs}}^2}\right)^{-1/2}.
+  \label{eq:truing}
+\end{equation}
+
+\paragraph{Worked example.} A 6.5\,mm Creedmoor at 800\,m: chronograph $2700$\,fps $\pm 3$\,m/s, predicted drop $-5.885$\,m, observed impact $14.7$\,cm above it. The finite-difference slope is 0.0051\,m per fps, so the implied velocity is 2729\,fps --- the true value if the chronograph reads 30\,fps low. With a 2\,cm reading uncertainty ($\sigma_{\text{obs}} \approx 1.2$\,m/s), the posterior is $2725 \pm 1.1$\,m/s: the observation, being more precise than the chronograph, carries the update, and the shift of 2.5 chronograph-SD is a strong signal.
+
+\paragraph{Assumptions and cautions.} The truing absorbs any BC error into the muzzle velocity --- a BC error mimics a velocity error, but \emph{differently at each distance}, which is why truing at two distances separates them only approximately. The range must be velocity-sensitive (never near the zero). One observation leaves the posterior SD at the reading-uncertainty floor. And a shift below one chronograph-SD is not a signal: keep the chronograph value.
+
+\section{Implementation}
+
+The online calculator applies these three analyses to the active load: the sensitivity of Eq.~\eqref{eq:sensitivity} is measured by finite differences on the validated solver, and the constants of this chapter (the $k_n$ table, 1.1774, $\sqrt{2\ln 10}$) are the ones the tools use.
 
 % ============================================================================
 % CHAPTER 13: BALLISTIC IMPLICATIONS FOR RELOADING
