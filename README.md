@@ -27,7 +27,8 @@ This repository is the companion code for the manual: ***"Competition Rifle Ball
 ```text
 .
 ├── src/
-│   ├── CompetitionBallistics.jl  # Core library module
+│   ├── CompetitionBallistics.jl  # Core library module (Julia — the reference)
+│   ├── CompetitionBallistics.js  # JavaScript port — the copy served by tireur.org
 │   ├── app.jl                   # Dash.jl web application
 │   └── BallisticsTutorial.jl     # Pluto.jl tutorial notebook
 ├── doc/
@@ -35,6 +36,11 @@ This repository is the companion code for the manual: ***"Competition Rifle Ball
 ├── LICENSE                      # MIT License
 └── README.md                    # You are here
 ```
+
+The two ports are kept in line by a nightly validation harness living in the
+**parent repository** ([tireur.org](https://github.com/fbastin/tireur.org), where
+this repo is vendored as a submodule) — see
+[Replaying the validation controls](#replaying-the-validation-controls).
 
 ## 🛠️ Installation & Setup
 
@@ -89,6 +95,57 @@ For a guided walkthrough of the library's features, launch the Pluto notebook:
 using Pluto
 Pluto.run(notebook="src/BallisticsTutorial.jl")
 ```
+
+## ✅ Replaying the Validation Controls
+
+Three independent controls watch this library. None trusts the others — they are
+built to catch *different* failure modes:
+
+1. **Parity (Julia ↔ JavaScript)** — the two ports are separate hand-written
+   implementations of the same manual. They are run on the same grid of inputs
+   (86 cases over 21 functions, plus 45 reference data values) and compared at
+   1e-9 relative tolerance. Catches port drift. `--selftest` perturbs one
+   ballistic coefficient by 1 % and verifies the guard bites.
+2. **Frozen third-party reference (JavaScript ↔ `py-ballisticcalc`)** — parity
+   cannot see an error *shared by both ports* (this happened: identical
+   supersonic drag tables, wrong above Mach 1.03, with perfect parity). The
+   solver is therefore confronted with a frozen, provenance-stamped reference
+   produced by the independent library `py-ballisticcalc` (point-masse 3-DOF,
+   RK4 engine): 14 cases, 162 points. A frozen file, not a live call — a
+   reference hosted elsewhere is a revocable loan, not a fixture.
+3. **Analytic cases and convergence** — standard atmosphere density, speed of
+   sound, barometric pressure, zero-angle search, form factor identities.
+
+### Prerequisites
+
+* **Julia** ≥ 1.6 (no extra packages: the controls only use the standard library)
+* **Node.js** (any recent version)
+* **Python 3** (standard library only)
+* To *regenerate* the frozen reference (optional, deliberate): `pip install py-ballisticcalc`
+
+### Running
+
+```bash
+# clone the parent repository — it carries this repo as a submodule and the harness
+git clone --recurse-submodules https://github.com/fbastin/tireur.org
+cd tireur.org
+
+# 1. parity between the two ports (fails on any drift)
+python3 scripts/check_js_parity.py            # add --selftest to verify the guard bites
+
+# 2. our JavaScript solver vs the frozen third-party reference
+python3 scripts/check_ballistics_reference.py --selftest   # guard self-check
+python3 scripts/check_ballistics_reference.py              # 14 cases, 162 points
+
+# 3. (optional, deliberate) regenerate the frozen reference — it is provenance-stamped
+#    (library version, engine, date) and must not be refreshed casually:
+python3 scripts/gen_ballistics_reference.py   # requires py-ballisticcalc
+```
+
+All three print `OK` on a healthy checkout. If a divergence appears, the rule is:
+**arbitrate against the published tables (McCoy, Litz) or measured data — never
+align one implementation to the other.** The frozen reference is a second opinion,
+not an oracle; two implementations can share the same error (ours did, for months).
 
 ## 📚 Mathematical Manual
 
