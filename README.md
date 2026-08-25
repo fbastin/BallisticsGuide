@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Julia Version](https://img.shields.io/badge/julia-1.6+-blue.svg)](https://julialang.org)
+[![Validation](https://github.com/fbastin/BallisticsGuide/actions/workflows/validation.yml/badge.svg)](https://github.com/fbastin/BallisticsGuide/actions/workflows/validation.yml)
 
 A comprehensive mathematical library and toolset for long-range competition rifle ballistics, implemented in Julia. This project provides everything from basic unit conversions to high-fidelity 6-Degree-of-Freedom (6-DOF) trajectory simulations.
 

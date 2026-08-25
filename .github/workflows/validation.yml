@@ -1,0 +1,52 @@
+# Les contrôles de validation tournent depuis le harnais du dépôt parent
+# (tireur.org), qui porte ce dépôt en submodule : on extrait le parent, on
+# superpose le code de CETTE branche, et on fait tourner les contrôles dessus.
+# Ainsi une PR ici est validée par les mêmes gardes que le site en production.
+name: Validation (harnais du dépôt parent)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  controles:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extraire le dépôt parent (harnais + référence gelée)
+        uses: actions/checkout@v4
+        with:
+          repository: fbastin/tireur.org
+          ref: main
+          path: tireur.org
+
+      - name: Extraire le code de cette branche
+        uses: actions/checkout@v4
+        with:
+          path: branche
+
+      - name: Superposer la branche à la place du submodule
+        run: |
+          rm -rf tireur.org/BallisticsGuide
+          mkdir -p tireur.org/BallisticsGuide
+          cp -r branche/* tireur.org/BallisticsGuide/
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Parité Julia ↔ JS (86 cas, 45 données)
+        run: python3 tireur.org/scripts/check_js_parity.py
+
+      - name: Autotest parité — le garde doit mordre
+        run: python3 tireur.org/scripts/check_js_parity.py --selftest
+
+      - name: Autotest référence tierce — le garde doit mordre
+        run: python3 tireur.org/scripts/check_ballistics_reference.py --selftest
+
+      - name: Référence tierce gelée (14 cas, 162 points)
+        run: python3 tireur.org/scripts/check_ballistics_reference.py
