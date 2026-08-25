@@ -249,7 +249,7 @@ const ReferenceData = (() => {
     "Berger 140 Hybrid (6.5mm)":     { name: "Berger 140 Hybrid (6.5mm)",     massGr: 140.0, caliberIn: 0.264, bcG7: 0.311, lengthIn: 1.34, twistIn: 8.0 },
     "Hornady 147 ELD-M (6.5mm)":     { name: "Hornady 147 ELD-M (6.5mm)",     massGr: 147.0, caliberIn: 0.264, bcG7: 0.351, lengthIn: 1.42, twistIn: 7.5 },
     "Berger 180 Hybrid (7mm)":       { name: "Berger 180 Hybrid (7mm)",       massGr: 180.0, caliberIn: 0.284, bcG7: 0.350, lengthIn: 1.50, twistIn: 8.5 },
-    "Sierra 175 MK (.308)":          { name: "Sierra 175 MK (.308)",          massGr: 175.0, caliberIn: 0.308, bcG7: 0.259, lengthIn: 1.24, twistIn: 10.0 },
+    "Sierra 175 MK (.308)":          { name: "Sierra 175 MK (.308)",          massGr: 175.0, caliberIn: 0.308, bcG7: 0.243, lengthIn: 1.24, twistIn: 10.0 },
     "Berger 185 Juggernaut (.308)":  { name: "Berger 185 Juggernaut (.308)",  massGr: 185.0, caliberIn: 0.308, bcG7: 0.283, lengthIn: 1.30, twistIn: 10.0 },
     "Hornady 178 ELD-M (.308)":      { name: "Hornady 178 ELD-M (.308)",      massGr: 178.0, caliberIn: 0.308, bcG7: 0.274, lengthIn: 1.31, twistIn: 10.0 },
     "Berger 300 Hybrid (.338)":      { name: "Berger 300 Hybrid (.338)",      massGr: 300.0, caliberIn: 0.338, bcG7: 0.419, lengthIn: 1.82, twistIn: 9.4 },
