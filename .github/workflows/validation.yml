@@ -1,35 +1,29 @@
-# Les contrôles de validation tournent depuis le harnais du dépôt parent
-# (tireur.org), qui porte ce dépôt en submodule : on extrait le parent, on
-# superpose le code de CETTE branche, et on fait tourner les contrôles dessus.
-# Ainsi une PR ici est validée par les mêmes gardes que le site en production.
-name: Validation (harnais du dépôt parent)
+# Les trois contrôles de validation, en pull request et à chaque push.
+# Le harnais vit dans CE dépôt (scripts/ + data/ballistics/) : une PR ici est
+# validée par les mêmes gardes que le site en production. La nuit,
+# daily_maintenance.sh les fait aussi tourner côté serveur.
+name: Validation
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'data/**'
+      - '.github/workflows/validation.yml'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'data/**'
+      - '.github/workflows/validation.yml'
 
 jobs:
   controles:
     runs-on: ubuntu-latest
     steps:
-      - name: Extraire le dépôt parent (harnais + référence gelée)
-        uses: actions/checkout@v4
-        with:
-          repository: fbastin/tireur.org
-          ref: main
-          path: tireur.org
-
-      - name: Extraire le code de cette branche
-        uses: actions/checkout@v4
-        with:
-          path: branche
-
-      - name: Superposer la branche à la place du submodule
-        run: |
-          rm -rf tireur.org/BallisticsGuide
-          mkdir -p tireur.org/BallisticsGuide
-          cp -r branche/* tireur.org/BallisticsGuide/
+      - uses: actions/checkout@v4
 
       - uses: julia-actions/setup-julia@v2
         with:
@@ -39,14 +33,18 @@ jobs:
         with:
           node-version: '20'
 
+      # Aucun paquet Julia additionnel : les contrôles n'emploient que la
+      # bibliothèque standard. py-ballisticcalc n'est pas requis ici : la
+      # référence est gelée et versionnée dans data/ballistics/.
+
       - name: Parité Julia ↔ JS (86 cas, 45 données)
-        run: python3 tireur.org/scripts/check_js_parity.py
+        run: python3 scripts/check_js_parity.py
 
       - name: Autotest parité — le garde doit mordre
-        run: python3 tireur.org/scripts/check_js_parity.py --selftest
+        run: python3 scripts/check_js_parity.py --selftest
 
       - name: Autotest référence tierce — le garde doit mordre
-        run: python3 tireur.org/scripts/check_ballistics_reference.py --selftest
+        run: python3 scripts/check_ballistics_reference.py --selftest
 
       - name: Référence tierce gelée (14 cas, 162 points)
-        run: python3 tireur.org/scripts/check_ballistics_reference.py
+        run: python3 scripts/check_ballistics_reference.py

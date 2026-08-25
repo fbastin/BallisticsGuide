@@ -1,0 +1,1378 @@
+{
+ "_provenance": {
+  "produit_par": "scripts/gen_ballistics_reference.py",
+  "bibliotheque": "py-ballisticcalc 2.3.1",
+  "moteur": "rk4_engine",
+  "date": "2026-08-22",
+  "avertissement": "Deuxième avis, pas oracle. En cas de divergence, ARBITRER contre les tables publiées (Litz, McCoy) ou la DOPE mesurée."
+ },
+ "cas": [
+  {
+   "id": "308-175-g7-nu",
+   "desc": ".308 Win 175 gr G7 0,243 @ 2600 fps — nu",
+   "massGrains": 175,
+   "caliberIn": 0.308,
+   "bc": 0.243,
+   "dragModel": "G7",
+   "muzzleVelFps": 2600,
+   "bulletLengthIn": 1.24,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1100,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2416.8173,
+     "tof_s": 0.11968
+    },
+    {
+     "yd": 200,
+     "drop_in": -4.4623,
+     "windage_in": 0.0,
+     "vel_fps": 2241.1855,
+     "tof_s": 0.248588
+    },
+    {
+     "yd": 300,
+     "drop_in": -15.8588,
+     "windage_in": 0.0,
+     "vel_fps": 2073.3906,
+     "tof_s": 0.387764
+    },
+    {
+     "yd": 400,
+     "drop_in": -35.359,
+     "windage_in": 0.0,
+     "vel_fps": 1912.8068,
+     "tof_s": 0.538409
+    },
+    {
+     "yd": 500,
+     "drop_in": -64.3838,
+     "windage_in": 0.0,
+     "vel_fps": 1758.4763,
+     "tof_s": 0.701986
+    },
+    {
+     "yd": 600,
+     "drop_in": -104.6825,
+     "windage_in": 0.0,
+     "vel_fps": 1609.866,
+     "tof_s": 0.880291
+    },
+    {
+     "yd": 700,
+     "drop_in": -158.4386,
+     "windage_in": 0.0,
+     "vel_fps": 1466.8578,
+     "tof_s": 1.075527
+    },
+    {
+     "yd": 800,
+     "drop_in": -228.4113,
+     "windage_in": 0.0,
+     "vel_fps": 1330.0327,
+     "tof_s": 1.290349
+    },
+    {
+     "yd": 900,
+     "drop_in": -318.117,
+     "windage_in": 0.0,
+     "vel_fps": 1200.8044,
+     "tof_s": 1.527841
+    },
+    {
+     "yd": 1000,
+     "drop_in": -432.0278,
+     "windage_in": 0.0,
+     "vel_fps": 1088.0773,
+     "tof_s": 1.791033
+    },
+    {
+     "yd": 1100,
+     "drop_in": -575.0906,
+     "windage_in": 0.0,
+     "vel_fps": 1031.6111,
+     "tof_s": 2.075202
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-nu",
+   "desc": "6.5 Creedmoor 140 gr G7 0,311 @ 2700 fps — nu",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2553.2292,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8373,
+     "windage_in": 0.0,
+     "vel_fps": 2410.9113,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.6609,
+     "windage_in": 0.0,
+     "vel_fps": 2273.211,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.2185,
+     "windage_in": 0.0,
+     "vel_fps": 2140.3128,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.3731,
+     "windage_in": 0.0,
+     "vel_fps": 2012.0649,
+     "tof_s": 0.643914
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.1252,
+     "windage_in": 0.0,
+     "vel_fps": 1887.9819,
+     "tof_s": 0.797842
+    },
+    {
+     "yd": 700,
+     "drop_in": -129.6441,
+     "windage_in": 0.0,
+     "vel_fps": 1767.6469,
+     "tof_s": 0.962071
+    },
+    {
+     "yd": 800,
+     "drop_in": -183.3073,
+     "windage_in": 0.0,
+     "vel_fps": 1650.8118,
+     "tof_s": 1.137706
+    },
+    {
+     "yd": 900,
+     "drop_in": -249.7514,
+     "windage_in": 0.0,
+     "vel_fps": 1537.3939,
+     "tof_s": 1.326045
+    },
+    {
+     "yd": 1000,
+     "drop_in": -330.9366,
+     "windage_in": 0.0,
+     "vel_fps": 1427.4838,
+     "tof_s": 1.528602
+    },
+    {
+     "yd": 1100,
+     "drop_in": -429.2263,
+     "windage_in": 0.0,
+     "vel_fps": 1321.4674,
+     "tof_s": 1.747112
+    },
+    {
+     "yd": 1200,
+     "drop_in": -547.4823,
+     "windage_in": 0.0,
+     "vel_fps": 1220.1024,
+     "tof_s": 1.98352
+    }
+   ]
+  },
+  {
+   "id": "338lm-300-g7-nu",
+   "desc": ".338 Lapua Magnum 300 gr G7 0,419 @ 2750 fps — nu",
+   "massGrains": 300,
+   "caliberIn": 0.338,
+   "bc": 0.419,
+   "dragModel": "G7",
+   "muzzleVelFps": 2750,
+   "bulletLengthIn": 1.82,
+   "sightHeightIn": 2.2,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1500,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2639.5528,
+     "tof_s": 0.11135
+    },
+    {
+     "yd": 200,
+     "drop_in": -2.7909,
+     "windage_in": 0.0,
+     "vel_fps": 2531.5211,
+     "tof_s": 0.227406
+    },
+    {
+     "yd": 300,
+     "drop_in": -11.0078,
+     "windage_in": 0.0,
+     "vel_fps": 2425.9533,
+     "tof_s": 0.348465
+    },
+    {
+     "yd": 400,
+     "drop_in": -25.1334,
+     "windage_in": 0.0,
+     "vel_fps": 2322.9282,
+     "tof_s": 0.474842
+    },
+    {
+     "yd": 500,
+     "drop_in": -45.7037,
+     "windage_in": 0.0,
+     "vel_fps": 2222.5134,
+     "tof_s": 0.606879
+    },
+    {
+     "yd": 600,
+     "drop_in": -73.3146,
+     "windage_in": 0.0,
+     "vel_fps": 2124.7706,
+     "tof_s": 0.744938
+    },
+    {
+     "yd": 700,
+     "drop_in": -108.6291,
+     "windage_in": 0.0,
+     "vel_fps": 2029.5685,
+     "tof_s": 0.889411
+    },
+    {
+     "yd": 800,
+     "drop_in": -152.3879,
+     "windage_in": 0.0,
+     "vel_fps": 1936.7112,
+     "tof_s": 1.04074
+    },
+    {
+     "yd": 900,
+     "drop_in": -205.4211,
+     "windage_in": 0.0,
+     "vel_fps": 1845.9749,
+     "tof_s": 1.199419
+    },
+    {
+     "yd": 1000,
+     "drop_in": -268.6642,
+     "windage_in": 0.0,
+     "vel_fps": 1757.2757,
+     "tof_s": 1.36601
+    },
+    {
+     "yd": 1100,
+     "drop_in": -343.1761,
+     "windage_in": 0.0,
+     "vel_fps": 1670.4895,
+     "tof_s": 1.541143
+    },
+    {
+     "yd": 1200,
+     "drop_in": -430.1606,
+     "windage_in": 0.0,
+     "vel_fps": 1585.5259,
+     "tof_s": 1.72553
+    },
+    {
+     "yd": 1300,
+     "drop_in": -530.9936,
+     "windage_in": 0.0,
+     "vel_fps": 1502.4215,
+     "tof_s": 1.919977
+    },
+    {
+     "yd": 1400,
+     "drop_in": -647.2542,
+     "windage_in": 0.0,
+     "vel_fps": 1421.3059,
+     "tof_s": 2.125379
+    },
+    {
+     "yd": 1500,
+     "drop_in": -780.7596,
+     "windage_in": 0.0,
+     "vel_fps": 1342.3756,
+     "tof_s": 2.34272
+    }
+   ]
+  },
+  {
+   "id": "308-168-g1-nu",
+   "desc": ".308 Win 168 gr G1 0,462 @ 2650 fps — nu",
+   "massGrains": 168,
+   "caliberIn": 0.308,
+   "bc": 0.462,
+   "dragModel": "G1",
+   "muzzleVelFps": 2650,
+   "bulletLengthIn": 1.215,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1000,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2456.7038,
+     "tof_s": 0.117581
+    },
+    {
+     "yd": 200,
+     "drop_in": -4.2713,
+     "windage_in": 0.0,
+     "vel_fps": 2271.612,
+     "tof_s": 0.244577
+    },
+    {
+     "yd": 300,
+     "drop_in": -15.2939,
+     "windage_in": 0.0,
+     "vel_fps": 2094.4367,
+     "tof_s": 0.382119
+    },
+    {
+     "yd": 400,
+     "drop_in": -34.2599,
+     "windage_in": 0.0,
+     "vel_fps": 1925.4893,
+     "tof_s": 0.531518
+    },
+    {
+     "yd": 500,
+     "drop_in": -62.6257,
+     "windage_in": 0.0,
+     "vel_fps": 1765.4409,
+     "tof_s": 0.694255
+    },
+    {
+     "yd": 600,
+     "drop_in": -102.1738,
+     "windage_in": 0.0,
+     "vel_fps": 1615.4049,
+     "tof_s": 0.871947
+    },
+    {
+     "yd": 700,
+     "drop_in": -155.0774,
+     "windage_in": 0.0,
+     "vel_fps": 1476.9087,
+     "tof_s": 1.066257
+    },
+    {
+     "yd": 800,
+     "drop_in": -223.9553,
+     "windage_in": 0.0,
+     "vel_fps": 1351.8534,
+     "tof_s": 1.278724
+    },
+    {
+     "yd": 900,
+     "drop_in": -311.8907,
+     "windage_in": 0.0,
+     "vel_fps": 1242.6091,
+     "tof_s": 1.510447
+    },
+    {
+     "yd": 1000,
+     "drop_in": -422.3652,
+     "windage_in": 0.0,
+     "vel_fps": 1151.6345,
+     "tof_s": 1.761625
+    }
+   ]
+  },
+  {
+   "id": "223-55-g1-nu",
+   "desc": ".223 Rem 55 gr G1 0,255 @ 3240 fps — nu",
+   "massGrains": 55,
+   "caliberIn": 0.224,
+   "bc": 0.255,
+   "dragModel": "G1",
+   "muzzleVelFps": 3240,
+   "bulletLengthIn": 0.76,
+   "sightHeightIn": 2.6,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 700,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2848.089,
+     "tof_s": 0.098788
+    },
+    {
+     "yd": 200,
+     "drop_in": -1.7128,
+     "windage_in": 0.0,
+     "vel_fps": 2488.8001,
+     "tof_s": 0.211486
+    },
+    {
+     "yd": 300,
+     "drop_in": -9.0795,
+     "windage_in": 0.0,
+     "vel_fps": 2156.9164,
+     "tof_s": 0.340979
+    },
+    {
+     "yd": 400,
+     "drop_in": -23.982,
+     "windage_in": 0.0,
+     "vel_fps": 1851.7198,
+     "tof_s": 0.491123
+    },
+    {
+     "yd": 500,
+     "drop_in": -49.1161,
+     "windage_in": 0.0,
+     "vel_fps": 1577.4095,
+     "tof_s": 0.666769
+    },
+    {
+     "yd": 600,
+     "drop_in": -88.3415,
+     "windage_in": 0.0,
+     "vel_fps": 1342.669,
+     "tof_s": 0.873235
+    },
+    {
+     "yd": 700,
+     "drop_in": -146.9536,
+     "windage_in": 0.0,
+     "vel_fps": 1160.4436,
+     "tof_s": 1.114359
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-chaud-haut",
+   "desc": "6.5 CM 140 gr — 30 °C, 850 hPa station, 50 % HR",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "tempF": 86.0,
+   "pressureInhg": 25.1,
+   "humidityPct": 50,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2582.3606,
+     "tof_s": 0.113615
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.715,
+     "windage_in": 0.0,
+     "vel_fps": 2467.5927,
+     "tof_s": 0.23246
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.1416,
+     "windage_in": 0.0,
+     "vel_fps": 2355.7845,
+     "tof_s": 0.356889
+    },
+    {
+     "yd": 400,
+     "drop_in": -28.835,
+     "windage_in": 0.0,
+     "vel_fps": 2247.0388,
+     "tof_s": 0.487284
+    },
+    {
+     "yd": 500,
+     "drop_in": -51.4167,
+     "windage_in": 0.0,
+     "vel_fps": 2141.3667,
+     "tof_s": 0.624053
+    },
+    {
+     "yd": 600,
+     "drop_in": -81.584,
+     "windage_in": 0.0,
+     "vel_fps": 2038.5495,
+     "tof_s": 0.767646
+    },
+    {
+     "yd": 700,
+     "drop_in": -120.1223,
+     "windage_in": 0.0,
+     "vel_fps": 1938.3372,
+     "tof_s": 0.918574
+    },
+    {
+     "yd": 800,
+     "drop_in": -167.9205,
+     "windage_in": 0.0,
+     "vel_fps": 1840.521,
+     "tof_s": 1.077418
+    },
+    {
+     "yd": 900,
+     "drop_in": -225.9907,
+     "windage_in": 0.0,
+     "vel_fps": 1744.9828,
+     "tof_s": 1.244837
+    },
+    {
+     "yd": 1000,
+     "drop_in": -295.4904,
+     "windage_in": 0.0,
+     "vel_fps": 1651.6364,
+     "tof_s": 1.42158
+    },
+    {
+     "yd": 1100,
+     "drop_in": -377.7509,
+     "windage_in": 0.0,
+     "vel_fps": 1560.4655,
+     "tof_s": 1.608493
+    },
+    {
+     "yd": 1200,
+     "drop_in": -474.3108,
+     "windage_in": 0.0,
+     "vel_fps": 1471.4902,
+     "tof_s": 1.80654
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-froid",
+   "desc": "6.5 CM 140 gr — −15 °C, 1030 hPa, 0 % HR",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "tempF": 5.0,
+   "pressureInhg": 30.42,
+   "humidityPct": 0,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.0,
+     "vel_fps": 2537.9755,
+     "tof_s": 0.114603
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.9033,
+     "windage_in": 0.0,
+     "vel_fps": 2381.1776,
+     "tof_s": 0.236639
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.9456,
+     "windage_in": 0.0,
+     "vel_fps": 2229.8637,
+     "tof_s": 0.366835
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.9888,
+     "windage_in": 0.0,
+     "vel_fps": 2084.2668,
+     "tof_s": 0.505999
+    },
+    {
+     "yd": 500,
+     "drop_in": -56.0461,
+     "windage_in": 0.0,
+     "vel_fps": 1944.5028,
+     "tof_s": 0.655026
+    },
+    {
+     "yd": 600,
+     "drop_in": -90.3126,
+     "windage_in": 0.0,
+     "vel_fps": 1810.028,
+     "tof_s": 0.814944
+    },
+    {
+     "yd": 700,
+     "drop_in": -135.2104,
+     "windage_in": 0.0,
+     "vel_fps": 1680.2024,
+     "tof_s": 0.986982
+    },
+    {
+     "yd": 800,
+     "drop_in": -192.4497,
+     "windage_in": 0.0,
+     "vel_fps": 1554.6726,
+     "tof_s": 1.172617
+    },
+    {
+     "yd": 900,
+     "drop_in": -264.1091,
+     "windage_in": 0.0,
+     "vel_fps": 1433.3087,
+     "tof_s": 1.373619
+    },
+    {
+     "yd": 1000,
+     "drop_in": -352.7413,
+     "windage_in": 0.0,
+     "vel_fps": 1316.3205,
+     "tof_s": 1.592091
+    },
+    {
+     "yd": 1100,
+     "drop_in": -461.5068,
+     "windage_in": 0.0,
+     "vel_fps": 1204.3213,
+     "tof_s": 1.830479
+    },
+    {
+     "yd": 1200,
+     "drop_in": -594.3346,
+     "windage_in": 0.0,
+     "vel_fps": 1098.7747,
+     "tof_s": 2.091505
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-vent90",
+   "desc": "6.5 CM 140 gr — vent 10 mph à 90°",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "windSpeedMph": 10,
+   "windAngleDeg": 90,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.5544,
+     "vel_fps": 2553.2282,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8373,
+     "windage_in": 2.2805,
+     "vel_fps": 2410.9095,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.6609,
+     "windage_in": 5.2795,
+     "vel_fps": 2273.2089,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.2186,
+     "windage_in": 9.6623,
+     "vel_fps": 2140.3105,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.3732,
+     "windage_in": 15.5512,
+     "vel_fps": 2012.0631,
+     "tof_s": 0.643915
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.1255,
+     "windage_in": 23.0871,
+     "vel_fps": 1887.981,
+     "tof_s": 0.797844
+    },
+    {
+     "yd": 700,
+     "drop_in": -129.6445,
+     "windage_in": 32.4359,
+     "vel_fps": 1767.6476,
+     "tof_s": 0.962073
+    },
+    {
+     "yd": 800,
+     "drop_in": -183.308,
+     "windage_in": 43.7922,
+     "vel_fps": 1650.8145,
+     "tof_s": 1.137709
+    },
+    {
+     "yd": 900,
+     "drop_in": -249.7525,
+     "windage_in": 57.3845,
+     "vel_fps": 1537.3993,
+     "tof_s": 1.326049
+    },
+    {
+     "yd": 1000,
+     "drop_in": -330.9382,
+     "windage_in": 73.479,
+     "vel_fps": 1427.4924,
+     "tof_s": 1.528606
+    },
+    {
+     "yd": 1100,
+     "drop_in": -429.2286,
+     "windage_in": 92.3815,
+     "vel_fps": 1321.4801,
+     "tof_s": 1.747118
+    },
+    {
+     "yd": 1200,
+     "drop_in": -547.4856,
+     "windage_in": 114.4341,
+     "vel_fps": 1220.1199,
+     "tof_s": 1.983528
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-vent45",
+   "desc": "6.5 CM 140 gr — vent 10 mph à 45°",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "windSpeedMph": 10,
+   "windAngleDeg": 45,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.3929,
+     "vel_fps": 2552.3517,
+     "tof_s": 0.114281
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8413,
+     "windage_in": 1.6168,
+     "vel_fps": 2409.1487,
+     "tof_s": 0.235264
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.6797,
+     "windage_in": 3.7444,
+     "vel_fps": 2270.5595,
+     "tof_s": 0.363536
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.2715,
+     "windage_in": 6.8554,
+     "vel_fps": 2136.7703,
+     "tof_s": 0.499741
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.4918,
+     "windage_in": 11.038,
+     "vel_fps": 2007.6593,
+     "tof_s": 0.64459
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.3571,
+     "windage_in": 16.3937,
+     "vel_fps": 1882.7403,
+     "tof_s": 0.798902
+    },
+    {
+     "yd": 700,
+     "drop_in": -130.0575,
+     "windage_in": 23.0424,
+     "vel_fps": 1761.5775,
+     "tof_s": 0.963642
+    },
+    {
+     "yd": 800,
+     "drop_in": -183.999,
+     "windage_in": 31.1248,
+     "vel_fps": 1643.9182,
+     "tof_s": 1.139948
+    },
+    {
+     "yd": 900,
+     "drop_in": -250.8565,
+     "windage_in": 40.8071,
+     "vel_fps": 1529.6685,
+     "tof_s": 1.329157
+    },
+    {
+     "yd": 1000,
+     "drop_in": -332.6426,
+     "windage_in": 52.2833,
+     "vel_fps": 1418.9131,
+     "tof_s": 1.532838
+    },
+    {
+     "yd": 1100,
+     "drop_in": -431.7927,
+     "windage_in": 65.7774,
+     "vel_fps": 1312.0375,
+     "tof_s": 1.752795
+    },
+    {
+     "yd": 1200,
+     "drop_in": -551.2685,
+     "windage_in": 81.5414,
+     "vel_fps": 1209.8172,
+     "tof_s": 1.991061
+    }
+   ]
+  },
+  {
+   "id": "308-175-g7-spin",
+   "desc": ".308 175 gr — dérive gyroscopique, pas 1:10\"",
+   "massGrains": 175,
+   "caliberIn": 0.308,
+   "bc": 0.243,
+   "dragModel": "G7",
+   "muzzleVelFps": 2600,
+   "bulletLengthIn": 1.24,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1100,
+   "twistIn": 10,
+   "enableSpinDrift": true,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": -0.0,
+     "windage_in": 0.0925,
+     "vel_fps": 2416.8173,
+     "tof_s": 0.11968
+    },
+    {
+     "yd": 200,
+     "drop_in": -4.4623,
+     "windage_in": 0.3524,
+     "vel_fps": 2241.1855,
+     "tof_s": 0.248588
+    },
+    {
+     "yd": 300,
+     "drop_in": -15.8588,
+     "windage_in": 0.7949,
+     "vel_fps": 2073.3906,
+     "tof_s": 0.387764
+    },
+    {
+     "yd": 400,
+     "drop_in": -35.359,
+     "windage_in": 1.4494,
+     "vel_fps": 1912.8068,
+     "tof_s": 0.538409
+    },
+    {
+     "yd": 500,
+     "drop_in": -64.3838,
+     "windage_in": 2.3552,
+     "vel_fps": 1758.4763,
+     "tof_s": 0.701986
+    },
+    {
+     "yd": 600,
+     "drop_in": -104.6825,
+     "windage_in": 3.5638,
+     "vel_fps": 1609.866,
+     "tof_s": 0.880291
+    },
+    {
+     "yd": 700,
+     "drop_in": -158.4386,
+     "windage_in": 5.1418,
+     "vel_fps": 1466.8578,
+     "tof_s": 1.075527
+    },
+    {
+     "yd": 800,
+     "drop_in": -228.4113,
+     "windage_in": 7.1754,
+     "vel_fps": 1330.0327,
+     "tof_s": 1.290349
+    },
+    {
+     "yd": 900,
+     "drop_in": -318.117,
+     "windage_in": 9.7749,
+     "vel_fps": 1200.8044,
+     "tof_s": 1.527841
+    },
+    {
+     "yd": 1000,
+     "drop_in": -432.0278,
+     "windage_in": 13.0746,
+     "vel_fps": 1088.0773,
+     "tof_s": 1.791033
+    },
+    {
+     "yd": 1100,
+     "drop_in": -575.0906,
+     "windage_in": 17.1187,
+     "vel_fps": 1031.6111,
+     "tof_s": 2.075202
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-spin",
+   "desc": "6.5 CM 140 gr — dérive gyroscopique, pas 1:8\"",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "twistIn": 8,
+   "enableSpinDrift": true,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.071,
+     "vel_fps": 2553.2292,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8373,
+     "windage_in": 0.266,
+     "vel_fps": 2410.9113,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.6609,
+     "windage_in": 0.5895,
+     "vel_fps": 2273.211,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.2185,
+     "windage_in": 1.055,
+     "vel_fps": 2140.3128,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.3731,
+     "windage_in": 1.68,
+     "vel_fps": 2012.0649,
+     "tof_s": 0.643914
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.1252,
+     "windage_in": 2.487,
+     "vel_fps": 1887.9819,
+     "tof_s": 0.797842
+    },
+    {
+     "yd": 700,
+     "drop_in": -129.6441,
+     "windage_in": 3.5029,
+     "vel_fps": 1767.6469,
+     "tof_s": 0.962071
+    },
+    {
+     "yd": 800,
+     "drop_in": -183.3073,
+     "windage_in": 4.761,
+     "vel_fps": 1650.8118,
+     "tof_s": 1.137706
+    },
+    {
+     "yd": 900,
+     "drop_in": -249.7514,
+     "windage_in": 6.3015,
+     "vel_fps": 1537.3939,
+     "tof_s": 1.326045
+    },
+    {
+     "yd": 1000,
+     "drop_in": -330.9366,
+     "windage_in": 8.1738,
+     "vel_fps": 1427.4838,
+     "tof_s": 1.528602
+    },
+    {
+     "yd": 1100,
+     "drop_in": -429.2263,
+     "windage_in": 10.4379,
+     "vel_fps": 1321.4674,
+     "tof_s": 1.747112
+    },
+    {
+     "yd": 1200,
+     "drop_in": -547.4823,
+     "windage_in": 13.1666,
+     "vel_fps": 1220.1024,
+     "tof_s": 1.98352
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-coriolis-est",
+   "desc": "6.5 CM 140 gr — Coriolis, 45° N, azimut 90° (Est)",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "latitudeDeg": 45,
+   "azimuthDeg": 90,
+   "enableCoriolis": true,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.021,
+     "vel_fps": 2553.2292,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.7936,
+     "windage_in": 0.0857,
+     "vel_fps": 2410.9112,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.5274,
+     "windage_in": 0.1965,
+     "vel_fps": 2273.2109,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -29.9462,
+     "windage_in": 0.3564,
+     "vel_fps": 2140.3125,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -53.9098,
+     "windage_in": 0.5684,
+     "vel_fps": 2012.0645,
+     "tof_s": 0.643914
+    },
+    {
+     "yd": 600,
+     "drop_in": -86.4156,
+     "windage_in": 0.8357,
+     "vel_fps": 1887.9812,
+     "tof_s": 0.797842
+    },
+    {
+     "yd": 700,
+     "drop_in": -128.6291,
+     "windage_in": 1.162,
+     "vel_fps": 1767.6459,
+     "tof_s": 0.962071
+    },
+    {
+     "yd": 800,
+     "drop_in": -181.9238,
+     "windage_in": 1.5514,
+     "vel_fps": 1650.8104,
+     "tof_s": 1.137706
+    },
+    {
+     "yd": 900,
+     "drop_in": -247.932,
+     "windage_in": 2.0084,
+     "vel_fps": 1537.3921,
+     "tof_s": 1.326045
+    },
+    {
+     "yd": 1000,
+     "drop_in": -328.6086,
+     "windage_in": 2.5378,
+     "vel_fps": 1427.4814,
+     "tof_s": 1.528601
+    },
+    {
+     "yd": 1100,
+     "drop_in": -426.3114,
+     "windage_in": 3.1453,
+     "vel_fps": 1321.4673,
+     "tof_s": 1.74711
+    },
+    {
+     "yd": 1200,
+     "drop_in": -543.8959,
+     "windage_in": 3.8372,
+     "vel_fps": 1220.1023,
+     "tof_s": 1.983517
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-coriolis-ouest",
+   "desc": "6.5 CM 140 gr — Coriolis, 45° N, azimut 270° (Ouest)",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "latitudeDeg": 45,
+   "azimuthDeg": 270,
+   "enableCoriolis": true,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": 0.021,
+     "vel_fps": 2553.2292,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8809,
+     "windage_in": 0.0857,
+     "vel_fps": 2410.9113,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.7944,
+     "windage_in": 0.1965,
+     "vel_fps": 2273.2112,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.4909,
+     "windage_in": 0.3564,
+     "vel_fps": 2140.313,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.8364,
+     "windage_in": 0.5684,
+     "vel_fps": 2012.0654,
+     "tof_s": 0.643914
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.8349,
+     "windage_in": 0.8357,
+     "vel_fps": 1887.9826,
+     "tof_s": 0.797842
+    },
+    {
+     "yd": 700,
+     "drop_in": -130.6591,
+     "windage_in": 1.162,
+     "vel_fps": 1767.648,
+     "tof_s": 0.962071
+    },
+    {
+     "yd": 800,
+     "drop_in": -184.6907,
+     "windage_in": 1.5514,
+     "vel_fps": 1650.8131,
+     "tof_s": 1.137707
+    },
+    {
+     "yd": 900,
+     "drop_in": -251.5709,
+     "windage_in": 2.0084,
+     "vel_fps": 1537.3957,
+     "tof_s": 1.326046
+    },
+    {
+     "yd": 1000,
+     "drop_in": -333.2647,
+     "windage_in": 2.5378,
+     "vel_fps": 1427.4861,
+     "tof_s": 1.528603
+    },
+    {
+     "yd": 1100,
+     "drop_in": -432.1412,
+     "windage_in": 3.1453,
+     "vel_fps": 1321.4676,
+     "tof_s": 1.747114
+    },
+    {
+     "yd": 1200,
+     "drop_in": -551.0687,
+     "windage_in": 3.8373,
+     "vel_fps": 1220.1025,
+     "tof_s": 1.983524
+    }
+   ]
+  },
+  {
+   "id": "65cm-140-g7-coriolis-sud",
+   "desc": "6.5 CM 140 gr — Coriolis, 33° S, azimut 0° (Nord)",
+   "massGrains": 140,
+   "caliberIn": 0.264,
+   "bc": 0.311,
+   "dragModel": "G7",
+   "muzzleVelFps": 2700,
+   "bulletLengthIn": 1.34,
+   "sightHeightIn": 1.5,
+   "zeroRangeYd": 100,
+   "maxRangeYd": 1200,
+   "latitudeDeg": -33,
+   "azimuthDeg": 0,
+   "enableCoriolis": true,
+   "lignes": [
+    {
+     "yd": 100,
+     "drop_in": 0.0,
+     "windage_in": -0.0162,
+     "vel_fps": 2553.2292,
+     "tof_s": 0.114261
+    },
+    {
+     "yd": 200,
+     "drop_in": -3.8373,
+     "windage_in": -0.066,
+     "vel_fps": 2410.9113,
+     "tof_s": 0.23518
+    },
+    {
+     "yd": 300,
+     "drop_in": -13.6609,
+     "windage_in": -0.1513,
+     "vel_fps": 2273.211,
+     "tof_s": 0.363331
+    },
+    {
+     "yd": 400,
+     "drop_in": -30.2185,
+     "windage_in": -0.2741,
+     "vel_fps": 2140.3128,
+     "tof_s": 0.499344
+    },
+    {
+     "yd": 500,
+     "drop_in": -54.3731,
+     "windage_in": -0.4367,
+     "vel_fps": 2012.0649,
+     "tof_s": 0.643914
+    },
+    {
+     "yd": 600,
+     "drop_in": -87.1253,
+     "windage_in": -0.6414,
+     "vel_fps": 1887.9819,
+     "tof_s": 0.797842
+    },
+    {
+     "yd": 700,
+     "drop_in": -129.6441,
+     "windage_in": -0.8909,
+     "vel_fps": 1767.6469,
+     "tof_s": 0.962071
+    },
+    {
+     "yd": 800,
+     "drop_in": -183.3073,
+     "windage_in": -1.1879,
+     "vel_fps": 1650.8118,
+     "tof_s": 1.137706
+    },
+    {
+     "yd": 900,
+     "drop_in": -249.7515,
+     "windage_in": -1.5356,
+     "vel_fps": 1537.3939,
+     "tof_s": 1.326045
+    },
+    {
+     "yd": 1000,
+     "drop_in": -330.9368,
+     "windage_in": -1.9373,
+     "vel_fps": 1427.4837,
+     "tof_s": 1.528602
+    },
+    {
+     "yd": 1100,
+     "drop_in": -429.2264,
+     "windage_in": -2.397,
+     "vel_fps": 1321.4674,
+     "tof_s": 1.747112
+    },
+    {
+     "yd": 1200,
+     "drop_in": -547.4825,
+     "windage_in": -2.9186,
+     "vel_fps": 1220.1024,
+     "tof_s": 1.98352
+    }
+   ]
+  }
+ ]
+}

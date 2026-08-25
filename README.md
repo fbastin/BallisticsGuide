@@ -32,16 +32,17 @@ This repository is the companion code for the manual: ***"Competition Rifle Ball
 │   ├── CompetitionBallistics.js  # JavaScript port — the copy served by tireur.org
 │   ├── app.jl                   # Dash.jl web application
 │   └── BallisticsTutorial.jl     # Pluto.jl tutorial notebook
+├── scripts/                     # Validation harness (parity, frozen reference)
+├── data/ballistics/             # Frozen, provenance-stamped third-party reference
 ├── doc/
 │   └── ballistics_manual.tex     # LaTeX source for the manual
 ├── LICENSE                      # MIT License
 └── README.md                    # You are here
 ```
 
-The two ports are kept in line by a nightly validation harness living in the
-**parent repository** ([tireur.org](https://github.com/fbastin/tireur.org), where
-this repo is vendored as a submodule) — see
-[Replaying the validation controls](#replaying-the-validation-controls).
+The two ports are kept in line by the validation harness — see
+[Replaying the validation controls](#replaying-the-validation-controls). GitHub
+Actions runs it on every push and pull request.
 
 ## 🛠️ Installation & Setup
 
@@ -127,9 +128,8 @@ built to catch *different* failure modes:
 ### Running
 
 ```bash
-# clone the parent repository — it carries this repo as a submodule and the harness
-git clone --recurse-submodules https://github.com/fbastin/tireur.org
-cd tireur.org
+git clone https://github.com/fbastin/BallisticsGuide
+cd BallisticsGuide
 
 # 1. parity between the two ports (fails on any drift)
 python3 scripts/check_js_parity.py            # add --selftest to verify the guard bites
@@ -143,7 +143,8 @@ python3 scripts/check_ballistics_reference.py              # 14 cases, 162 point
 python3 scripts/gen_ballistics_reference.py   # requires py-ballisticcalc
 ```
 
-All three print `OK` on a healthy checkout. If a divergence appears, the rule is:
+All three print `OK` on a healthy checkout, and GitHub Actions runs them on
+every push and pull request. If a divergence appears, the rule is:
 **arbitrate against the published tables (McCoy, Litz) or measured data — never
 align one implementation to the other.** The frozen reference is a second opinion,
 not an oracle; two implementations can share the same error (ours did, for months).
