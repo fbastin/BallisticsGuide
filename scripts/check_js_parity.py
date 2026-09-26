@@ -36,6 +36,15 @@ côtés de ce contrôle sans jamais le déclencher — il a été corrigé à la
 2026-08-25, par discipline et non par garde-fou. Les profils et les pressions
 max sont désormais confrontés champ à champ, et `--selftest` perturbe un CB de
 1 % pour prouver que le garde mord.
+
+PÉRIMÈTRE DU JS, PAR CHOIX ET NON PAR OUBLI (écrit le 2026-09-25). Le portage JS
+n'a NI l'estimateur de moments d'inertie (`bullet_inertia` et `BulletGeometry`) NI
+le solveur 6-DOF : ce sont des outils de recherche, qui demandent un contour de
+balle complet et dont le gain sur un outil web est invisible sous l'incertitude du
+vent (±2,4 cm de dérive à 1000 yards sur les inerties). Le site sert le 3-DOF,
+Miller et la dérive gyroscopique empirique. Ces fonctions n'ont donc pas de
+contrepartie JS, et c'est pour cela qu'elles n'apparaissent pas dans `CAS` — pas
+parce qu'on aurait oublié de les apparier.
 """
 import argparse
 import json
