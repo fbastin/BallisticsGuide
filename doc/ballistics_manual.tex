@@ -156,7 +156,7 @@ Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and
 
 Version 3.3 (2026-08-25) corrects the G7 ballistic coefficient of the Sierra 175\,gr MatchKing in the bullet data table (0.259 to 0.243, the value published by the sources that table cites) and the transonic ranges derived from it. It also adds Chapter~\ref{chap:dispersion}: the dispersion statistics, hit-probability model and Bayesian muzzle-velocity truing behind the analysis tools of the online calculator.
 
-Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread factors of Table~\ref{tab:es_factors} were those of the range of a \emph{one-dimensional} normal sample; a group's extreme spread is measured in the plane, and its factor is larger (3.066 instead of 2.326 at five shots), so the dispersion $\sigma$ had been overstated by up to 42\,\%. The truing section used the shot-to-shot standard deviation of the chronograph as the uncertainty of the mean velocity; it now uses the standard error $s/\sqrt{n}$ combined with the device's accuracy, observes the centre of a group rather than a single impact, and tests whether the two estimates are compatible.
+Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread factors of Table~\ref{tab:es_factors} were those of the range of a \emph{one-dimensional} normal sample; a group's extreme spread is measured in the plane, and its factor is larger (3.066 instead of 2.326 at five shots), so the dispersion $\sigma$ had been overstated by up to 42\,\%. The truing section used the shot-to-shot standard deviation of the chronograph as the uncertainty of the mean velocity; it now uses the standard error $s/\sqrt{n}$ combined with the device's accuracy, observes the centre of a group rather than a single impact, and tests whether the two estimates are compatible. Finally, the hit probability no longer assumes a circular dispersion: the wind uncertainty was composed into a single $\sigma$ applied to both axes, which spread it vertically. Each source is now composed on its own axis, with the velocity spread added vertically, and the probability is integrated numerically. The worked example also used a wind sensitivity 2.6 times the solver's; it has been recomputed.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -2586,7 +2586,7 @@ Coriolis ($45^{\circ}$N, uncomp.) & --- & $<$1.0 & 2.8 \\
 
 The sensitivity coefficients of Chapter~\ref{ch:sensitivity} describe the weapon. This chapter adds the shooter and the conditions, and answers the two questions a competitor ultimately faces. First: given my measured dispersion and my uncertainty about the wind, what is my probability of hitting a target of a given size? Second: my chronograph and my impacts disagree about the muzzle velocity --- which one should I believe, and by how much?
 
-Both questions have closed-form answers under a single assumption: the impact point is a bivariate normal random variable, independent on the horizontal and vertical axes, with the same standard deviation $\sigma$ on each axis. Almost every dispersion model used in the shooting sports reduces to this assumption, so it is worth deriving its consequences once, carefully.
+Both questions start from one assumption: the impact point is a bivariate normal random variable, independent on the horizontal and vertical axes. The classical models add a second one --- the same standard deviation $\sigma$ on each axis --- which yields closed forms, derived below. It holds at short range, but not at long range, where the velocity spread stretches the group vertically and the wind uncertainty horizontally (Section~\ref{sec:anisotropy}).
 
 \section{The Rayleigh Model of a Centered Group}
 
@@ -2635,20 +2635,37 @@ The extreme spread is the largest distance between two impacts \emph{in the plan
 
 \textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large. Average several groups before dividing.
 
-\section{Composing Independent Variance Sources}
+\section{Composing Independent Variance Sources, Axis by Axis}
+\label{sec:anisotropy}
 
-Wind-reading uncertainty behaves as an additional lateral dispersion. If the wind speed is uncertain by $\sigma_w$ (in speed units) and the solver's wind sensitivity at the target is $S_w$ (lateral displacement per speed unit, measured by the finite differences of Eq.~\eqref{eq:sensitivity}), then
+Independent sources compose in \emph{quadrature}: variances add, standard deviations do not. But each source acts on its own axis, and the composition must be done axis by axis. Three sources matter:
+\begin{itemize}
+  \item the \textbf{intrinsic dispersion} of rifle, ammunition and shooter, $\sigma_a$, on both axes. Measured on a group fired at short range, where velocity does not yet weigh, and scaled in proportion to range (angular dispersion);
+  \item the \textbf{wind-reading uncertainty} $\sigma_w$ (in speed units), through the solver's wind sensitivity $S_w$ (lateral displacement per speed unit, by the finite differences of Eq.~\eqref{eq:sensitivity}): \emph{horizontal only};
+  \item the \textbf{muzzle-velocity spread} $s_v$, through the drop sensitivity $S_v$ at \emph{constant launch angle} (shot-to-shot dispersion, not a re-zeroed rifle): \emph{vertical only}.
+\end{itemize}
+Hence
 \begin{equation}
-  \sigma_{\text{total}}^2 = \sigma_{\text{disp}}^2 + \left(S_w\,\sigma_w\right)^2 + \cdots
+  \sigma_x^2 = \sigma_a^2 + \left(S_w\,\sigma_w\right)^2,
+  \qquad
+  \sigma_y^2 = \sigma_a^2 + \left(S_v\,s_v\right)^2.
   \label{eq:quadrature}
 \end{equation}
-Independent sources compose in \emph{quadrature}: variances add, standard deviations do not.
+Composing the wind into a single circular $\sigma$ would spread it vertically as well, which it does not do.
+
+At short range $S_v$ is negligible and the group is circular. It grows quickly with time of flight. With an intrinsic dispersion of 0.5\,MOA (5-shot extreme spread, so $\sigma_a \approx 0.047$\,mrad) and $s_v = 3$\,m/s, the ratio $\sigma_y/\sigma_x$ at zero wind is 1.07 to 1.10 at 300\,m, 1.4 to 1.5 at 600\,m and 2.3 to 3.1 at 1000\,m for the 6.5\,mm Creedmoor 140\,gr and the .308\,in 175\,gr. Other causes of anisotropy are not modelled: breathing and pulse (mostly vertical when prone), body sway (mostly horizontal when standing), and positive compensation, which reduces the velocity-induced vertical at a given range.
 
 \section{Hit Probability on a Circular Target}
 
-Inserting the target radius and the composed $\sigma_{\text{total}}$ into Eq.~\eqref{eq:rayleigh} gives the single-shot hit probability.
+With $\sigma_x \neq \sigma_y$, the distance to the centre no longer follows a Rayleigh distribution but a \textbf{Hoyt} distribution, and the probability of hitting a disc of radius $r$ has no elementary closed form. It is a one-dimensional integral,
+\begin{equation}
+  P(r) = 2\int_0^{r} \frac{1}{\sigma_x\sqrt{2\pi}}\,e^{-x^2/(2\sigma_x^2)}\;
+         \mathrm{erf}\!\left(\frac{\sqrt{r^2 - x^2}}{\sigma_y\sqrt{2}}\right)\mathrm{d}x,
+  \label{eq:hoyt_disc}
+\end{equation}
+computed by Simpson's rule (400 intervals, error below $10^{-5}$); the radii containing 50\,\% and 90\,\% of the hits are obtained by bisection. For $\sigma_x = \sigma_y$, Eq.~\eqref{eq:hoyt_disc} reduces to Eq.~\eqref{eq:rayleigh}.
 
-\paragraph{Worked example.} A .308\,in, 175\,gr at 600\,yd groups 20\,cm extreme spread on 5 shots: $\sigma_{\text{disp}} = 20/3.066 = 6.52$\,cm. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity at that range is 13.5\,cm per km/h, so $\sigma_{\text{wind}} = 40.5$\,cm. In quadrature, $\sigma_{\text{total}} = 41.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:rayleigh} gives $P = 6.5\,\%$ --- against $93\,\%$ with a perfectly known wind. The wind accounts for 97\,\% of the variance: at this range, progress comes from reading the wind, not from tighter groups.
+\paragraph{Worked example.} A .308\,in, 175\,gr (G7 BC 0.243, 2600\,fps) at 549\,m (600\,yd), calculator defaults otherwise. The load groups 3.0\,cm extreme spread on 5 shots at 100\,m: $\sigma_a = 3.0/3.066 \times 5.49 = 5.37$\,cm at the target. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity is 5.23\,cm per km/h, so $S_w\sigma_w = 15.70$\,cm. The chronograph SD is 3\,m/s; the drop sensitivity at constant launch angle is 0.89\,cm per m/s, so $S_v s_v = 2.68$\,cm. Eq.~\eqref{eq:quadrature} gives $\sigma_x = 16.6$\,cm and $\sigma_y = 6.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:hoyt_disc} gives $P = 58\,\%$ --- against $97\,\%$ with a perfectly known wind. The wind carries 79\,\% of the total variance $\sigma_x^2 + \sigma_y^2$: at this range, progress comes from reading the wind. A single circular $\sigma$ combining all three sources ($16.8$\,cm) would have given $P = 33\,\%$.
 
 \section{Bayesian Truing of the Muzzle Velocity}
 \label{sec:truing}
@@ -2682,13 +2699,13 @@ $\sigma^{\text{post}}$ is always smaller than both $\sigma_{\text{prior}}$ and $
 \end{equation}
 measures their disagreement. Below 1 there is no signal; above 2, something other than the velocity is suspect.
 
-\paragraph{Worked example.} A 6.5\,mm Creedmoor, 140\,gr (G7 BC 0.311), at 800\,m without wind, other conditions at the calculator's defaults. The radar chronograph gives $823.0$\,m/s over 10 shots, $s = 3$\,m/s, stated accuracy $\pm 0.1\,\%$: $\sigma_{\text{prior}} = \sqrt{0.95^2 + 0.82^2} = 1.26$\,m/s. A 5-shot group 6\,cm high has its centre 14.7\,cm above the predicted point: $\sigma_y = 6/2.326 = 2.58$\,cm, centre known to 1.15\,cm. The solver's sensitivity is 1.67\,cm of drop less per m/s, so $\hat{v}_0 = 831.8 \pm 0.69$\,m/s. The posterior is $829.7 \pm 0.61$\,m/s, the observation carrying 77\,\% of the weight --- but $z = 8.8/1.43 = 6.2$. A radar does not read 1.1\,\% low when its stated accuracy is 0.1\,\%: the BC, the zero or the conditions must be checked before the velocity is corrected. Had $s = 3$\,m/s been used as the prior uncertainty, the observation would have carried 95\,\% of the weight and $z$ would have fallen to 2.9.
+\paragraph{Worked example.} A 6.5\,mm Creedmoor, 140\,gr (G7 BC 0.311), at 800\,m without wind, other conditions at the calculator's defaults. The radar chronograph gives $823.0$\,m/s over 10 shots, $s = 3$\,m/s, stated accuracy $\pm 0.1\,\%$: $\sigma_{\text{prior}} = \sqrt{0.95^2 + 0.82^2} = 1.26$\,m/s. A 5-shot group 6\,cm high has its centre 14.7\,cm above the predicted point: $\sigma_y = 6/2.326 = 2.58$\,cm, centre known to 1.15\,cm. The solver's sensitivity is 1.66\,cm of drop less per m/s, so $\hat{v}_0 = 831.9 \pm 0.70$\,m/s. The posterior is $829.8 \pm 0.61$\,m/s, the observation carrying 77\,\% of the weight --- but $z = 8.9/1.44 = 6.2$. A radar does not read 1.1\,\% low when its stated accuracy is 0.1\,\%: the BC, the zero or the conditions must be checked before the velocity is corrected. Had $s = 3$\,m/s been used as the prior uncertainty, the observation would have carried 95\,\% of the weight and $z$ would have fallen to 2.9.
 
 \paragraph{Assumptions and cautions.} The truing absorbs any BC error into the muzzle velocity --- a BC error mimics a velocity error, but \emph{differently at each distance}, which is why truing at two distances separates them only approximately. The range must be velocity-sensitive (never near the zero). The update does not account for the uncertainty of $\sigma_y$ itself, which is large for small groups: the range of 5 shots estimates $\sigma$ to $\pm 37\,\%$ (one standard deviation).
 
 \section{Implementation}
 
-The online calculator applies these three analyses to the active load: the sensitivity of Eq.~\eqref{eq:sensitivity} is measured by finite differences on the validated solver, and the constants of this chapter (the $k_n$ table for the hit probability, the $d_2$ factors for the truing, 1.1774, $\sqrt{2\ln 10}$) are the ones the tools use.
+The online calculator applies these three analyses to the active load: the sensitivity of Eq.~\eqref{eq:sensitivity} is measured by finite differences on the validated solver, and the constants of this chapter (the $k_n$ table for the hit probability, the $d_2$ factors for the truing) are the ones the tools use. The hit probability is integrated with Eq.~\eqref{eq:hoyt_disc}, never with the circular closed form.
 
 % ============================================================================
 % CHAPTER 13: BALLISTIC IMPLICATIONS FOR RELOADING
