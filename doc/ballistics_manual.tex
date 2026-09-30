@@ -80,6 +80,7 @@
 }
 
 % --- Hyperlinks ---
+\usepackage{xurl}
 \usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=green!40!black,
             urlcolor=blue!70!black,bookmarks=true,bookmarksnumbered=true]{hyperref}
 
@@ -2642,30 +2643,34 @@ Independent sources compose in \emph{quadrature}: variances add, standard deviat
 \begin{itemize}
   \item the \textbf{intrinsic dispersion} of rifle, ammunition and shooter, $\sigma_a$, on both axes. Measured on a group fired at short range, where velocity does not yet weigh, and scaled in proportion to range (angular dispersion);
   \item the \textbf{wind-reading uncertainty} $\sigma_w$ (in speed units), through the solver's wind sensitivity $S_w$ (lateral displacement per speed unit, by the finite differences of Eq.~\eqref{eq:sensitivity}): \emph{horizontal only};
-  \item the \textbf{muzzle-velocity spread} $s_v$, through the drop sensitivity $S_v$ at \emph{constant launch angle} (shot-to-shot dispersion, not a re-zeroed rifle): \emph{vertical only}.
+  \item the \textbf{muzzle-velocity spread} $s_v$, through the drop sensitivity $S_v$ at \emph{constant launch angle} (shot-to-shot dispersion, not a re-zeroed rifle): \emph{vertical only};
+  \item the \textbf{range-estimation uncertainty} $\sigma_R$: the elevation is dialled for $\hat{R}$ while the target stands at $R$, and the vertical miss is $R\,[a(R) - a(\hat{R})]$, with $a(R) = h(R)/R$ the drop expressed as an angle. Its sensitivity is $S_R = R\,|\mathrm{d}a/\mathrm{d}R|$: \emph{vertical only}.
 \end{itemize}
 Hence
 \begin{equation}
   \sigma_x^2 = \sigma_a^2 + \left(S_w\,\sigma_w\right)^2,
   \qquad
-  \sigma_y^2 = \sigma_a^2 + \left(S_v\,s_v\right)^2.
+  \sigma_y^2 = \sigma_a^2 + \left(S_v\,s_v\right)^2 + \left(S_R\,\sigma_R\right)^2.
   \label{eq:quadrature}
 \end{equation}
+For the .308\,in 175\,gr at 549\,m, $S_R = 0.81$\,cm per metre: dialling for 10\,m too far puts the impact 8.2\,cm high when the elevation is actually set in the solver, against 8.1\,cm from the linear sensitivity.
+
+These are the error sources of the Weapon Employment Zone (WEZ) analysis of Applied Ballistics \citep{litz2015applied, litz2021wez}, which also treats rifle precision as the group size ``at close range''; \citet{litz2012accuracy} is cited there for the extended treatment. That analysis, like the hit-probability tool of Zima Ballistics \citep{zima_guide}, runs the point-mass solver repeatedly with each input drawn at random (Monte Carlo, 1000 shots, repeatable within 1 to 2\,\% according to Litz), so that each source lands on its own axis without any symmetry assumption. For independent Gaussian sources, the direct computation below is equivalent and free of sampling noise. One convention must be matched: in the Applied Ballistics analysis, a wind or range uncertainty stated as ``$\pm$'' is a 95\,\% bound, so that $\sigma$ is half of it \citep[footnote~1]{litz2021wez}. Entering such a bound as a standard deviation doubles its effect.
 Composing the wind into a single circular $\sigma$ would spread it vertically as well, which it does not do.
 
 At short range $S_v$ is negligible and the group is circular. It grows quickly with time of flight. With an intrinsic dispersion of 0.5\,MOA (5-shot extreme spread, so $\sigma_a \approx 0.047$\,mrad) and $s_v = 3$\,m/s, the ratio $\sigma_y/\sigma_x$ at zero wind is 1.07 to 1.10 at 300\,m, 1.4 to 1.5 at 600\,m and 2.3 to 3.1 at 1000\,m for the 6.5\,mm Creedmoor 140\,gr and the .308\,in 175\,gr. Other causes of anisotropy are not modelled: breathing and pulse (mostly vertical when prone), body sway (mostly horizontal when standing), and positive compensation, which reduces the velocity-induced vertical at a given range.
 
 \section{Hit Probability on a Circular Target}
 
-With $\sigma_x \neq \sigma_y$, the distance to the centre no longer follows a Rayleigh distribution but a \textbf{Hoyt} distribution, and the probability of hitting a disc of radius $r$ has no elementary closed form. It is a one-dimensional integral,
+With $\sigma_x \neq \sigma_y$, the distance to the centre no longer follows a Rayleigh distribution but a \textbf{Hoyt} distribution \citep{ballistipedia_precision}, and the probability of hitting a disc of radius $r$ has no elementary closed form. It is a one-dimensional integral,
 \begin{equation}
   P(r) = 2\int_0^{r} \frac{1}{\sigma_x\sqrt{2\pi}}\,e^{-x^2/(2\sigma_x^2)}\;
          \mathrm{erf}\!\left(\frac{\sqrt{r^2 - x^2}}{\sigma_y\sqrt{2}}\right)\mathrm{d}x,
   \label{eq:hoyt_disc}
 \end{equation}
-computed by Simpson's rule (400 intervals, error below $10^{-5}$); the radii containing 50\,\% and 90\,\% of the hits are obtained by bisection. For $\sigma_x = \sigma_y$, Eq.~\eqref{eq:hoyt_disc} reduces to Eq.~\eqref{eq:rayleigh}.
+computed by Simpson's rule (400 intervals, error below $10^{-5}$); the radii containing 50\,\% and 90\,\% of the hits are obtained by bisection. For $\sigma_x = \sigma_y$, Eq.~\eqref{eq:hoyt_disc} reduces to Eq.~\eqref{eq:rayleigh}. \citet{webb2012cep} reviews the approximate CEP formulas used for non-circular impacts and shows by Monte Carlo that the associated probability of hit is no more than 2.17\,\% higher than the nominal 0.50; the integral avoids the approximation altogether.
 
-\paragraph{Worked example.} A .308\,in, 175\,gr (G7 BC 0.243, 2600\,fps) at 549\,m (600\,yd), calculator defaults otherwise. The load groups 3.0\,cm extreme spread on 5 shots at 100\,m: $\sigma_a = 3.0/3.066 \times 5.49 = 5.37$\,cm at the target. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity is 5.23\,cm per km/h, so $S_w\sigma_w = 15.70$\,cm. The chronograph SD is 3\,m/s; the drop sensitivity at constant launch angle is 0.89\,cm per m/s, so $S_v s_v = 2.68$\,cm. Eq.~\eqref{eq:quadrature} gives $\sigma_x = 16.6$\,cm and $\sigma_y = 6.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:hoyt_disc} gives $P = 58\,\%$ --- against $97\,\%$ with a perfectly known wind. The wind carries 79\,\% of the total variance $\sigma_x^2 + \sigma_y^2$: at this range, progress comes from reading the wind. A single circular $\sigma$ combining all three sources ($16.8$\,cm) would have given $P = 33\,\%$.
+\paragraph{Worked example.} A .308\,in, 175\,gr (G7 BC 0.243, 2600\,fps) at 549\,m (600\,yd), calculator defaults otherwise. The load groups 3.0\,cm extreme spread on 5 shots at 100\,m: $\sigma_a = 3.0/3.066 \times 5.49 = 5.37$\,cm at the target. The wind-reading uncertainty is $\sigma_w = 3$\,km/h (a standard deviation, i.e.\ $\pm 6$\,km/h in the 95\,\% convention); the solver's wind sensitivity is 5.23\,cm per km/h, so $S_w\sigma_w = 15.70$\,cm. The chronograph SD is 3\,m/s; the drop sensitivity at constant launch angle is 0.89\,cm per m/s, so $S_v s_v = 2.68$\,cm. Eq.~\eqref{eq:quadrature} gives $\sigma_x = 16.6$\,cm and $\sigma_y = 6.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:hoyt_disc} gives $P = 58\,\%$ --- against $97\,\%$ with a perfectly known wind. The wind carries 79\,\% of the total variance $\sigma_x^2 + \sigma_y^2$: at this range, progress comes from reading the wind. A single circular $\sigma$ combining all three sources ($16.8$\,cm) would have given $P = 33\,\%$.
 
 \section{Bayesian Truing of the Muzzle Velocity}
 \label{sec:truing}
