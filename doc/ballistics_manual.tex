@@ -146,7 +146,7 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.3 --- \today}
+{\large Version 3.4 --- \today}
 \end{titlepage}
 
 \begin{abstract}
@@ -155,6 +155,8 @@ This manual provides a rigorous mathematical treatment of competition rifle ball
 Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and validated against three published cases --- McCoy's .308\,in 168\,gr textbook example, the 105\,mm HE M1 shell, and the 5.56\,mm NATO family measured at the Ballistic Research Laboratory. This edition adds the moment-of-inertia estimator that feeds it (Section~\ref{sec:inertia}), the measured coefficient sets it can be run on, and the reasons a set may not be trusted. It also corrects an inclined-fire example that had drifted 10\,\% from what both implementations return, and qualifies the recommendation of spline interpolation, which is right for the dense standard drag tables and wrong for sparse measured ones.
 
 Version 3.3 (2026-08-25) corrects the G7 ballistic coefficient of the Sierra 175\,gr MatchKing in the bullet data table (0.259 to 0.243, the value published by the sources that table cites) and the transonic ranges derived from it. It also adds Chapter~\ref{chap:dispersion}: the dispersion statistics, hit-probability model and Bayesian muzzle-velocity truing behind the analysis tools of the online calculator.
+
+Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread factors of Table~\ref{tab:es_factors} were those of the range of a \emph{one-dimensional} normal sample; a group's extreme spread is measured in the plane, and its factor is larger (3.066 instead of 2.326 at five shots), so the dispersion $\sigma$ had been overstated by up to 42\,\%. The truing section used the shot-to-shot standard deviation of the chronograph as the uncertainty of the mean velocity; it now uses the standard error $s/\sqrt{n}$ combined with the device's accuracy, observes the centre of a group rather than a single impact, and tests whether the two estimates are compatible.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -2618,18 +2620,20 @@ Shooters measure the \emph{extreme spread} (ES) of a group, not $\sigma$. For $n
 
 \begin{table}[H]
 \centering
-\caption{Expected extreme spread of an $n$-shot group, in units of $\sigma$}
+\caption{Expected extreme spread of an $n$-shot group, in units of the per-axis $\sigma$ (simulation of $2\times10^6$ groups per $n$, standard error 0.0006)}
 \label{tab:es_factors}
 \begin{tabular}{@{}lcccccccc@{}}
 \toprule
 $n$ & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
 \midrule
-$k_n$ & 1.693 & 2.058 & 2.326 & 2.534 & 2.704 & 2.847 & 2.970 & 3.078 \\
+$k_n$ & 2.408 & 2.794 & 3.066 & 3.275 & 3.443 & 3.585 & 3.706 & 3.812 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large, and it systematically underestimates $\sigma$. Average several groups before dividing.
+The extreme spread is the largest distance between two impacts \emph{in the plane}. Its factors must not be confused with those of the range of a one-dimensional normal sample, $d_2 = 1.693$, 2.326 and 3.078 at 3, 5 and 10 shots, which apply to a single coordinate --- the vertical extent of a group, used in Section~\ref{sec:truing}. Only the case $n = 2$ has a closed form, $k_2 = \sqrt{\pi} \approx 1.772$.
+
+\textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large. Average several groups before dividing.
 
 \section{Composing Independent Variance Sources}
 
@@ -2644,29 +2648,47 @@ Independent sources compose in \emph{quadrature}: variances add, standard deviat
 
 Inserting the target radius and the composed $\sigma_{\text{total}}$ into Eq.~\eqref{eq:rayleigh} gives the single-shot hit probability.
 
-\paragraph{Worked example.} A .308\,in, 175\,gr at 600\,yd groups 20\,cm extreme spread on 5 shots: $\sigma_{\text{disp}} = 20/2.326 = 8.60$\,cm. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity at that range is 13.5\,cm per km/h, so $\sigma_{\text{wind}} = 40.5$\,cm. In quadrature, $\sigma_{\text{total}} = 41.4$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:rayleigh} gives $P = 6\,\%$ --- against $78\,\%$ with a perfectly known wind. The wind accounts for 96\,\% of the variance: at this range, progress comes from reading the wind, not from tighter groups.
+\paragraph{Worked example.} A .308\,in, 175\,gr at 600\,yd groups 20\,cm extreme spread on 5 shots: $\sigma_{\text{disp}} = 20/3.066 = 6.52$\,cm. The wind is known to $\pm 3$\,km/h; the solver's wind sensitivity at that range is 13.5\,cm per km/h, so $\sigma_{\text{wind}} = 40.5$\,cm. In quadrature, $\sigma_{\text{total}} = 41.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:rayleigh} gives $P = 6.5\,\%$ --- against $93\,\%$ with a perfectly known wind. The wind accounts for 97\,\% of the variance: at this range, progress comes from reading the wind, not from tighter groups.
 
 \section{Bayesian Truing of the Muzzle Velocity}
+\label{sec:truing}
 
-The chronograph provides a prior: $v_0 \sim \mathcal{N}(\bar{v}_0, \sigma_{\text{chrono}}^2)$. The observation is the vertical offset $\Delta h$ (signed) of the impact relative to the predicted point at range $R$, with reading uncertainty $\sigma_h$. The forward sensitivity $\partial h/\partial v_0$ is measured by central finite differences on the solver, Eq.~\eqref{eq:sensitivity}. The velocity implied by the observation is
+The chronograph and the target give two independent estimates of the \emph{same} quantity, the mean muzzle velocity of the load. Each must carry the uncertainty of that mean, not the dispersion of individual shots.
+
+\paragraph{Prior: the chronograph mean.} A string of $n$ shots with mean $\bar{v}_0$ and standard deviation $s$ estimates the mean velocity with standard error $s/\sqrt{n}$. The device's stated accuracy $\epsilon$ (a scale error, e.g.\ $\pm 0.1\,\%$ for ballistic radars) adds almost nothing to $s$, but it shifts the whole mean, so it enters here. Treating the stated bound as a standard deviation, which overstates it,
 \begin{equation}
-  \hat{v}_0 = v_0 + \frac{\Delta h}{\partial h/\partial v_0},
+  \sigma_{\text{prior}}^2 = \frac{s^2}{n} + \left(\epsilon\,\bar{v}_0\right)^2 .
 \end{equation}
-with observation-equivalent uncertainty $\sigma_{\text{obs}} = \sigma_h / \left|\partial h/\partial v_0\right|$. The conjugate Gaussian update combines prior and observation by adding their precisions:
+Using $s$ itself as $\sigma_{\text{prior}}$ confuses the dispersion of the shots with the uncertainty of their mean, and under-weights the chronograph by a factor of up to $n$.
+
+\paragraph{Observation: the centre of a group.} A group of $k$ shots is fired at range $R$; its centre lies $\Delta h$ (signed) above the predicted point. The forward sensitivity $\partial h/\partial v_0$ is measured by central finite differences on the solver, Eq.~\eqref{eq:sensitivity}. The vertical standard deviation of the impacts is estimated from the group's vertical extent $H$ with the one-dimensional range factor, $\sigma_y = H/d_2(k)$, so that the centre is known to $\sigma_y/\sqrt{k}$. The velocity implied by the observation and its uncertainty are
 \begin{equation}
-  v_0^{\text{post}} = \frac{\bar{v}_0/\sigma_{\text{chrono}}^2 + \hat{v}_0/\sigma_{\text{obs}}^2}{1/\sigma_{\text{chrono}}^2 + 1/\sigma_{\text{obs}}^2},
+  \hat{v}_0 = \bar{v}_0 + \frac{\Delta h}{\partial h/\partial v_0},
   \qquad
-  \sigma^{\text{post}} = \left(\frac{1}{\sigma_{\text{chrono}}^2} + \frac{1}{\sigma_{\text{obs}}^2}\right)^{-1/2}.
+  \sigma_{\text{obs}} = \frac{\sigma_y}{\sqrt{k}\,\left|\partial h/\partial v_0\right|}.
+\end{equation}
+$\sigma_y$ already contains the vertical dispersion caused by the shot-to-shot velocity spread; it must not be added a second time.
+
+\paragraph{Update and compatibility.} The conjugate Gaussian update combines prior and observation by adding their precisions:
+\begin{equation}
+  v_0^{\text{post}} = \frac{\bar{v}_0/\sigma_{\text{prior}}^2 + \hat{v}_0/\sigma_{\text{obs}}^2}{1/\sigma_{\text{prior}}^2 + 1/\sigma_{\text{obs}}^2},
+  \qquad
+  \sigma^{\text{post}} = \left(\frac{1}{\sigma_{\text{prior}}^2} + \frac{1}{\sigma_{\text{obs}}^2}\right)^{-1/2}.
   \label{eq:truing}
 \end{equation}
+$\sigma^{\text{post}}$ is always smaller than both $\sigma_{\text{prior}}$ and $\sigma_{\text{obs}}$. The weighted mean is only meaningful if the two estimates agree; their difference has standard deviation $\sqrt{\sigma_{\text{prior}}^2 + \sigma_{\text{obs}}^2}$, and
+\begin{equation}
+  z = \frac{\left|\hat{v}_0 - \bar{v}_0\right|}{\sqrt{\sigma_{\text{prior}}^2 + \sigma_{\text{obs}}^2}}
+\end{equation}
+measures their disagreement. Below 1 there is no signal; above 2, something other than the velocity is suspect.
 
-\paragraph{Worked example.} A 6.5\,mm Creedmoor at 800\,m: chronograph $2700$\,fps $\pm 3$\,m/s, predicted drop $-5.885$\,m, observed impact $14.7$\,cm above it. The finite-difference slope is 0.0051\,m per fps, so the implied velocity is 2729\,fps --- the true value if the chronograph reads 30\,fps low. With a 2\,cm reading uncertainty ($\sigma_{\text{obs}} \approx 1.2$\,m/s), the posterior is $2725 \pm 1.1$\,m/s: the observation, being more precise than the chronograph, carries the update, and the shift of 2.5 chronograph-SD is a strong signal.
+\paragraph{Worked example.} A 6.5\,mm Creedmoor, 140\,gr (G7 BC 0.311), at 800\,m without wind, other conditions at the calculator's defaults. The radar chronograph gives $823.0$\,m/s over 10 shots, $s = 3$\,m/s, stated accuracy $\pm 0.1\,\%$: $\sigma_{\text{prior}} = \sqrt{0.95^2 + 0.82^2} = 1.26$\,m/s. A 5-shot group 6\,cm high has its centre 14.7\,cm above the predicted point: $\sigma_y = 6/2.326 = 2.58$\,cm, centre known to 1.15\,cm. The solver's sensitivity is 1.67\,cm of drop less per m/s, so $\hat{v}_0 = 831.8 \pm 0.69$\,m/s. The posterior is $829.7 \pm 0.61$\,m/s, the observation carrying 77\,\% of the weight --- but $z = 8.8/1.43 = 6.2$. A radar does not read 1.1\,\% low when its stated accuracy is 0.1\,\%: the BC, the zero or the conditions must be checked before the velocity is corrected. Had $s = 3$\,m/s been used as the prior uncertainty, the observation would have carried 95\,\% of the weight and $z$ would have fallen to 2.9.
 
-\paragraph{Assumptions and cautions.} The truing absorbs any BC error into the muzzle velocity --- a BC error mimics a velocity error, but \emph{differently at each distance}, which is why truing at two distances separates them only approximately. The range must be velocity-sensitive (never near the zero). One observation leaves the posterior SD at the reading-uncertainty floor. And a shift below one chronograph-SD is not a signal: keep the chronograph value.
+\paragraph{Assumptions and cautions.} The truing absorbs any BC error into the muzzle velocity --- a BC error mimics a velocity error, but \emph{differently at each distance}, which is why truing at two distances separates them only approximately. The range must be velocity-sensitive (never near the zero). The update does not account for the uncertainty of $\sigma_y$ itself, which is large for small groups: the range of 5 shots estimates $\sigma$ to $\pm 37\,\%$ (one standard deviation).
 
 \section{Implementation}
 
-The online calculator applies these three analyses to the active load: the sensitivity of Eq.~\eqref{eq:sensitivity} is measured by finite differences on the validated solver, and the constants of this chapter (the $k_n$ table, 1.1774, $\sqrt{2\ln 10}$) are the ones the tools use.
+The online calculator applies these three analyses to the active load: the sensitivity of Eq.~\eqref{eq:sensitivity} is measured by finite differences on the validated solver, and the constants of this chapter (the $k_n$ table for the hit probability, the $d_2$ factors for the truing, 1.1774, $\sqrt{2\ln 10}$) are the ones the tools use.
 
 % ============================================================================
 % CHAPTER 13: BALLISTIC IMPLICATIONS FOR RELOADING
