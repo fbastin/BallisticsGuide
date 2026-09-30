@@ -2634,7 +2634,7 @@ $k_n$ & 2.408 & 2.794 & 3.066 & 3.275 & 3.443 & 3.585 & 3.706 & 3.812 \\
 
 The extreme spread is the largest distance between two impacts \emph{in the plane}. Its factors must not be confused with those of the range of a one-dimensional normal sample, $d_2 = 1.693$, 2.326 and 3.078 at 3, 5 and 10 shots, which apply to a single coordinate --- the vertical extent of a group, used in Section~\ref{sec:truing}. Only the case $n = 2$ has a closed form, $k_2 = \sqrt{\pi} \approx 1.772$.
 
-\textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large. Average several groups before dividing.
+\textbf{Caution:} the ES of a single small group is a poor estimator --- its own variance is large. Average several groups before dividing. For a given total number of shots, groups of six or seven shots give the most precise average; five-shot groups cost 1\,\% more ammunition for the same precision, three-shot groups 13\,\% and two-shot groups 50\,\% (simulation of $4\times10^5$ groups per size, in agreement with \citealp{ballistipedia_range}).
 
 \section{Composing Independent Variance Sources, Axis by Axis}
 \label{sec:anisotropy}
@@ -2662,13 +2662,19 @@ At short range $S_v$ is negligible and the group is circular. It grows quickly w
 
 \section{Hit Probability on a Circular Target}
 
-With $\sigma_x \neq \sigma_y$, the distance to the centre no longer follows a Rayleigh distribution but a \textbf{Hoyt} distribution \citep{ballistipedia_precision}, and the probability of hitting a disc of radius $r$ has no elementary closed form. It is a one-dimensional integral,
+With $\sigma_x \neq \sigma_y$, the distance to the centre no longer follows a Rayleigh distribution but a \textbf{Hoyt} distribution \citep{ballistipedia_cep}, and the probability of hitting a disc of radius $r$ has no elementary closed form. It is a one-dimensional integral,
 \begin{equation}
   P(r) = 2\int_0^{r} \frac{1}{\sigma_x\sqrt{2\pi}}\,e^{-x^2/(2\sigma_x^2)}\;
          \mathrm{erf}\!\left(\frac{\sqrt{r^2 - x^2}}{\sigma_y\sqrt{2}}\right)\mathrm{d}x,
   \label{eq:hoyt_disc}
 \end{equation}
 computed by Simpson's rule (400 intervals, error below $10^{-5}$); the radii containing 50\,\% and 90\,\% of the hits are obtained by bisection. For $\sigma_x = \sigma_y$, Eq.~\eqref{eq:hoyt_disc} reduces to Eq.~\eqref{eq:rayleigh}. \citet{webb2012cep} reviews the approximate CEP formulas used for non-circular impacts and shows by Monte Carlo that the associated probability of hit is no more than 2.17\,\% higher than the nominal 0.50; the integral avoids the approximation altogether.
+
+Eq.~\eqref{eq:hoyt_disc} rests on two assumptions. First, the dispersion ellipse is aligned with the axes ($\rho = 0$), which the axis-by-axis composition of Eq.~\eqref{eq:quadrature} guarantees. For a measured group forming a tilted ellipse, the integral applies to the standard deviations $\sigma_1$, $\sigma_2$ of its principal axes,
+\begin{equation}
+  \sigma_{1,2}^2 = \frac{\sigma_x^2 + \sigma_y^2}{2} \pm \sqrt{\left(\frac{\sigma_x^2 - \sigma_y^2}{2}\right)^2 + \rho^2\sigma_x^2\sigma_y^2}.
+\end{equation}
+Second, the disc is centred on the mean point of impact. An imperfect zero offsets that point; the normal density must then be integrated over an offset disc, which the Rice distribution does in closed form when the dispersion is circular \citep{ballistipedia_cep}.
 
 \paragraph{Worked example.} A .308\,in, 175\,gr (G7 BC 0.243, 2600\,fps) at 549\,m (600\,yd), calculator defaults otherwise. The load groups 3.0\,cm extreme spread on 5 shots at 100\,m: $\sigma_a = 3.0/3.066 \times 5.49 = 5.37$\,cm at the target. The wind-reading uncertainty is $\sigma_w = 3$\,km/h (a standard deviation, i.e.\ $\pm 6$\,km/h in the 95\,\% convention); the solver's wind sensitivity is 5.23\,cm per km/h, so $S_w\sigma_w = 15.70$\,cm. The chronograph SD is 3\,m/s; the drop sensitivity at constant launch angle is 0.89\,cm per m/s, so $S_v s_v = 2.68$\,cm. Eq.~\eqref{eq:quadrature} gives $\sigma_x = 16.6$\,cm and $\sigma_y = 6.0$\,cm. On a 30\,cm steel plate ($r = 15$\,cm), Eq.~\eqref{eq:hoyt_disc} gives $P = 58\,\%$ --- against $97\,\%$ with a perfectly known wind. The wind carries 79\,\% of the total variance $\sigma_x^2 + \sigma_y^2$: at this range, progress comes from reading the wind. A single circular $\sigma$ combining all three sources ($16.8$\,cm) would have given $P = 33\,\%$.
 
