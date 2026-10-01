@@ -151,7 +151,7 @@ Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
 \end{titlepage}
 
 \begin{abstract}
-This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought precision improvements to the 3-DOF engine (coordinate-system alignment) and outlined a roadmap for a 6-DOF expert mode. Version 3.2 (2026-08-22) replaced the G1 and G7 drag tables, whose supersonic branches had been fabricated, and removed the $4/\pi$ factor that had been masking them; every trajectory figure in this manual was recomputed.
+This manual provides a rigorous mathematical treatment of competition rifle ballistics. Version 3.1 brought accuracy improvements to the 3-DOF engine (coordinate-system alignment) and outlined a roadmap for a 6-DOF expert mode. Version 3.2 (2026-08-22) replaced the G1 and G7 drag tables, whose supersonic branches had been fabricated, and removed the $4/\pi$ factor that had been masking them; every trajectory figure in this manual was recomputed.
 
 Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and validated against three published cases --- McCoy's .308\,in 168\,gr textbook example, the 105\,mm HE M1 shell, and the 5.56\,mm NATO family measured at the Ballistic Research Laboratory. This edition adds the moment-of-inertia estimator that feeds it (Section~\ref{sec:inertia}), the measured coefficient sets it can be run on, and the reasons a set may not be trusted. It also corrects an inclined-fire example that had drifted 10\,\% from what both implementations return, and qualifies the recommendation of spline interpolation, which is right for the dense standard drag tables and wrong for sparse measured ones.
 
@@ -745,7 +745,7 @@ This creates a complex and turbulent shock-wave structure just inches in front o
   \node[right] at (3.5, 0) {Precursor Shock Wave};
   \node[below, text=red] at (1, -1.8) {Violent Gas Expansion};
 \end{tikzpicture}
-\caption{Transitional ballistics: The bullet exiting the muzzle gets overtaken by rapidly expanding, supersonic propellant gases. A symmetrical gas release here is paramount to accuracy.}
+\caption{Transitional ballistics: The bullet exiting the muzzle gets overtaken by rapidly expanding, supersonic propellant gases. A symmetrical gas release here is paramount to precision (a tight group).}
 \label{fig:muzzle_gas}
 \end{figure}
 
@@ -1209,7 +1209,7 @@ where $v^n = \sqrt{(v_x^n-w_x)^2 + (v_y^n-w_y)^2 + (v_z^n-w_z)^2}$. While intuit
 
 \subsection{Runge--Kutta (RK4) \& Area Scaling}
 
-Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and precision by sampling the derivative at multiple points within the time step \citep{press2007numerical}:
+Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and accuracy by sampling the derivative at multiple points within the time step \citep{press2007numerical}:
 \begin{align}
   \bm{k}_1 &= h\,\bm{f}(t_n, \bm{y}_n) \\
   \bm{k}_2 &= h\,\bm{f}(t_n + h/2, \bm{y}_n + \bm{k}_1/2) \\
@@ -1959,7 +1959,7 @@ Magnus force & Neglected or lumped & Computed from $C_{N_{p\alpha}}$ \\
 Transonic behavior & No yaw prediction & Predicts instability onset \\
 Aerodynamic data & BC only & BC + 7 additional coefficients \\
 Computation speed & $\sim$0.01\,s & $\sim$0.1--0.5\,s \\
-Accuracy at 1000\,yd & $< 0.5\;\text{MOA}$ (with corrections) & $< 0.1\;\text{MOA}$ \\
+Prediction accuracy & Limited by the measured BC and its Mach dependence & Limited by the aerodynamic coefficients, published for almost no commercial bullet (Chapter~\ref{ch:6dof}) \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -2589,6 +2589,8 @@ The sensitivity coefficients of Chapter~\ref{ch:sensitivity} describe the weapon
 
 Both questions start from one assumption: the impact point is a bivariate normal random variable, independent on the horizontal and vertical axes. The classical models add a second one --- the same standard deviation $\sigma$ on each axis --- which yields closed forms, derived below. It holds at short range, but not at long range, where the velocity spread stretches the group vertically and the wind uncertainty horizontally (Section~\ref{sec:anisotropy}).
 
+\paragraph{Terminology.} Following the International Vocabulary of Metrology \citep[\S\,2.13--2.15]{jcgm2012vim}, \emph{precision} is the closeness of agreement between repeated results --- for a rifle, the tightness of the group, expressed by a standard deviation. \emph{Trueness} is the closeness of the mean of infinitely many results to a reference value --- the offset of the mean point of impact from the point of aim. \emph{Accuracy} combines both, and is not a quantity. Shooters often say ``accuracy'' for group size, a usage \citet{grubbs1991} already called mistaken; this manual keeps \emph{precision} for the group and reserves \emph{accuracy} for the agreement of a prediction or a measurement with the truth. A sight adjustment corrects trueness; no adjustment tightens a group.
+
 \section{The Rayleigh Model of a Centered Group}
 
 Let the impact coordinates $(x, y)$ be independent normal with mean zero and standard deviation $\sigma$ on each axis. The radial distance of an impact from the group center,
@@ -2683,7 +2685,7 @@ Second, the disc is centred on the mean point of impact. An imperfect zero offse
 
 The chronograph and the target give two independent estimates of the \emph{same} quantity, the mean muzzle velocity of the load. Each must carry the uncertainty of that mean, not the dispersion of individual shots.
 
-\paragraph{Prior: the chronograph mean.} A string of $n$ shots with mean $\bar{v}_0$ and standard deviation $s$ estimates the mean velocity with standard error $s/\sqrt{n}$. The device's stated accuracy $\epsilon$ (a scale error, e.g.\ $\pm 0.1\,\%$ for ballistic radars) adds almost nothing to $s$, but it shifts the whole mean, so it enters here. Treating the stated bound as a standard deviation, which overstates it,
+\paragraph{Prior: the chronograph mean.} A string of $n$ shots with mean $\bar{v}_0$ and standard deviation $s$ estimates the mean velocity with standard error $s/\sqrt{n}$. The device's stated accuracy $\epsilon$ (a scale error, e.g.\ $\pm 0.1\,\%$ for ballistic radars; in the terms of the VIM, a bound on its systematic error, hence on its trueness) adds almost nothing to $s$, but it shifts the whole mean, so it enters here. Treating the stated bound as a standard deviation, which overstates it,
 \begin{equation}
   \sigma_{\text{prior}}^2 = \frac{s^2}{n} + \left(\epsilon\,\bar{v}_0\right)^2 .
 \end{equation}
@@ -2697,7 +2699,7 @@ Using $s$ itself as $\sigma_{\text{prior}}$ confuses the dispersion of the shots
 \end{equation}
 $\sigma_y$ already contains the vertical dispersion caused by the shot-to-shot velocity spread; it must not be added a second time.
 
-\paragraph{Update and compatibility.} The conjugate Gaussian update combines prior and observation by adding their precisions:
+\paragraph{Update and compatibility.} The conjugate Gaussian update combines prior and observation by adding their precisions, in the statistician's sense of inverse variances:
 \begin{equation}
   v_0^{\text{post}} = \frac{\bar{v}_0/\sigma_{\text{prior}}^2 + \hat{v}_0/\sigma_{\text{obs}}^2}{1/\sigma_{\text{prior}}^2 + 1/\sigma_{\text{obs}}^2},
   \qquad
@@ -3044,7 +3046,7 @@ While Greenhill's is an excellent historical rule of thumb, modern shooters use 
     \item $S_g < 1.0$: Unstable (tumbling).
     \item $S_g \in [1.0, 1.5]$: Marginally stable. The bullet flies straight but with residual yaw that costs BC --- up to 9\% at $S_g = 1.2$.
     \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep{litz2011applied}.
-    \item $S_g > 2.0$: Amply stable. Spin drift grows with $S_g$, but Doppler radar data contradicts the older claim that ``over-stabilisation'' costs accuracy: at flat-fire ranges a higher $S_g$ \emph{reduces} drag, especially transonic. Over-spinning matters mainly for jacket integrity on thin-jacketed bullets.
+    \item $S_g > 2.0$: Amply stable. Spin drift grows with $S_g$, but Doppler radar data contradicts the older claim that ``over-stabilisation'' costs precision: at flat-fire ranges a higher $S_g$ \emph{reduces} drag, especially transonic. Over-spinning matters mainly for jacket integrity on thin-jacketed bullets.
 \end{itemize}
 
 
