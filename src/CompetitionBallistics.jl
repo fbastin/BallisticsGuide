@@ -3095,7 +3095,14 @@ function solve_6dof(sp::ShotParameters6DOF)
         # arm near zero and DAMP it once the yaw opens — that reversal is what
         # caps the motion. Written the other way round the two roles swap and the
         # yaw runs away, which is exactly what the solver used to do.
-        Mx = qbar * A * d^2 * c_Clp * pdv
+        #
+        # Spin damping, McCoy eq. (2.4-b): ½ρV² S d (pd/V) C_lp — d to the FIRST
+        # power, the (pd/V) factor carrying the other one. Until 2026-10-02 this read
+        # `A * d^2 * c_Clp * pdv`, one d too many: roll damping 1/d ≈ 128 times too
+        # weak on a .308. The .308 168 gr of §9.1 kept 99.85 % of its spin over
+        # 1000 yd, and its S_g there came out at 8.7 where McCoy's Figure 9.6 reads 5.8.
+        # No validation looked at the spin rate, which is why it survived.
+        Mx = qbar * A * d * c_Clp * pdv
         Mq_body = qbar * A * d * (-c_CMa * alpha_p +
                   c_CMpa * pdv * beta_y +
                   c_CMqa * q_p * d / (vrel_mag + 1e-20))
