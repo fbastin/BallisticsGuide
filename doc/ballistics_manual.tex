@@ -1209,7 +1209,7 @@ where $v^n = \sqrt{(v_x^n-w_x)^2 + (v_y^n-w_y)^2 + (v_z^n-w_z)^2}$. While intuit
 
 \subsection{Runge--Kutta (RK4) \& Area Scaling}
 
-Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and accuracy by sampling the derivative at multiple points within the time step \citep{press2007numerical}:
+Modern ballistic solvers use higher-order methods, typically the 4th-order Runge--Kutta (RK4) method, which provides a much better balance of speed and accuracy by sampling the derivative at multiple points within the time step \citep[§\,II.1]{hairer1993solving}:
 \begin{align}
   \bm{k}_1 &= h\,\bm{f}(t_n, \bm{y}_n) \\
   \bm{k}_2 &= h\,\bm{f}(t_n + h/2, \bm{y}_n + \bm{k}_1/2) \\
