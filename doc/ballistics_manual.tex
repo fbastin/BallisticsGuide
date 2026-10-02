@@ -671,7 +671,7 @@ An empirical power law relates muzzle velocity to barrel length:
   \label{eq:barrel_length_correction}
 \end{equation}
 
-Measured cut-down tests put $k$ near $0.18$--$0.20$ for the .308~Winchester. \citet{marr2014barrel} cut one barrel from 28 to 16.5~inches with four loads (147 to 180\,gr): from the published end velocities, $k = 0.176$ to $0.196$, or \SI{20.9}{\fps} to \SI{24.6}{\fps} per inch. \citet[p.~322]{litz2015applied} gives about \SI{2500}{\fps} from a 16-inch barrel and over \SI{2800}{\fps} from a 30-inch barrel for a 175\,gr bullet, i.e.\ $k \approx 0.18$. These figures hold for the .308~Winchester; other cases need their own measurement. The companion libraries (Julia and JavaScript, and the site's interior-ballistics estimator) default to $k = 0.27$, which these measurements do not support.
+Measured cut-down tests put $k$ near $0.18$--$0.20$ for the .308~Winchester. \citet{marr2014barrel} cut one barrel from 28 to 16.5~inches with four loads (147 to 180\,gr): from the published end velocities, $k = 0.176$ to $0.196$, or \SI{20.9}{\fps} to \SI{24.6}{\fps} per inch. \citet[p.~322]{litz2015applied} gives about \SI{2500}{\fps} from a 16-inch barrel and over \SI{2800}{\fps} from a 30-inch barrel for a 175\,gr bullet, i.e.\ $k \approx 0.18$. These figures hold for the .308~Winchester; other cases need their own measurement. The companion libraries (Julia and JavaScript) default to $k = 0.18$. The site's interior-ballistics estimator applies the same law to bullet travel (barrel minus case length), on which the same measurements give $k \approx 0.17$.
 
 As a practical validation of Eq.~\eqref{eq:barrel_length_correction}, consider measured data for the .308~Winchester with Lapua 155\,gr Scenar ammunition:
 
@@ -691,7 +691,7 @@ As a practical validation of Eq.~\eqref{eq:barrel_length_correction}, consider m
 \end{tabular}
 \end{table}
 
-This yields about \SI{6.7}{\meter\per\second} (\SI{22}{\fps}) per inch between 20 and 26~inches, and an exponent $k = 0.18$, in line with the cut-down tests above; $k = 0.27$ would predict \SI{2887}{\fps} at 26~inches instead of the \SI{2822}{\fps} in the table. The origin of these three values is not recorded. Note that the gain per inch diminishes with longer barrels, as the propellant gas expansion cools and pressure drops.
+This yields about \SI{6.7}{\meter\per\second} (\SI{22}{\fps}) per inch between 20 and 26~inches, and an exponent $k = 0.18$, in line with the cut-down tests above; the former default, $k = 0.27$, would predict \SI{2887}{\fps} at 26~inches instead of the \SI{2822}{\fps} in the table. The origin of these three values is not recorded. Note that the gain per inch diminishes with longer barrels, as the propellant gas expansion cools and pressure drops.
 
 \subsection{Temperature Sensitivity of Muzzle Velocity}
 
