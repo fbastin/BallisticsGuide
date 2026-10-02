@@ -72,6 +72,19 @@ def source_js(cas_liste, perturbation):
         'const PERTURBATION = %s;' % json.dumps(perturbation),
         '''
 const YD = 0.9144, IN = 0.0254;
+// ÉCART DÉLIBÉRÉ, documenté et non masqué (2026-10-02). Notre solveur remplace le terme
+// (S_g + 1,2) de Litz par 2,95·√(S_g/1,75) (dérive ∝ √S_g, voir validation_litz_domaine.jl) ;
+// py-ballisticcalc applique la formule d'origine. Pour comparer TOUT LE RESTE, on remplace
+// notre composante de dérive gyroscopique par celle que donnerait Litz d'origine au même S_g,
+// retrouvé exactement depuis notre dérive : √(S_g/1,75) = d / (1,25·2,95·t^1,83).
+function litzOrigine(windageM, spinM, t) {
+  if (!spinM || t <= 0) return windageM;
+  const k = Math.pow(t, 1.83);
+  const r = (spinM / IN) / (1.25 * 2.95 * k);           // √(S_g/1,75), signé par le sens du pas
+  const sg = 1.75 * r * r;
+  const litz = Math.sign(spinM) * 1.25 * (sg + 1.2) * k * IN;
+  return windageM - spinM + litz;
+}
 const sortie = [];
 for (const c of CAS) {
   const p = {
@@ -103,7 +116,7 @@ for (const c of CAS) {
     lignes.push({
       yd,
       drop_in:    lerp(a.dropM, b.dropM) / IN,
-      windage_in: lerp(a.windageM, b.windageM) / IN,
+      windage_in: litzOrigine(lerp(a.windageM, b.windageM), lerp(a.spinDriftM || 0, b.spinDriftM || 0), lerp(a.time, b.time)) / IN,
       vel_fps:    lerp(a.vTotal, b.vTotal) / 0.3048,
       tof_s:      lerp(a.time, b.time),
     });
