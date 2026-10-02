@@ -665,13 +665,13 @@ The peak pressure occurs at $x_{\max} = b/2$:
 
 \section{Muzzle Velocity Estimation for Handloaders}
 
-A practical empirical formula due to Powley and refined by \citet{litz2011applied}:
+An empirical power law relates muzzle velocity to barrel length:
 \begin{equation}
-  v_0 \approx v_{\mathrm{ref}}\left(\frac{L_{\mathrm{barrel}}}{L_{\mathrm{ref}}}\right)^{0.25 \text{ to } 0.30}
+  v_0 \approx v_{\mathrm{ref}}\left(\frac{L_{\mathrm{barrel}}}{L_{\mathrm{ref}}}\right)^{k}
   \label{eq:barrel_length_correction}
 \end{equation}
 
-A rough rule of thumb: each inch of barrel length change alters muzzle velocity by approximately \SI{20}{\fps} to \SI{35}{\fps} for typical rifle cartridges \citep{litz2011applied}.
+Measured cut-down tests put $k$ near $0.18$--$0.20$ for the .308~Winchester. \citet{marr2014barrel} cut one barrel from 28 to 16.5~inches with four loads (147 to 180\,gr): from the published end velocities, $k = 0.176$ to $0.196$, or \SI{20.9}{\fps} to \SI{24.6}{\fps} per inch. \citet[p.~322]{litz2015applied} gives about \SI{2500}{\fps} from a 16-inch barrel and over \SI{2800}{\fps} from a 30-inch barrel for a 175\,gr bullet, i.e.\ $k \approx 0.18$. These figures hold for the .308~Winchester; other cases need their own measurement. The companion libraries (Julia and JavaScript, and the site's interior-ballistics estimator) default to $k = 0.27$, which these measurements do not support.
 
 As a practical validation of Eq.~\eqref{eq:barrel_length_correction}, consider measured data for the .308~Winchester with Lapua 155\,gr Scenar ammunition:
 
@@ -691,18 +691,18 @@ As a practical validation of Eq.~\eqref{eq:barrel_length_correction}, consider m
 \end{tabular}
 \end{table}
 
-This yields approximately \SI{12}{\meter\per\second} ($\approx$\SI{40}{\fps}) per additional inch beyond 20~inches, which is consistent with the power-law exponent of $0.27$ used in the companion Julia library. Note that the gain per inch diminishes with longer barrels, as the propellant gas expansion cools and pressure drops.
+This yields about \SI{6.7}{\meter\per\second} (\SI{22}{\fps}) per inch between 20 and 26~inches, and an exponent $k = 0.18$, in line with the cut-down tests above; $k = 0.27$ would predict \SI{2887}{\fps} at 26~inches instead of the \SI{2822}{\fps} in the table. The origin of these three values is not recorded. Note that the gain per inch diminishes with longer barrels, as the propellant gas expansion cools and pressure drops.
 
 \subsection{Temperature Sensitivity of Muzzle Velocity}
 
 Propellant burn rate is temperature-dependent. The temperature coefficient:
 \begin{equation}
-  \frac{\Delta v_0}{v_0} = \sigma_T\,\Delta T
+  \Delta v_0 = \sigma_T\,\Delta T
   \label{eq:temp_sensitivity}
 \end{equation}
-where $\sigma_T$ is the temperature sensitivity coefficient, typically $0.5$ to $2.0\;\text{fps}/\degF$ ($0.9$ to $3.6\;\text{fps}/\degC$) depending on propellant. Modern temperature-stable propellants like Hodgdon Extreme series have $\sigma_T \approx 0.5\;\text{fps}/\degF$ ($0.9\;\text{fps}/\degC$) \citep{litz2011applied}.
+where $\sigma_T$ is the temperature sensitivity coefficient, which depends on the propellant. One published test \citep{zant2016powder} heated and cooled 6.5$\times$47~Lapua ammunition between \SI{25}{\degF} and \SI{140}{\degF} (a \SI{115}{\degF} swing): Hodgdon H4350 changed by \SI{25}{\fps} ($\sigma_T \approx 0.22\;\text{fps}/\degF$), Hodgdon Varget by \SI{46}{\fps} ($0.40$), IMR~4166 by \SI{47}{\fps} ($0.41$) and IMR~4451 by \SI{68}{\fps} ($0.59\;\text{fps}/\degF$). Powders not designed for temperature stability are not part of that test.
 
-\default{$\sigma_T = 1.0\;\text{fps}/\degF = 1.8\;\text{fps}/\degC$}
+\default{$\sigma_T = 1.0$ velocity unit per degree --- a placeholder, above every value measured in the test above}
 
 
 % ============================================================================
@@ -979,7 +979,7 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \label{fig:drag_shapes}
 \end{figure}
 
-\textbf{For competition rifle shooting, G7 is strongly preferred} over G1 for modern VLD boat-tail bullets because the G7 reference shape more closely matches these bullets, resulting in a form factor $i$ closer to 1.0 and a more constant $\Bc$ across the velocity range \citep[p.~32]{litz2015applied}.
+\textbf{For competition rifle shooting, G7 is strongly preferred} over G1 for modern VLD boat-tail bullets because the G7 reference shape more closely matches these bullets, resulting in a form factor $i$ closer to 1.0 and a more constant $\Bc$ across the velocity range \citep[p.~23]{litz2015applied}.
 
 \begin{figure}[H]
 \centering
@@ -1306,7 +1306,7 @@ where $v_{\mathrm{avg}}$ is the average bullet velocity over the range distance 
 
 \subsection{The Lag Rule (The Didion Approximation)}
 
-To understand wind deflection accurately, we use the Didion approximation, often known mathematically as the "Lag Rule" \citep{mccoy1999modern}; Litz calls the same quantity \emph{lag time} \citep[p.~72]{litz2015applied}.
+To understand wind deflection accurately, we use the Didion approximation, often known mathematically as the "Lag Rule" \citep{mccoy1999modern}; Litz calls the same quantity \emph{lag time} \citep[p.~63]{litz2015applied}.
 
 \begin{itemize}[noitemsep]
     \item $\Delta z_{\mathrm{wind}}$: Total lateral deflection of the bullet at the target.
@@ -1326,7 +1326,7 @@ This equation is remarkably accurate (typically within 5\% of a complex 6-DOF so
 \section{Spin Drift}
 \label{sec:spin_drift}
 
-A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift is Litz's \citep[eq.~6.1, p.~106]{litz2015applied}, $\Delta z = 1.25\,(S_g + 1.2)\,t^{1.83}$, fitted to Doppler radar measurements of match-grade projectiles. This manual and its solver use it with the $S_g$ dependence corrected:
+A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift is Litz's \citep[eq.~6.1, p.~97]{litz2015applied}, $\Delta z = 1.25\,(S_g + 1.2)\,t^{1.83}$, fitted to Doppler radar measurements of match-grade projectiles. This manual and its solver use it with the $S_g$ dependence corrected:
 \begin{equation}
   \boxed{\Delta z_{\mathrm{spin}} = 1.25 \cdot 2.95\,\sqrt{S_g/1.75} \cdot t^{1.83}}
   \label{eq:spin_drift}
@@ -1348,7 +1348,7 @@ where $m$ is bullet mass in grains, $T_w$ is twist rate in calibers per turn, $d
 
 Two points are easy to get wrong. The velocity correction is a \emph{cube root}, not a direct ratio: the discrepancy stays under 2.5\% between 2700 and 2900 fps but reaches 27\% at 4000 fps. And the atmospheric correction goes as $T/T_0$, not its inverse --- the overturning moment scales with air density $\rho \propto P/T$, so $S_g \propto 1/\rho$: hot or thin air \emph{raises} $S_g$. A bullet marginally stable at sea level gains stability at altitude.
 
-For adequate stability, $S_g > 1.0$; values of $1.3$--$2.0$ are typical for match bullets. Below $S_g \approx 1.5$ the bullet flies with residual pitching and yawing that costs measurable BC --- Litz reports a 9\% BC loss for a .30 calibre 185\,gr bullet at $S_g = 1.2$ \citep{litz2011applied}.
+For adequate stability, $S_g > 1.0$; values of $1.3$--$2.0$ are typical for match bullets. Below $S_g \approx 1.5$ the bullet flies with residual pitching and yawing that costs measurable BC --- Litz reports a 9\% BC loss for a .30 calibre 185\,gr LRBT fired at \SI{2800}{\fps} from a 1:13-inch twist ($S_g = 1.2$) \citep{litz2014twist}; his book shows a 6\,mm 95\,gr VLD losing 12\% of its G7 BC at $S_g = 1.07$ compared with $S_g = 1.67$ (0.218 against 0.249) \citep[fig.~10.3, p.~163]{litz2015applied}.
 
 \section{Coriolis and E\"otv\"os Effects}
 \label{sec:coriolis}
@@ -2753,7 +2753,7 @@ The relationship between propellant charge weight $C$ and muzzle velocity $v_0$ 
   v_0 \approx v_{\mathrm{base}} + k_C\,(C - C_{\mathrm{base}})
   \label{eq:charge_vel_linear}
 \end{equation}
-where $k_C$ is the velocity gain per grain, typically $15$--$40\;\text{fps/gr}$. For 6.5 Creedmoor with H4350, $k_C \approx 25\;\text{fps/gr}$ \citep{litz2011applied}.
+where $k_C$ is the velocity gain per grain. It falls as case capacity rises, and the start and maximum loads of published tables give its order of magnitude: for the 6.5~Creedmoor with 140 to 147\,gr bullets, the 13 Reload Swiss loads give $54$ to $70\;\text{fps/gr}$ (median $62$) \citep{reloadswiss2025}; for the .308~Winchester, the 606 Vihtavuori loads have a median of $60\;\text{fps/gr}$ \citep{vihtavuori2026}. Small cases exceed $100\;\text{fps/gr}$.
 
 \subsection{Velocity Consistency and Vertical Dispersion}
 
@@ -2860,7 +2860,7 @@ The group size model:
   \label{eq:group_model}
 \end{equation}
 
-Typical sweet spots: jam/light contact (0.000--0.005 in.), moderate jump (0.015--0.030 in.), and extended jump (0.060--0.100 in.) \citep{litz2011applied}.
+No jump is best in general. For its hybrid bullets, Berger tests 0.015, 0.030, 0.045 and 0.060~in.\ off the lands, where ``your bullet seating depth accuracy node is usually found'' \citep{hoham2021hybrid}; for its VLDs, Berger's earlier test went from 0.010~in.\ into the lands to 0.120~in.\ off, the good band being 0.030 to 0.040~in.\ wide and located anywhere between jam and 0.150~in.\ of jump \citep{stecker2009vld}. Secant ogives are the most sensitive to seating depth, and a common remedy is to seat them into the lands \citep[p.~341]{litz2015applied}.
 
 \section{Pressure Estimation and Safety Margins}
 
@@ -3049,7 +3049,7 @@ While Greenhill's is an excellent historical rule of thumb, modern shooters use 
 \begin{itemize}[noitemsep]
     \item $S_g < 1.0$: Unstable (tumbling).
     \item $S_g \in [1.0, 1.5]$: Marginally stable. The bullet flies straight but with residual yaw that costs BC --- up to 9\% at $S_g = 1.2$.
-    \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep[p.~170]{litz2015applied}.
+    \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep[p.~161]{litz2015applied}.
     \item $S_g > 2.0$: Amply stable. Spin drift grows with $S_g$, but Doppler radar data contradicts the older claim that ``over-stabilisation'' costs precision: at flat-fire ranges a higher $S_g$ \emph{reduces} drag, especially transonic. Over-spinning matters mainly for jacket integrity on thin-jacketed bullets.
 \end{itemize}
 
