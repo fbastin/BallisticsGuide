@@ -1326,12 +1326,16 @@ This equation is remarkably accurate (typically within 5\% of a complex 6-DOF so
 \section{Spin Drift}
 \label{sec:spin_drift}
 
-A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift \citep{litz2011applied}:
+A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift is Litz's \citep{litz2011applied}, $\Delta z = 1.25\,(S_g + 1.2)\,t^{1.83}$, fitted to Doppler radar measurements of match-grade projectiles. This manual and its solver use it with the $S_g$ dependence corrected:
 \begin{equation}
-  \boxed{\Delta z_{\mathrm{spin}} = 1.25\left(S_g + 1.2\right) \cdot t^{1.83}}
+  \boxed{\Delta z_{\mathrm{spin}} = 1.25 \cdot 2.95\,\sqrt{S_g/1.75} \cdot t^{1.83}}
   \label{eq:spin_drift}
 \end{equation}
-where $\Delta z_{\mathrm{spin}}$ is the horizontal deflection in inches, $S_g$ is the gyroscopic stability factor, and $t$ is the time of flight in seconds. The exponent 1.83 and the factor 1.25 are empirical constants derived from Doppler radar measurements of match-grade projectiles.
+where $\Delta z_{\mathrm{spin}}$ is the horizontal deflection in inches, $S_g$ is the gyroscopic stability factor, and $t$ is the time of flight in seconds.
+
+\paragraph{Why $\sqrt{S_g}$.} For a given bullet fired from barrels of different twist, the lateral acceleration from the yaw of repose is proportional to the spin rate $p$, the rate of spin decay does not depend on $p$, and $S_g \propto p^2$: drift is therefore exactly proportional to $\sqrt{S_g}$, an identity rather than a fit, confirmed to 0.00\,\% by integrating the modified point-mass drift with measured coefficients for two bullets. Litz's linear form departs from it as the bullet becomes over-stabilized: relative to the integration, $-1\,\%$ at $S_g = 1.2$, $+5\,\%$ at 2.4, $+15\,\%$ at 3.7 and $+24\,\%$ at 4.9. The corrected form replaces Litz's term $(S_g + 1.2)$ by $2.95\sqrt{S_g/1.75}$, which equals it at $S_g = 1.75$, where he fitted the formula ($1.75 + 1.2 = 2.95$), and changes match bullets at $S_g$ 1.5--2.2 by less than 3\,\%; it matters for light bullets in fast twists (a 55\,gr .223 in a 1:7 barrel, $S_g \approx 3.8$, drifts 14\,\% less than Litz's form predicts).
+
+Two limits remain. Between different bullets at the same $S_g$, drift also scales with $I_y/I_x$ and $C_{L\alpha}/C_{M\alpha}$, which neither form captures (tracer rounds drift up to 42\,\% more than predicted). And the time exponent 1.83 is low for typical ranges: the integration gives 2.00 out to about 1000 yd, which makes the formula read some 10\,\% high at 600 yd when calibrated at 1000 yd.
 
 \subsection{Gyroscopic Stability Factor}
 

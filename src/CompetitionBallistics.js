@@ -722,8 +722,15 @@ const ExteriorBallistics = (() => {
     });
   }
 
+  // Dérive gyroscopique, forme corrigée de Litz (2026-10-02) : 1,25·2,95·√(Sg/1,75)·t^1,83.
+  // Litz pose 1,25·(Sg + 1,2). Pour une balle donnée dont on change le pas, la dérive suit
+  // la rotation et Sg son carré : dérive ∝ √Sg, identité vérifiée à 0,00 % par intégration
+  // (validation_litz_domaine.jl). La forme de Litz surestime donc les balles surstabilisées
+  // (+15 % à Sg 3,7, +24 % à 4,9). On remplace son terme (Sg + 1,2) par 2,95·√(Sg/1,75), qui
+  // vaut 2,95 = 1,75 + 1,2 à Sg = 1,75 : les deux formes coïncident là où il les a ajustées.
+  // Le facteur 1,25 de Litz reste devant (oublié dans une première écriture : −20 % partout).
   function spinDriftInches(t, sg, direction = 1) {
-    return direction * 1.25 * (sg + 1.2) * Math.pow(t, 1.83);
+    return direction * 1.25 * 2.95 * Math.sqrt(Math.max(sg, 0) / 1.75) * Math.pow(t, 1.83);
   }
 
   function coriolisHorizontal(rangeM, tof, latitudeDeg) {

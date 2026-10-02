@@ -860,11 +860,17 @@ end
 """
     spin_drift_inches(t, Sg, direction) -> Δz [inches]
 
-Litz empirical spin-drift formula: Δz = 1.25·(Sg+1.2)·t^1.83.
+Spin drift, Litz's empirical formula with its S_g dependence corrected (2026-10-02):
+Δz = 1.25·2.95·√(Sg/1.75)·t^1.83 inches. Litz writes 1.25·(Sg + 1.2); for a given bullet
+whose twist changes, drift follows the spin rate and S_g its square, so drift ∝ √Sg —
+an identity, checked to 0.00 % by integration in `validation_litz_domaine.jl`. Litz's
+form overstates over-stabilized bullets (+15 % at Sg 3.7, +24 % at 4.9). His term
+(Sg + 1.2) is replaced by 2.95·√(Sg/1.75), equal to it at Sg = 1.75 where he fitted it;
+the factor 1.25 stays in front.
 Direction: +1 for right-hand twist, -1 for left-hand twist.
 """
 function spin_drift_inches(t::Real, sg::Real, direction::Int=1)
-    return direction * 1.25 * (sg + 1.2) * t^1.83
+    return direction * 1.25 * 2.95 * sqrt(max(sg, 0.0) / 1.75) * t^1.83
 end
 
 """
