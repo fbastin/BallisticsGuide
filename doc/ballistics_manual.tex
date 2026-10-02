@@ -246,7 +246,7 @@ The flight of a bullet from ignition to impact is conventionally divided into fo
 
 The mathematical study of projectile motion dates to Galileo and Newton, but modern exterior ballistics began with the work of Bashforth (1870), who conducted some of the earliest systematic drag measurements \citep{bashforth1870description}. The Siacci method (1880s) introduced the concept of the ballistic coefficient and drag functions that remain in use today \citep{siacci1888balistica}. In the 20th century, the US Army Ballistic Research Laboratory (BRL) at Aberdeen Proving Ground produced the definitive drag function tables---G1 through G8---that form the backbone of modern ballistic computation \citep{mccoy1999modern, ingalls1893exterior}.
 
-Modern computational ballistics, exemplified by solvers such as those described by \citet{litz2011applied} and implemented in software like Bryan Litz's Applied Ballistics suite, use 3-DOF and 6-DOF point-mass models with empirically measured drag data and atmospheric corrections.
+Modern computational ballistics, exemplified by solvers such as those described by \citet{litz2015applied} and implemented in software like Bryan Litz's Applied Ballistics suite, use 3-DOF and 6-DOF point-mass models with empirically measured drag data and atmospheric corrections.
 
 
 % ============================================================================
@@ -459,7 +459,7 @@ Shooters often use density altitude (DA) as a single parameter that encapsulates
 \end{equation}
 where $T_0$ is the standard sea-level temperature, $\rho_0$ is the standard sea-level density, $L$ is the temperature lapse rate, and $n = g_0/(L\,R_{\mathrm{air}}) = 5.2559$.
 
-A practical approximation widely used in the field \citep{litz2011applied}:
+With the ICAO values ($T_0/L = \SI{44330.77}{\meter} = \SI{145442.16}{ft}$, $1/(n-1) = 0.234969$), Eq.~\eqref{eq:density_altitude} gives the form used by shooters' calculators:
 \begin{equation}
   \text{DA} \approx 145442.16 \left(1 - \left(\frac{\rho}{\rho_0}\right)^{0.234969}\right) \quad [\text{feet}]
   \label{eq:density_altitude_ft}
@@ -979,7 +979,7 @@ GL & Blunt-nose lead bullet & Cast lead bullets \\
 \label{fig:drag_shapes}
 \end{figure}
 
-\textbf{For competition rifle shooting, G7 is strongly preferred} over G1 for modern VLD boat-tail bullets because the G7 reference shape more closely matches these bullets, resulting in a form factor $i$ closer to 1.0 and a more constant $\Bc$ across the velocity range \citep{litz2011applied}.
+\textbf{For competition rifle shooting, G7 is strongly preferred} over G1 for modern VLD boat-tail bullets because the G7 reference shape more closely matches these bullets, resulting in a form factor $i$ closer to 1.0 and a more constant $\Bc$ across the velocity range \citep[p.~32]{litz2015applied}.
 
 \begin{figure}[H]
 \centering
@@ -1306,7 +1306,7 @@ where $v_{\mathrm{avg}}$ is the average bullet velocity over the range distance 
 
 \subsection{The Lag Rule (The Didion Approximation)}
 
-To understand wind deflection accurately, we use the Didion approximation, often known mathematically as the "Lag Rule" \citep{mccoy1999modern, litz2011applied}.
+To understand wind deflection accurately, we use the Didion approximation, often known mathematically as the "Lag Rule" \citep{mccoy1999modern}; Litz calls the same quantity \emph{lag time} \citep[p.~72]{litz2015applied}.
 
 \begin{itemize}[noitemsep]
     \item $\Delta z_{\mathrm{wind}}$: Total lateral deflection of the bullet at the target.
@@ -1326,7 +1326,7 @@ This equation is remarkably accurate (typically within 5\% of a complex 6-DOF so
 \section{Spin Drift}
 \label{sec:spin_drift}
 
-A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift is Litz's \citep{litz2011applied}, $\Delta z = 1.25\,(S_g + 1.2)\,t^{1.83}$, fitted to Doppler radar measurements of match-grade projectiles. This manual and its solver use it with the $S_g$ dependence corrected:
+A spin-stabilized bullet develops a slow lateral drift in the direction of its spin. The empirical formula widely used for spin drift is Litz's \citep[eq.~6.1, p.~106]{litz2015applied}, $\Delta z = 1.25\,(S_g + 1.2)\,t^{1.83}$, fitted to Doppler radar measurements of match-grade projectiles. This manual and its solver use it with the $S_g$ dependence corrected:
 \begin{equation}
   \boxed{\Delta z_{\mathrm{spin}} = 1.25 \cdot 2.95\,\sqrt{S_g/1.75} \cdot t^{1.83}}
   \label{eq:spin_drift}
@@ -2418,7 +2418,7 @@ The gap between factory and hand-loaded ammunition is the primary motivation for
 
 \begin{table}[H]
 \centering
-\caption{Ballistic data for popular competition bullets \citep{litz2011applied, litz2015ballistic}}
+\caption{Ballistic data for popular competition bullets \citep{litz2015ballistic}}
 \label{tab:bullet_data}
 \small
 \begin{tabular}{@{}lcccccc@{}}
@@ -2661,7 +2661,7 @@ Hence
 \end{equation}
 For the .308\,in 175\,gr at 549\,m, $S_R = 0.81$\,cm per metre: dialling for 10\,m too far puts the impact 8.2\,cm high when the elevation is actually set in the solver, against 8.1\,cm from the linear sensitivity.
 
-These are the error sources of the Weapon Employment Zone (WEZ) analysis of Applied Ballistics \citep{litz2015applied, litz2021wez}, which also treats rifle precision as the group size ``at close range''; \citet{litz2012accuracy} is cited there for the extended treatment. That analysis, like the hit-probability tool of Zima Ballistics \citep{zima_guide}, runs the point-mass solver repeatedly with each input drawn at random (Monte Carlo, 1000 shots, repeatable within 1 to 2\,\% according to Litz), so that each source lands on its own axis without any symmetry assumption. For independent Gaussian sources, the direct computation below is equivalent and free of sampling noise. One convention must be matched: in the Applied Ballistics analysis, a wind or range uncertainty stated as ``$\pm$'' is a 95\,\% bound, so that $\sigma$ is half of it \citep[footnote~1]{litz2021wez}. Entering such a bound as a standard deviation doubles its effect.
+These are the error sources of the Weapon Employment Zone (WEZ) analysis of Applied Ballistics (\citealp[ch.~16]{litz2015applied}; \citealp{litz2021wez}), which also treats rifle precision as the group size ``at close range''; \citet{litz2012accuracy} is cited there for the extended treatment. That analysis, like the hit-probability tool of Zima Ballistics \citep{zima_guide}, runs the point-mass solver repeatedly with each input drawn at random (Monte Carlo, 1000 shots, repeatable within 1 to 2\,\% according to Litz), so that each source lands on its own axis without any symmetry assumption. For independent Gaussian sources, the direct computation below is equivalent and free of sampling noise. One convention must be matched: in the Applied Ballistics analysis, a wind or range uncertainty stated as ``$\pm$'' is a 95\,\% bound, so that $\sigma$ is half of it \citep[footnote~1]{litz2021wez}. Entering such a bound as a standard deviation doubles its effect.
 Composing the wind into a single circular $\sigma$ would spread it vertically as well, which it does not do.
 
 At short range $S_v$ is negligible and the group is circular. It grows quickly with time of flight. With an intrinsic dispersion of 0.5\,MOA (5-shot extreme spread, so $\sigma_a \approx 0.047$\,mrad) and $s_v = 3$\,m/s, the ratio $\sigma_y/\sigma_x$ at zero wind is 1.07 to 1.10 at 300\,m, 1.4 to 1.5 at 600\,m and 2.3 to 3.1 at 1000\,m for the 6.5\,mm Creedmoor 140\,gr and the .308\,in 175\,gr. Other causes of anisotropy are not modelled: breathing and pulse (mostly vertical when prone), body sway (mostly horizontal when standing), and positive compensation, which reduces the velocity-induced vertical at a given range.
@@ -3049,7 +3049,7 @@ While Greenhill's is an excellent historical rule of thumb, modern shooters use 
 \begin{itemize}[noitemsep]
     \item $S_g < 1.0$: Unstable (tumbling).
     \item $S_g \in [1.0, 1.5]$: Marginally stable. The bullet flies straight but with residual yaw that costs BC --- up to 9\% at $S_g = 1.2$.
-    \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep{litz2011applied}.
+    \item $S_g \gtrsim 1.5$: Full BC realised. This is the threshold Litz recommends \citep[p.~170]{litz2015applied}.
     \item $S_g > 2.0$: Amply stable. Spin drift grows with $S_g$, but Doppler radar data contradicts the older claim that ``over-stabilisation'' costs precision: at flat-fire ranges a higher $S_g$ \emph{reduces} drag, especially transonic. Over-spinning matters mainly for jacket integrity on thin-jacketed bullets.
 \end{itemize}
 
