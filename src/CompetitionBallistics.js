@@ -378,8 +378,8 @@ const InteriorBallistics = (() => {
     return C * f * z / Vgas;
   };
 
-  // Exponent measured on the .308 Win.: 0.18–0.20 (Marr 2014; Litz 2015, p. 322).
-  const barrelLengthCorrection = (vRef, lBarrel, lRef, exponent = 0.18) =>
+  // Median of 19 published cut-down series on 8 cartridges (0.11–0.31; Marr, Rifleshooter.com).
+  const barrelLengthCorrection = (vRef, lBarrel, lRef, exponent = 0.17) =>
     vRef * Math.pow(lBarrel / lRef, exponent);
 
   const muzzleVelocityTempCorrection = (v0, dT, sigmaT = 1.0) =>

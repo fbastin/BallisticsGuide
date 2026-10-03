@@ -420,16 +420,16 @@ function chamber_pressure_closed_bomb(; C::Real, f::Real, z::Real,
 end
 
 """
-    barrel_length_correction(v_ref, L_barrel, L_ref; exponent=0.18) -> v [m/s]
+    barrel_length_correction(v_ref, L_barrel, L_ref; exponent=0.17) -> v [m/s]
 
 Correct muzzle velocity for barrel length difference.
 v = v_ref · (L_barrel / L_ref)^exponent
-Exponent measured on the .308 Winchester: 0.18–0.20 (Marr 2014, four loads cut
-from 28 to 16.5 in.; Litz 2015, p. 322: 0.18). The former default, 0.27, matched
-no measurement found.
+Default: median of 19 published cut-down series on 8 cartridges (0.11–0.31;
+Marr, Rifleshooter.com, 2013–2018). The former default, 0.27, matched no
+measurement found.
 """
 function barrel_length_correction(v_ref::Real, L_barrel::Real,
-                                  L_ref::Real; exponent::Real=0.18)
+                                  L_ref::Real; exponent::Real=0.17)
     return v_ref * (L_barrel / L_ref)^exponent
 end
 

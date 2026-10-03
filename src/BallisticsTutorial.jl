@@ -289,7 +289,7 @@ begin
     println("\n=== Barrel Length Correction ===")
     v_ref = 2700.0  # fps from a 24" barrel
     for L in [20, 22, 24, 26, 28, 30]
-        v_new = barrel_length_correction(v_ref, Float64(L), 24.0, exponent=0.18)
+        v_new = barrel_length_correction(v_ref, Float64(L), 24.0, exponent=0.17)
         @printf("  %d\" barrel → %.0f fps (Δ = %+.0f)\n", L, v_new, v_new - v_ref)
     end
 end
