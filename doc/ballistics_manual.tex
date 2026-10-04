@@ -3023,26 +3023,28 @@ The file requires only the Julia standard library (\texttt{Statistics}, \texttt{
 \section{Motivation: Keeping the Bullet Pointy-End Forward}
 A rifle barrel contains spiral grooving called "rifling" to impart intense spin to the bullet. Without this spin, the bullet would tumble end-over-end as soon as it hit the air. The "twist rate" characterizes how aggressive this spiral is (e.g., 1 turn in 8 inches, or 1:8). 
 
-George Greenhill, a mathematics professor at the Royal Military Academy in the late 1800s, developed a famous empirical formula to determine the optimal twist rate to stabilize a bullet. It proves that heavier (longer) bullets require significantly faster twist rates.
+Alfred George Greenhill, professor of mathematics to the artillery officers at Woolwich, derived his rule in 1879 \citep{greenhill1879rotation}. It is not empirical: unable to compute the aerodynamic moments of a real bullet, he modelled it as a prolate spheroid in slow, frictionless flow, the only shape whose flow was then known, and his stability criterion is equivalent to a gyroscopic stability factor of 1.0 \citep{miller2006greenhill}.
 
 Let's define the variables:
 \begin{itemize}[noitemsep]
-    \item $T$: The required rifling twist rate (length of one full turn in calibers). 
-    \item $d$: The diameter of the bullet (inches).
-    \item $l$: The overall length of the bullet (inches).
-    \item $\rho_b, \rho_a$: Density of the bullet and density of air, respectively.
-    \item $C$: The Greenhill empirical constant (typically 150).
+    \item $t$: the twist, in calibers per turn; $T = t\,d$ the twist in inches per turn.
+    \item $d$: the diameter of the bullet (inches).
+    \item $L$: the overall length of the bullet (inches); $l = L/d$ its length in calibers.
+    \item $\rho_b$: the density of the bullet (g/cm$^3$).
 \end{itemize}
 
+The form used by shooters is a later simplification --- its earliest known appearance is in 1929 \citep{miller2006greenhill}:
 \begin{equation}
-  \boxed{T = \frac{C\,d^2}{l} \sqrt{\frac{\rho_b}{\rho_a}}}
+  \boxed{t\,l = 150 \qquad\Longleftrightarrow\qquad T = \frac{150\,d^2}{L}}
   \label{eq:greenhill}
 \end{equation}
+The constant 150 holds for a lead-alloy bullet ($\rho_b = 10.9$) 3.27 calibers long; in Greenhill's original rule the product $t\,l$ decreases slowly with length, from 158 at 2.5 calibers to 142 at 5 and 137 at 8. For other densities and conditions, the constant is multiplied by
+\[
+  f = \sqrt{\frac{\rho_b}{10.9}\cdot\frac{273.15 + \theta}{288.15}\cdot\frac{1~\text{atm}}{P}},
+\]
+with $\theta$ the temperature in \textdegree C and $P$ the pressure.
 
-For lead-core jacketed bullets at standard temperatures, the formula is vastly simplified to calculate the required twist (in inches per turn):
-$$ T_{\text{inches}} \approx \frac{150\,d^2}{l} $$
-
-Use $C = 150$ for muzzle velocities $v < 2800$ fps, and $C = 180$ for higher velocities $v > 2800$ fps \citep{greenhill1879rotation}.
+The rule contains no velocity. The variant found in some sources, which raises the constant to 180 above 2800 fps, is not Greenhill's, and such arbitrary velocity factors do not follow the real variation of the overturning moment \citep{miller2006greenhill}. Applied to modern bullets 3.3 to 4.3 calibers long, Greenhill's original rule corresponds to $S_g \approx 1.6$--$2.0$ at Mach 2.5; for a 105~gr 6~mm bullet 5.17 calibers long at 2950~fps, the simplified rule gives 1:7.05 ($S_g = 1.85$ by Miller's rule) while the 180 variant gives 1:8.5 ($S_g = 1.29$), below the full-BC threshold.
 
 \textbf{Modern Gyroscopic Stability Guidance ($S_g$):}
 While Greenhill's is an excellent historical rule of thumb, modern shooters use Miller's gyroscopic stability factor ($S_g$). 

@@ -165,8 +165,9 @@ end
 """
     greenhill_twist(caliber_in, bullet_length_in; C=150)
 
-Greenhill's formula: recommended twist rate [inches/turn].
-Use C=150 for v < 2800 fps, C=180 for v > 2800 fps.
+Greenhill's simplified rule (twist × length = 150 calibers): twist [inches/turn].
+No velocity dependence: the "C=180 above 2800 fps" variant is not Greenhill's
+(Miller, Int. J. Impact Eng. 32, 2006).
 """
 function greenhill_twist(caliber_in::Real, bullet_length_in::Real; C::Real=150.0)
     return C * caliber_in^2 / bullet_length_in
