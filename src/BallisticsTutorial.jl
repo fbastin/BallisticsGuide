@@ -234,37 +234,47 @@ Before the bullet flies, we need to understand what happens inside the barrel.
 # ╔═╡ 00000021-0000-0000-0000-000000000001
 md"""
 ### 4.1 Le Duc velocity model
+
+Le Duc's hyperbola $v(x) = a x/(b + x)$, from the French artillery (Challéat, 1904) and used by the U.S. Navy from Alger (1911) on, has two constants: $a$ is the velocity in an infinitely long barrel, and the pressure peaks at $x = b/2$. Like the site's estimators, `leduc_anchor` takes them from a muzzle velocity and a peak pressure read in load data.
+
+Example from the Reload Swiss 2025 guide: .308 Win, Fox Bullets Classic Hunter 130 gr, 47.5 gr of RS52, 928 m/s and 3 548 bar from a 600 mm barrel. The bullet travels 548.8 mm (barrel minus the 51.2 mm case).
+
+Load data give a **chamber** pressure. By the Lagrange gradient it exceeds the pressure on the bullet base by a factor $1 + C/2m$, so the functions compute with $m + C/2$ by default (`at = :breech`); `:mean` ($m + C/3$) and `:base` ($m$) are also available. After the peak, the two-parameter curve falls below measured pressure: do not read a muzzle pressure off it.
 """
 
 # ╔═╡ 00000022-0000-0000-0000-000000000001
 begin
-    # Model a .308 Win: 175 gr bullet, 44 gr Varget, 24" barrel
-    # Le Duc parameters (fitted to typical .308 data)
-    a_leduc = 1100.0   # theoretical max velocity [m/s] ≈ 3609 fps
-    b_leduc = 0.10     # shape parameter [m]
-    barrel_travel = 0.55  # ~21.5 inches of bullet travel
+    # Reload Swiss 2025: .308 Win, Fox Classic Hunter 130 gr, 47.5 gr RS52,
+    # 928 m/s and 3548 bar (chamber pressure), 600 mm barrel, 51.2 mm case.
+    m_308 = grains_to_kg(130.0)
+    m_chg = grains_to_kg(47.5)
+    d_308 = 7.82e-3                 # bullet diameter [m]
+    barrel_travel = 0.600 - 0.0512  # bullet travel to the muzzle [m]
 
-    println("=== Le Duc Velocity Profile (.308 Win 175 gr / Varget) ===")
-    println("  Travel (in) │ Velocity (fps) │ Pressure (psi)")
-    println("──────────────┼────────────────┼────────────────")
+    ld = leduc_anchor(v0=928.0, P_max=3548e5, m_bullet=m_308, m_charge=m_chg,
+                      d_bore=d_308, travel=barrel_travel)
+    a_leduc, b_leduc = ld.a, ld.b
+    @printf("a = %.0f m/s, b = %.1f mm\n\n", a_leduc, 1000 * b_leduc)
 
-    m_308 = grains_to_kg(175.0)
-    m_chg = grains_to_kg(44.0)
-    d_308 = inches_to_m(0.308)
-
-    for x_in in [2, 4, 6, 8, 10, 14, 18, 22]
-        x_m = inches_to_m(x_in)
+    println("=== Le Duc profile (.308 Win 130 gr / RS52) ===")
+    println("  Travel (mm) │ Velocity (m/s) │ Chamber pressure (bar)")
+    println("──────────────┼────────────────┼────────────────────────")
+    for x_mm in [10, 25, 53, 100, 200, 300, 400, 548.8]
+        x_m = x_mm / 1000
         v = leduc_velocity(x_m, a=a_leduc, b=b_leduc)
         P = leduc_pressure(x_m, a=a_leduc, b=b_leduc,
-                          m_bullet=m_308, m_charge=m_chg, d_bore=d_308)
-        @printf("    %5.1f     │    %7.0f     │    %7.0f\n",
-                Float64(x_in), ms_to_fps(v), P / 6894.76)  # Pa to psi
+                           m_bullet=m_308, m_charge=m_chg, d_bore=d_308)
+        @printf("    %7.1f   │    %7.0f     │    %7.0f\n", Float64(x_mm), v, P / 1e5)
     end
 
     P_max = peak_pressure(a=a_leduc, b=b_leduc,
-                         m_bullet=m_308, m_charge=m_chg, d_bore=d_308)
-    @printf("\nPeak pressure: %.0f psi (at x = %.1f inches)\n",
-            P_max / 6894.76, m_to_inches(b_leduc/2))
+                          m_bullet=m_308, m_charge=m_chg, d_bore=d_308)
+    P_base = peak_pressure(a=a_leduc, b=b_leduc,
+                           m_bullet=m_308, m_charge=m_chg, d_bore=d_308, at=:base)
+    @printf("\nPeak chamber pressure: %.0f bar at x = %.0f mm (b/2)\n",
+            P_max / 1e5, 1000 * b_leduc / 2)
+    @printf("Peak pressure on the bullet base: %.0f bar (chamber / %.2f)\n",
+            P_base / 1e5, P_max / P_base)
 end
 
 # ╔═╡ 00000023-0000-0000-0000-000000000001
@@ -829,7 +839,7 @@ This notebook demonstrated the full `CompetitionBallistics.jl` library:
 |--------|-------------|---------------|
 | `BallisticUtils` | Unit conversions, SD, stability | `miller_stability`, `sectional_density` |
 | `Atmosphere` | ICAO model, humidity, DA | `air_density`, `density_altitude` |
-| `InteriorBallistics` | Barrel physics | `leduc_velocity`, `barrel_length_correction` |
+| `InteriorBallistics` | Barrel physics | `leduc_anchor`, `leduc_velocity`, `leduc_pressure`, `barrel_length_correction` |
 | `DragModels` | G1/G7 BRL tables | `cd_g1`, `cd_g7`, `drag_coefficient` |
 | `ExteriorBallistics` | 3-DOF trajectory solver | `solve_trajectory`, `trajectory_table` |
 | `ReloadingAnalysis` | Load development tools | `chronograph_stats`, `ladder_test_analysis` |

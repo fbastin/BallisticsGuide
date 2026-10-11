@@ -354,16 +354,42 @@ const InteriorBallistics = (() => {
 
   const leducVelocity = (x, { a, b }) => a * x / (b + x);
 
-  const leducPressure = (x, { a, b, mBullet, mCharge, dBore }) => {
-    const mE = mBullet + mCharge / 3.0;
-    const A  = Math.PI * dBore * dBore / 4.0;
-    return mE * a * a * b * x / (A * Math.pow(b + x, 3));
+  // Mass that turns the projectile acceleration into the pressure at a given place, under
+  // the Lagrange gradient (Carlucci & Jacobson 2008, eqs. 3.54 and 3.59): 'breech' = m + C/2,
+  // the chamber pressure of load data and C.I.P./SAAMI; 'mean' = m + C/3, the space-mean
+  // pressure; 'base' = m, the pressure on the projectile base. Not effectiveMass (energy).
+  const lagrangeMass = (mBullet, mCharge, at = 'breech') => {
+    if (at === 'breech') return mBullet + mCharge / 2.0;
+    if (at === 'mean') return mBullet + mCharge / 3.0;
+    if (at === 'base') return mBullet;
+    throw new Error("at must be 'breech', 'mean' or 'base', got " + at);
   };
 
-  const peakPressure = ({ a, b, mBullet, mCharge, dBore }) => {
-    const mE = mBullet + mCharge / 3.0;
-    const A  = Math.PI * dBore * dBore / 4.0;
-    return 4.0 * mE * a * a / (27.0 * A * b);
+  // Default: chamber pressure. Until 2026-10-11 these used m + C/3 (space-mean) unannounced.
+  const leducPressure = (x, { a, b, mBullet, mCharge, dBore, at = 'breech' }) => {
+    const m = lagrangeMass(mBullet, mCharge, at);
+    const A = Math.PI * dBore * dBore / 4.0;
+    return m * a * a * b * x / (A * Math.pow(b + x, 3));
+  };
+
+  const peakPressure = ({ a, b, mBullet, mCharge, dBore, at = 'breech' }) => {
+    const m = lagrangeMass(mBullet, mCharge, at);
+    const A = Math.PI * dBore * dBore / 4.0;
+    return 4.0 * m * a * a / (27.0 * A * b);
+  };
+
+  // Le Duc constants anchored on muzzle velocity and peak pressure (as velocity_model.js):
+  // smaller root of K·b² + (2K·L − 1)·b + K·L² = 0, K = 4·m·v0²/(27·A·Pmax·L²); null if none.
+  const leducAnchor = ({ v0, pMax, mBullet, mCharge, dBore, travel, at = 'breech' }) => {
+    const m = lagrangeMass(mBullet, mCharge, at);
+    const A = Math.PI * dBore * dBore / 4.0;
+    const L = travel;
+    const K = 4 * m * v0 * v0 / (27 * A * pMax * L * L);
+    const qa = K, qb = 2 * K * L - 1, qc = K * L * L;
+    const disc = qb * qb - 4 * qa * qc;
+    if (disc < 0) return null;
+    const b = (-qb - Math.sqrt(disc)) / (2 * qa);
+    return { a: v0 * (b + L) / L, b };
   };
 
   const effectiveMass = (mBullet, mCharge) => mBullet + mCharge / 3.0;
@@ -386,7 +412,7 @@ const InteriorBallistics = (() => {
     v0 + sigmaT * dT;
 
   return {
-    leducVelocity, leducPressure, peakPressure,
+    leducVelocity, leducPressure, peakPressure, leducAnchor, lagrangeMass,
     effective_mass: effectiveMass, burn_fraction: burnFraction, // matching Julia names
     effectiveMass, burnFraction, propellantEnergy,
     chamberPressureClosedBomb,

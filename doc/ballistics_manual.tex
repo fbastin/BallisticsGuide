@@ -634,34 +634,51 @@ where $\theta$ is the form factor: $\theta = 0$ for a slab, $\theta > 0$ for pro
 
 \section{Le Duc Velocity Model}
 
-A classical approximation for muzzle velocity useful for handloading estimates \citep{mccoy1999modern}:
+Le Duc's hyperbola approximates the velocity of the projectile as a function of its travel. It was taught at the French artillery school of Fontainebleau \citep{challeat1904affuts} and used by the U.S.\ Navy after \citet{alger1911leduc}:
 \begin{equation}
   v(x) = \frac{a\,x}{b + x}
   \label{eq:leduc}
 \end{equation}
-where $x$ is the projectile travel distance from the cartridge case mouth, and $a$ and $b$ are empirically determined constants. As $x \to \infty$, $v \to a$, so $a$ represents the theoretical maximum velocity.
+where $x$ is the projectile travel from its seated position and $a$, $b$ are constants. As $x \to \infty$, $v \to a$: $a$ is the velocity in a barrel of infinite length, and $v(b) = a/2$.
 
 \section{Pressure--Travel Relationship}
 
-The pressure as a function of bullet travel $x$ in the barrel:
+Differentiating Eq.~\eqref{eq:leduc} gives the acceleration $\dd v/\dd t = v\,\dd v/\dd x = a^2 b\,x/(b+x)^3$. The pressure this acceleration requires depends on where it is taken along the gas column, since the gas behind the projectile must be accelerated too. Under the Lagrange approximation, where the gas velocity varies linearly from zero at the breech face to $v$ at the projectile base, the breech pressure $p_B$ and the space-mean pressure $\bar{p}$ are related to the base pressure $p_S$ by \citep[p.~71, eqs.~3.54 and 3.59]{carlucci2007ballistics}
 \begin{equation}
-  P(x) = \frac{m_e}{A_{\mathrm{bore}}}\,\frac{\dd v}{\dd t}
-  = \frac{m_e\,v}{A_{\mathrm{bore}}}\,\frac{\dd v}{\dd x}
-  \label{eq:pressure_travel}
+  p_B = p_S\left(1 + \frac{C}{2m}\right), \qquad \bar{p} = p_S\left(1 + \frac{C}{3m}\right)
+  \label{eq:lagrange_gradient}
 \end{equation}
-where $m_e = m + C/3$ is the effective mass and $A_{\mathrm{bore}} = \pi d^2/4$ is the bore cross-sectional area.
-
-Using the Le Duc model, the pressure becomes:
+where $m$ is the projectile mass and $C$ the charge mass. Writing $m_p$ for $m + C/2$ (breech), $m + C/3$ (space-mean) or $m$ (base), the pressure along the travel is
 \begin{equation}
-  P(x) = \frac{m_e\,a^2\,b\,x}{A_{\mathrm{bore}}\,(b+x)^3}
+  P(x) = \frac{m_p}{A_{\mathrm{bore}}}\,v\,\frac{\dd v}{\dd x}
+  = \frac{m_p\,a^2\,b\,x}{A_{\mathrm{bore}}\,(b+x)^3}
   \label{eq:pressure_leduc}
 \end{equation}
-
-The peak pressure occurs at $x_{\max} = b/2$:
+with $A_{\mathrm{bore}} = \pi d^2/4$. The peak occurs at $x_{\max} = b/2$, where $v = a/3$:
 \begin{equation}
-  P_{\max} = \frac{4\,m_e\,a^2}{27\,A_{\mathrm{bore}}\,b}
+  P_{\max} = \frac{4\,m_p\,a^2}{27\,A_{\mathrm{bore}}\,b}
   \label{eq:peak_pressure}
 \end{equation}
+
+Load data and C.I.P.\ or SAAMI limits give the chamber pressure, so the companion libraries default to the breech, $m_p = m + C/2$ (\texttt{at = :breech} in Julia, \texttt{at: 'breech'} in JavaScript). For a .308~Winchester with \SI{47.5}{\grain} under a \SI{130}{\grain} bullet, $1 + C/2m = 1.18$. Written with the projectile mass alone, Alger's formulas give the pressure on the base; he put the chamber pressure, where gauges read it, 15 to 20\,\% higher, and \citet{patterson1912leduc} 12\,\%, both on naval guns. The effective mass $m + C/3$ often used for the kinetic energy of projectile and gas belongs to the space-mean pressure, not to the chamber pressure.
+
+\subsection{Anchoring on Load Data}
+
+The constants are not known in advance. The site's estimators take them from a muzzle velocity $v_0$ at travel $L$ and a peak pressure $P_{\max}$. The condition $v(L) = v_0$ gives $a = v_0 (b + L)/L$, and Eq.~\eqref{eq:peak_pressure} becomes the quadratic
+\begin{equation}
+  K b^2 + (2KL - 1)\,b + K L^2 = 0, \qquad K = \frac{4\,m_p\,v_0^2}{27\,A_{\mathrm{bore}}\,P_{\max}\,L^2}
+  \label{eq:leduc_anchor}
+\end{equation}
+Its two roots have the product $L^2$. The smaller one puts the peak in the first half of the travel and is the one retained (\texttt{leduc\_anchor}). Real roots exist only if $P_{\max} \ge (16/27)\,m_p v_0^2/(A_{\mathrm{bore}} L)$.
+
+Example, from the Reload Swiss 2025 guide \citep{reloadswiss2025}: .308~Winchester, Fox Bullets Classic Hunter \SI{130}{\grain}, \SI{47.5}{\grain} of RS52, \SI{928}{\meter\per\second} and \SI{3548}{\bar} from a \SI{600}{\milli\meter} barrel, hence \SI{548.8}{\milli\meter} of travel behind a \SI{51.2}{\milli\meter} case. Then $a = \SI{1108}{\meter\per\second}$ and $b = \SI{106.3}{\milli\meter}$: the chamber pressure peaks at \SI{53}{\milli\meter} of travel and falls to \SI{528}{\bar} at the muzzle. On the base, the peak is \SI{3000}{\bar}.
+
+\subsection{Limits}
+
+\begin{itemize}
+  \item Two constants fix only a shape. On an instrumented 5.56$\times$45 test barrel, with the curve anchored in the same way on the measured muzzle velocity and peak case-mouth pressure, the measured pressure peaked near \SI{3}{\centi\meter} of travel against \SI{4.4}{\centi\meter} for the curve. After the peak the curve fell below the measurement: about \SI{520}{\bar} at the muzzle against 900 \citep{yun2010experimental}. This rests on a single shot. A muzzle pressure should not be read off the curve.
+  \item Anchored on the C.I.P.\ pressure and used to transfer a velocity to a shorter barrel, the curve was tested on 27 cut-down series, 25 of them by Marr \citep{marrBarrelSeries}. Its median error, 35 and \SI{31}{\fps} on the reference and validation sets, against 41 and \SI{42}{\fps} for the fixed exponent of Eq.~\eqref{eq:barrel_length_correction}, is not a significant difference cartridge by cartridge. Powley's expansion ratio does better in the median; Le Duc's hyperbola does better where velocity flattens out beyond 24~inches (6\,mm and 6.5~Creedmoor).
+\end{itemize}
 
 \section{Muzzle Velocity Estimation for Handloaders}
 

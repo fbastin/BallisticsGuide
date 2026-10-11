@@ -56,6 +56,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "src")
 TOL = 1e-9
+GR = 6.479891e-5          # kg par grain (cas de Le Duc)
 
 # Chaque cas : (libellé, appel Julia, appel JS, dict d'arguments).
 # Les appels sont des GABARITS où {nom} est remplacé par la valeur de l'argument.
@@ -237,6 +238,52 @@ CAS = [
      [dict(m=168, d=0.308, bc=0.462, v=2600, zr=100, hum=0),
       dict(m=168, d=0.308, bc=0.462, v=2600, zr=600, hum=0),
       dict(m=168, d=0.308, bc=0.462, v=2600, zr=600, hum=90)]),
+
+    # Le Duc (ajouté le 2026-10-11, avec le choix de la pression et l'ancrage). Exemple de
+    # l'estimateur de vitesse : .308 Win, 130 gr, 47,5 gr, 928 m/s, 3 548 bar, course 548,8 mm.
+    # Les trois masses de Lagrange (culasse, moyenne, culot) sont essayées : un `at` mal
+    # transmis d'un côté donnerait la pression d'un autre endroit du tube, avec des valeurs
+    # plausibles à 4 % près, que l'œil ne distingue pas.
+    ("leduc_velocity",
+     "IB.leduc_velocity({x}; a={a}, b={b})",
+     "IB.leducVelocity({x}, {{a:{a}, b:{b}}})",
+     [dict(x=0.02, a=1108.4, b=0.1063), dict(x=0.5488, a=1108.4, b=0.1063),
+      dict(x=0.46, a=1159.643, b=0.0888)]),
+
+    ("leduc_pressure",
+     "IB.leduc_pressure({x}; a={a}, b={b}, m_bullet={m}, m_charge={c}, d_bore={d}, at=:{at})",
+     "IB.leducPressure({x}, {{a:{a}, b:{b}, mBullet:{m}, mCharge:{c}, dBore:{d}, at:'{at}'}})",
+     [dict(x=x, a=1108.4, b=0.1063, m=130 * GR, c=47.5 * GR, d=0.00782, at=at)
+      for at in ("breech", "mean", "base") for x in (0.02, 0.05315, 0.5488)]),
+
+    ("peak_pressure",
+     "IB.peak_pressure(a={a}, b={b}, m_bullet={m}, m_charge={c}, d_bore={d}, at=:{at})",
+     "IB.peakPressure({{a:{a}, b:{b}, mBullet:{m}, mCharge:{c}, dBore:{d}, at:'{at}'}})",
+     [dict(a=1108.4, b=0.1063, m=130 * GR, c=47.5 * GR, d=0.00782, at=at)
+      for at in ("breech", "mean", "base")]),
+
+    # Ancrage : a et b séparément. Sans solution (P_max trop basse pour la vitesse), le Julia
+    # rend `nothing` et le JS `null` ; les gabarits les changent en NaN, que la comparaison
+    # accepte des deux côtés à la fois et refuse d'un seul.
+    ("leduc_anchor · a",
+     "(r = IB.leduc_anchor(v0={v}, P_max={P}, m_bullet={m}, m_charge={c}, d_bore={d}, "
+     "travel={L}, at=:{at}); r === nothing ? NaN : r.a)",
+     "(r => r === null ? NaN : r.a)(IB.leducAnchor({{v0:{v}, pMax:{P}, mBullet:{m}, "
+     "mCharge:{c}, dBore:{d}, travel:{L}, at:'{at}'}}))",
+     [dict(v=928, P=3548e5, m=130 * GR, c=47.5 * GR, d=0.00782, L=0.5488, at=at)
+      for at in ("breech", "mean", "base")]
+     + [dict(v=972.093, P=349.853e6, m=0.003639, c=0.0018, d=0.00556, L=0.46, at="base"),
+        dict(v=928, P=1500e5, m=130 * GR, c=47.5 * GR, d=0.00782, L=0.5488, at="breech")]),
+
+    ("leduc_anchor · b",
+     "(r = IB.leduc_anchor(v0={v}, P_max={P}, m_bullet={m}, m_charge={c}, d_bore={d}, "
+     "travel={L}, at=:{at}); r === nothing ? NaN : r.b)",
+     "(r => r === null ? NaN : r.b)(IB.leducAnchor({{v0:{v}, pMax:{P}, mBullet:{m}, "
+     "mCharge:{c}, dBore:{d}, travel:{L}, at:'{at}'}}))",
+     [dict(v=928, P=3548e5, m=130 * GR, c=47.5 * GR, d=0.00782, L=0.5488, at=at)
+      for at in ("breech", "mean", "base")]
+     + [dict(v=972.093, P=349.853e6, m=0.003639, c=0.0018, d=0.00556, L=0.46, at="base"),
+        dict(v=928, P=1500e5, m=130 * GR, c=47.5 * GR, d=0.00782, L=0.5488, at="breech")]),
 ]
 
 
@@ -245,9 +292,9 @@ def julia_source():
               "using .CompetitionBallistics",
               "using .CompetitionBallistics.BallisticUtils",
               "using .CompetitionBallistics.Atmosphere",
-              "import .CompetitionBallistics: BallisticUtils, Atmosphere, DragModels, ExteriorBallistics",
+              "import .CompetitionBallistics: BallisticUtils, Atmosphere, DragModels, ExteriorBallistics, InteriorBallistics",
               "using .CompetitionBallistics.DragModels",
-              "const BU = BallisticUtils; const Atm = Atmosphere; const DM = DragModels; const EB = ExteriorBallistics",
+              "const BU = BallisticUtils; const Atm = Atmosphere; const DM = DragModels; const EB = ExteriorBallistics; const IB = InteriorBallistics",
               "import .CompetitionBallistics.ReferenceData: COMMON_BULLETS, CARTRIDGE_MAX_PSI",
               "res = Any[]"]
     for nom, gab_jl, _, grille in CAS:
@@ -277,7 +324,7 @@ def julia_source():
 
 def js_source(selftest=False):
     lignes = ['const CB = require("%s");' % os.path.join(SRC, "CompetitionBallistics.js"),
-              "const BU = CB.BallisticUtils, Atm = CB.Atmosphere, DM = CB.DragModels, EB = CB.ExteriorBallistics;",
+              "const BU = CB.BallisticUtils, Atm = CB.Atmosphere, DM = CB.DragModels, EB = CB.ExteriorBallistics, IB = CB.InteriorBallistics;",
               "const res = [];"]
     for nom, _, gab_js, grille in CAS:
         for args in grille:

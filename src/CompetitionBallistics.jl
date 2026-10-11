@@ -325,7 +325,7 @@ module InteriorBallistics
 
 using ..BallisticUtils
 
-export leduc_velocity, leduc_pressure, peak_pressure,
+export leduc_velocity, leduc_pressure, peak_pressure, leduc_anchor, lagrange_mass,
        barrel_length_correction, muzzle_velocity_temp_correction,
        burn_fraction, propellant_energy, effective_mass,
        chamber_pressure_closed_bomb
@@ -343,34 +343,87 @@ function leduc_velocity(x::Real; a::Real, b::Real)
 end
 
 """
-    leduc_pressure(x; a, b, m_bullet, m_charge, d_bore) -> P [Pa]
+    lagrange_mass(m_bullet, m_charge; at=:breech) -> m [kg]
 
-Pressure from Le Duc velocity model.
+Mass that turns the projectile acceleration into the gas pressure at a given place,
+under the Lagrange gradient (gas velocity linear from breech face to projectile base;
+Carlucci & Jacobson 2008, eqs. 3.54 and 3.59, p. 71):
+- `:breech` → m + C/2, the chamber pressure, i.e. what C.I.P./SAAMI gauges and
+  manufacturers' load data report;
+- `:mean`   → m + C/3, the space-mean pressure behind the projectile;
+- `:base`   → m, the pressure on the projectile base (the P of Le Duc's formulas as
+  Alger gives them).
+Not to be confused with `effective_mass` (m + C/3), the mass of the kinetic energy.
+"""
+function lagrange_mass(m_bullet::Real, m_charge::Real; at::Symbol=:breech)
+    at === :breech && return m_bullet + m_charge / 2.0
+    at === :mean   && return m_bullet + m_charge / 3.0
+    at === :base   && return float(m_bullet)
+    throw(ArgumentError("at must be :breech, :mean or :base, got :$at"))
+end
+
+"""
+    leduc_pressure(x; a, b, m_bullet, m_charge, d_bore, at=:breech) -> P [Pa]
+
+Pressure from the Le Duc velocity model: P = m·a²·b·x / (A·(b + x)³), with m given by
+`lagrange_mass` (default: chamber pressure, comparable with C.I.P./SAAMI limits).
+Until 2026-10-11 this function used m + C/3, the space-mean pressure, without saying so.
 - `x`: bullet travel [m]
 - `a`, `b`: Le Duc parameters
 - `m_bullet`, `m_charge`: bullet and charge mass [kg]
 - `d_bore`: bore diameter [m]
+- `at`: `:breech`, `:mean` or `:base`
+After the peak, the two-parameter curve falls below measured pressure (one instrumented
+5.56 × 45 shot: about 520 bar at the muzzle against 900; Yoon, Choi & Lee 2010).
 """
 function leduc_pressure(x::Real; a::Real, b::Real,
                         m_bullet::Real, m_charge::Real,
-                        d_bore::Real)
-    m_e = m_bullet + m_charge / 3.0
+                        d_bore::Real, at::Symbol=:breech)
+    m = lagrange_mass(m_bullet, m_charge; at=at)
     A = π * d_bore^2 / 4.0
-    return m_e * a^2 * b * x / (A * (b + x)^3)
+    return m * a^2 * b * x / (A * (b + x)^3)
 end
 
 """
-    peak_pressure(; a, b, m_bullet, m_charge, d_bore) -> P_max [Pa]
+    peak_pressure(; a, b, m_bullet, m_charge, d_bore, at=:breech) -> P_max [Pa]
 
 Peak pressure from Le Duc model, occurs at x = b/2.
-P_max = 4·m_e·a² / (27·A·b)
+P_max = 4·m·a² / (27·A·b), with m given by `lagrange_mass`.
 """
 function peak_pressure(; a::Real, b::Real,
                        m_bullet::Real, m_charge::Real,
-                       d_bore::Real)
-    m_e = m_bullet + m_charge / 3.0
+                       d_bore::Real, at::Symbol=:breech)
+    m = lagrange_mass(m_bullet, m_charge; at=at)
     A = π * d_bore^2 / 4.0
-    return 4.0 * m_e * a^2 / (27.0 * A * b)
+    return 4.0 * m * a^2 / (27.0 * A * b)
+end
+
+"""
+    leduc_anchor(; v0, P_max, m_bullet, m_charge, d_bore, travel, at=:breech)
+        -> (a=…, b=…) or nothing
+
+Le Duc constants anchored on a muzzle velocity and a peak pressure, as the site's
+estimators do (`reloading/tireur_reloaded/velocity_model.js`). v(travel) = v0 gives
+a = v0·(b + L)/L; with P_max = 4·m·a²/(27·A·b) this is the quadratic
+K·b² + (2K·L − 1)·b + K·L² = 0, K = 4·m·v0²/(27·A·P_max·L²). The smaller root is kept
+(peak in the first half of the travel). Returns `nothing` when no real root exists,
+i.e. when P_max < (32/27)·m·v0²/(2·A·L).
+- `v0`: muzzle velocity [m/s]; `P_max`: peak pressure [Pa], of the kind given by `at`
+  (default: chamber pressure, as in load data)
+- `travel`: bullet travel to the muzzle [m] (barrel minus case length)
+"""
+function leduc_anchor(; v0::Real, P_max::Real, m_bullet::Real, m_charge::Real,
+                      d_bore::Real, travel::Real, at::Symbol=:breech)
+    m = lagrange_mass(m_bullet, m_charge; at=at)
+    A = π * d_bore^2 / 4.0
+    L = travel
+    K = 4 * m * v0 * v0 / (27 * A * P_max * L * L)
+    qa, qb, qc = K, 2 * K * L - 1, K * L * L
+    disc = qb * qb - 4 * qa * qc
+    disc < 0 && return nothing
+    b = (-qb - sqrt(disc)) / (2 * qa)
+    a = v0 * (b + L) / L
+    return (a=a, b=b)
 end
 
 """
