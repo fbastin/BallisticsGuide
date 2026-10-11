@@ -326,7 +326,7 @@ module InteriorBallistics
 using ..BallisticUtils
 
 export leduc_velocity, leduc_pressure, peak_pressure, leduc_anchor, lagrange_mass,
-       barrel_length_correction, muzzle_velocity_temp_correction,
+       barrel_length_correction, powley_barrel_correction, muzzle_velocity_temp_correction,
        burn_fraction, propellant_energy, effective_mass,
        chamber_pressure_closed_bomb
 
@@ -485,6 +485,24 @@ measurement found.
 function barrel_length_correction(v_ref::Real, L_barrel::Real,
                                   L_ref::Real; exponent::Real=0.17)
     return v_ref * (L_barrel / L_ref)^exponent
+end
+
+"""
+    powley_barrel_correction(v_ref, L_barrel, L_ref; case_length, case_capacity, bore) -> v
+
+Barrel-length correction by Powley's expansion-ratio rule, in the form of the kwk.us
+calculator (after Davis, Handloading, NRA, 1981):
+v = v_ref · √(1 − R(L)^(−1/4)) / √(1 − R(L_ref)^(−1/4)), R(L) = 1 + A·(L − case_length)/U.
+Lengths in m, `case_capacity` U in m³ (usable, under the bullet), `bore` in m (A = π·bore²/4).
+On 43 published cut-down series it beat the fixed exponent on 15 of 18 rifles
+(tireur_reloaded docs/BARREL_LENGTH.md, 2026-10-11); the site's estimators use it for rifles.
+Not tested on handguns.
+"""
+function powley_barrel_correction(v_ref::Real, L_barrel::Real, L_ref::Real;
+                                  case_length::Real, case_capacity::Real, bore::Real)
+    A = π * bore^2 / 4.0
+    f(L) = sqrt(1.0 - (1.0 + A * (L - case_length) / case_capacity)^(-0.25))
+    return v_ref * f(L_barrel) / f(L_ref)
 end
 
 """

@@ -408,6 +408,14 @@ const InteriorBallistics = (() => {
   const barrelLengthCorrection = (vRef, lBarrel, lRef, exponent = 0.17) =>
     vRef * Math.pow(lBarrel / lRef, exponent);
 
+  // Powley's expansion-ratio rule (kwk.us form, after Davis 1981): v ∝ √(1 − R^(−1/4)),
+  // R = 1 + A·(L − caseLength)/U. Lengths in m, caseCapacity in m³, bore in m. Rifles only.
+  const powleyBarrelCorrection = (vRef, lBarrel, lRef, { caseLength, caseCapacity, bore }) => {
+    const A = Math.PI * bore * bore / 4.0;
+    const f = (L) => Math.sqrt(1.0 - Math.pow(1.0 + A * (L - caseLength) / caseCapacity, -0.25));
+    return vRef * f(lBarrel) / f(lRef);
+  };
+
   const muzzleVelocityTempCorrection = (v0, dT, sigmaT = 1.0) =>
     v0 + sigmaT * dT;
 
@@ -416,7 +424,7 @@ const InteriorBallistics = (() => {
     effective_mass: effectiveMass, burn_fraction: burnFraction, // matching Julia names
     effectiveMass, burnFraction, propellantEnergy,
     chamberPressureClosedBomb,
-    barrelLengthCorrection, muzzleVelocityTempCorrection,
+    barrelLengthCorrection, powleyBarrelCorrection, muzzleVelocityTempCorrection,
   };
 })();
 

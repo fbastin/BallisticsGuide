@@ -265,6 +265,17 @@ CAS = [
     # Ancrage : a et b séparément. Sans solution (P_max trop basse pour la vitesse), le Julia
     # rend `nothing` et le JS `null` ; les gabarits les changent en NaN, que la comparaison
     # accepte des deux côtés à la fois et refuse d'un seul.
+    # Règle de Powley (2026-10-11). Valeurs de référence : banc des canons raccourcis
+    # (tireur_reloaded/scripts/barrel_predictors.py) — .243 Win. 24 -> 16 po, 2 826 fps : 2 582,594 ;
+    # 300 PRC 26 -> 18 po, 2 887 fps : 2 656,766. Volumes et cotes de data/calibers.json.
+    ("powley_barrel_correction",
+     "IB.powley_barrel_correction({v}, {L}, {Lr}; case_length={c}, case_capacity={U}, bore={d})",
+     "IB.powleyBarrelCorrection({v}, {L}, {Lr}, {{caseLength:{c}, caseCapacity:{U}, bore:{d}}})",
+     [dict(v=2826, L=16 * 0.0254, Lr=24 * 0.0254, c=0.05194, U=3.189e-6, d=0.00617),
+      dict(v=2887, L=18 * 0.0254, Lr=26 * 0.0254, c=0.06553, U=5.571e-6, d=0.00782),
+      dict(v=845, L=0.508, Lr=0.6096, c=0.05118, U=2.981e-6, d=0.00782),
+      dict(v=800, L=0.762, Lr=0.6096, c=0.05118, U=2.981e-6, d=0.00782)]),
+
     ("leduc_anchor · a",
      "(r = IB.leduc_anchor(v0={v}, P_max={P}, m_bullet={m}, m_charge={c}, d_bore={d}, "
      "travel={L}, at=:{at}); r === nothing ? NaN : r.a)",
