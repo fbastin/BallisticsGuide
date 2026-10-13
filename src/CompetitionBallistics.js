@@ -1026,6 +1026,12 @@ const ExteriorBallistics = (() => {
           velFps:     Math.round(vFps),
           tofS:       +lerp(a.time, b.time).toFixed(3),
           energyFtlb: Math.round(ekFtlb),
+          // Valeurs NON arrondies, pour qui calcule à partir de la ligne : clics, MRAD,
+          // centimètres. Les champs ci-dessus sont arrondis pour l'affichage en pouces
+          // et en MOA ; la page en tirait des clics et des MRAD, si bien qu'un arrondi à
+          // 0,1 MOA faisait basculer un clic sur 6 à 17 % des lignes selon la valeur du
+          // clic (2026-10-13). On arrondit une seule fois, au dernier affichage.
+          exact: { dropIn, windIn, spinDriftIn: spinIn, elevMoa: elev },
         });
         nextR += stepM;
       }
