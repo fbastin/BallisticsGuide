@@ -1842,7 +1842,9 @@ Base.@kwdef struct ShotParameters6DOF
     twist_in::Float64           = 8.0       # inches per turn, RH positive
     twist_direction::Int        = 1         # +1 = right, -1 = left
     initial_yaw_deg::Float64    = 0.5       # initial yaw angle [deg]
-    initial_pitch_rate::Float64 = 0.0       # initial q [rad/s]
+    initial_pitch_rate::Float64 = 0.0       # initial q [rad/s], about body axis 2, VERTICAL at launch: despite the
+                                            # name, a yaw-plane rate; positive turns the nose to the LEFT (McCoy's
+                                            # tip-off of example 9.1, p. 196). validation_derive_91.jl
 
     # Atmosphere
     temp_F::Float64             = 59.0
@@ -2842,12 +2844,17 @@ end
 Example 9.1 as published: 2600 fps, 12" right-hand twist, sea-level ICAO, zeroed
 at 1000 yards, with the measured moments of inertia of Table 9.2 and a muzzle yaw
 *rate* of 25 rad/s — which is what produces the published first maximum yaw of
-2.0 degrees, rather than an initial yaw angle. Any keyword overrides a default.
+2.0 degrees, rather than an initial yaw angle — that starts the nose moving to the
+LEFT of the line of fire, as the book states (p. 196): `initial_pitch_rate` > 0.
+Any keyword overrides a default.
 
 Published results to check a run against: muzzle gyroscopic stability factor
 **1.70**; pitch-yaw amplitude of about **1.75°** over 180–200 yards (Figure 9.3)
 and about **2.2°** over 580–600 yards (Figure 9.4); and, over the whole 1000
-yards, an amplitude that never exceeds 5 degrees.
+yards, an amplitude that never exceeds 5 degrees. The published drift (9.3 in at
+1000 yards, Figure 9.8) is NOT reproduced: it excludes the aerodynamic jump and follows
+from the book's own yaw-of-repose curve (Figure 9.7), which starts from zero at the
+muzzle where linear equilibrium already gives 0.0022°; see validation_derive_91.jl.
 """
 function mccoy_308_168_shot(; kwargs...)
     lb_in2 = 0.45359237 * 6.4516e-4        # 1 lb·in² -> kg·m²
