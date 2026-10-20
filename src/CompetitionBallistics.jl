@@ -205,13 +205,15 @@ const COMMON_BULLETS = Dict{String, BulletProfile}(
     "Berger 300 Hybrid (.338)" => BulletProfile("Berger 300 Hybrid (.338)", 300.0, 0.338, 0.419, 1.82, 9.4)
 )
 
-# Data from Chapter 9 of the manual
+# SAAMI maximum average pressure, transducer (Z299.4-2025), as in Table tab:saami_map of
+# the manual. The .338 Lapua Magnum held 60916 psi until 2026-10-20: that is the C.I.P.
+# maximum (4200 bar) converted to psi, not the SAAMI figure (65000 psi).
 const CARTRIDGE_MAX_PSI = Dict{String, Float64}(
     ".223 Remington" => 55000.0,
     "6.5 Creedmoor" => 62000.0,
     ".308 Winchester" => 62000.0,
     ".300 Winchester Magnum" => 64000.0,
-    ".338 Lapua Magnum" => 60916.0
+    ".338 Lapua Magnum" => 65000.0
 )
 
 end # module ReferenceData

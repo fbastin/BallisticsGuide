@@ -147,7 +147,7 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.5 --- \today}
+{\large Version 3.6 --- \today}
 \end{titlepage}
 
 \begin{abstract}
@@ -160,6 +160,8 @@ Version 3.3 (2026-08-25) corrects the G7 ballistic coefficient of the Sierra 175
 Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread factors of Table~\ref{tab:es_factors} were those of the range of a \emph{one-dimensional} normal sample; a group's extreme spread is measured in the plane, and its factor is larger (3.066 instead of 2.326 at five shots), so the dispersion $\sigma$ had been overstated by up to 42\,\%. The truing section used the shot-to-shot standard deviation of the chronograph as the uncertainty of the mean velocity; it now uses the standard error $s/\sqrt{n}$ combined with the device's accuracy, observes the centre of a group rather than a single impact, and tests whether the two estimates are compatible. Finally, the hit probability no longer assumes a circular dispersion: the wind uncertainty was composed into a single $\sigma$ applied to both axes, which spread it vertically. Each source is now composed on its own axis, with the velocity spread added vertically, and the probability is integrated numerically. The worked example also used a wind sensitivity 2.6 times the solver's; it has been recomputed.
 
 Version 3.5 (2026-10-20) replaces the ``representative'' load tables, whose charges had no source and, for the 6mm BR, exceeded the maxima published for the same bullet and powder (by up to 2.9\,gr for the 107\,gr MatchKing with Varget), with excerpts of published tables for the named bullet and powder (Section~\ref{sec:load_data}). The 6mm BR worked example (Section~\ref{sec:6br_example}) no longer gives a charge: it uses the median of the published maximum velocities (2670 instead of 2920\,fps) and the published bullet length, and has been recomputed; its chronograph string, which no measurement supported, gives way to the solver's velocity sensitivity. The library function \texttt{velocity\_vertical\_dispersion}, and two others built the same way, had never run; they are repaired.
+
+Version 3.6 (2026-10-20) gives a source to the three tables of the reloading chapter that had none. The cartridge table now reports the maximum velocities published by nine load guides and the G7 coefficients published by Berger; it had the .284 Winchester at 2850--2950\,fps with 180\,gr bullets, above every published maximum (2743\,fps), and listed the 6.5$\times$47 Lapua as a ``Palma variant'', a match that admits only the .308 and the .223. The disciplines column gives way to the rules of ICFRA, the ISSF and the PRS. The temperature tables replace three unsourced classes of powders with the coefficients published by makers, independent testers and military laboratories: the ``standard'' class at 1.5--2.0\,fps/$\degF$ matches the military ammunition of the 1920s, not IMR~4064 (0.37 to 1.08 in three tests), and the same powder can differ by a factor of ten from one test to another. The barrel-life table now states the end point and source of each figure; the two wear laws in $N^{0.7}$ and $N^{0.5}$, for which no source was found and which the published tests contradict, are removed. Finally, the SAAMI pressure of the .338 Lapua Magnum was the C.I.P.\ maximum converted to psi (60{,}916); the SAAMI figure is 65{,}000\,psi.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -2082,57 +2084,67 @@ No amount of ballistic solver software can make up for inconsistent ammunition. 
 
 \section{Cartridge Selection for Competition}
 
+Table~\ref{tab:cartridges} summarises, for the bullet weights a competitor would consider, the \emph{maximum} loads published by nine load guides \citep{vihtavuori2026,hodgdon2024,western2020,reloadswiss2025,adi2026web,norma2023,lovex2019,lyman2002,sierra2020_6mmbr,sierra2020_65x47}: the median of the maximum velocities, the range from the 10th to the 90th percentile over every bullet, powder and guide, and the test barrels the data were taken in. Reduced and subsonic loads (below 2000\,fps) and barrels shorter than 20\,in.\ are left out. These are maximum charges in test barrels: a competition load sits below them, and a longer barrel adds velocity (Table~\ref{tab:barrel_length_308}). The G7 ballistic coefficients are those Berger publishes for its match and hunting bullets of the same weights \citep{berger_charts}; Berger publishes no 147\,gr 6.5\,mm bullet, and its 6.5\,mm range stops at 144\,gr.
+
 \begin{table}[H]
 \centering
-\caption{Popular competition cartridges and their characteristics}
+\caption{Competition cartridges: published maximum velocities and published G7 ballistic coefficients}
 \label{tab:cartridges}
-\small
-\begin{tabularx}{\textwidth}{@{}lccccX@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
-\textbf{Cartridge} & \textbf{Bullet (gr)} & \textbf{$v_0$ (fps)} & \textbf{BC (G7)} & \textbf{Barrel} & \textbf{Discipline} \\
+\textbf{Cartridge} & \textbf{Bullet} & \textbf{Max $v_0$ (fps)} & \textbf{Loads} & \textbf{Test barrels} & \textbf{G7 BC} \\
+ & \textbf{(gr)} & median [P10--P90] & (guides) & (in) & (Berger) \\
 \midrule
-6mm BR & 105--108 & 2550--2800 & .225--.275 & 26--28 & Benchrest, F-Class \\
-6mm Creedmoor & 105--115 & 2950--3100 & .255--.290 & 26--28 & PRS, NRL, F-Class \\
-6mm Dasher & 105--115 & 2950--3050 & .225--.290 & 26--28 & PRS, NRL \\
-6.5 Creedmoor & 130--147 & 2550--2800 & .255--.340 & 24--26 & PRS, NRL, F-Class \\
-6.5$\times$47 Lapua & 130--147 & 2650--2850 & .255--.340 & 26--28 & Palma variant \\
-.284 Win & 180 & 2850--2950 & .340--.365 & 28--30 & F-Class Open \\
-.308 Win & 155--185 & 2550--2800 & .220--.275 & 24--30 & Palma, Tactical \\
-.223 Rem & 69--80 & 2700--3000 & .145--.200 & 20--26 & Service Rifle \\
-.300 Win Mag & 190--230 & 2800--3000 & .310--.415 & 26--30 & F-Class Open \\
-.338 Lapua Mag & 250--300 & 2700--2900 & .370--.450 & 27--30 & ELR \\
+6mm BR Norma & 105--108 & 2669 [2550--2745] & 34 (4) & 23.6--26 & .268--.287 \\
+6mm Creedmoor & 105--115 & 2959 [2812--3042] & 123 (4) & 24--26 & .268--.292 \\
+6mm Dasher & 105--115 & 2917 [2836--2950] & 9 (2) & 30 & .268--.292 \\
+6.5 Creedmoor & 130--147 & 2687 [2549--2809] & 319 (6) & 23.6--25.6 & .287--.336 \\
+6.5$\times$47 Lapua & 130--147 & 2698 [2529--2790] & 134 (6) & 23.6--30 & .287--.336 \\
+.284 Win & 175--185 & 2651 [2552--2712] & 14 (2) & 24 & .336--.356 \\
+.308 Win & 155--185 & 2644 [2467--2785] & 873 (8) & 23.6--24 & .238--.295 \\
+.223 Rem & 69--80 & 2813 [2664--2955] & 265 (7) & 23.6--24.4 & .178--.216 \\
+.300 Win Mag & 190--230 & 2825 [2627--2955] & 190 (6) & 24--25.6 & .290--.368 \\
+.338 Lapua Mag & 250--300 & 2742 [2588--2959] & 157 (7) & 23.6--28 & .349--.421 \\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
+
+Which match admits which cartridge is set by the rules. ICFRA F-Class Open admits any calibre up to and including 8\,mm, F/TR only the .223 Remington and the .308 Winchester (rules F2.2 and F2.3) \citep{icfra2023fclass}; ICFRA Target Rifle, the discipline of the Palma match, the same two cartridges, with .308 bullets of 156\,gr at most (rules T2.1 and T2.19.2.1) \citep{icfra2024tr}; the ISSF 300\,m events any calibre up to 8\,mm (rule 7.4.6) \citep{issf2026rifle}. In every division of the Precision Rifle Series, bullet diameter may not exceed .308\,in.\ and muzzle velocity 3200\,fps \citep{amrifleman2018prs}. The .338 Lapua Magnum is above both the F-Class Open and the PRS limits.
 
 \section{Propellant Selection}
 
-Selecting the proper propellant is a balance between achieving the desired muzzle velocity ($v_0$), maintaining a low velocity spread ($\sigma_v$), and ensuring safety across a wide range of temperatures. Propellants are broadly categorized into single-base (nitrocellulose-only) and double-base (nitrocellulose and nitroglycerine). Single-base propellants generally offer cleaner burning and superior temperature stability, whereas double-base propellants provide higher energy density (resulting in higher velocities) at the expense of higher thermal sensitivity and increased barrel throat erosion. Table~\ref{tab:propellants} summarizes popular propellants used in competition shooting, highlighting their burn rate and relative temperature stability.
+Selecting the proper propellant is a balance between achieving the desired muzzle velocity ($v_0$), maintaining a low velocity spread ($\sigma_v$), and staying safe across the temperatures the ammunition will see. Propellants are broadly categorized into single-base (nitrocellulose only) and double-base (nitrocellulose and nitroglycerine), but the base does not by itself decide the temperature sensitivity. Reload Swiss publishes coefficients of 0.20 to 0.90\,m/s per kelvin across its range, each measured in one cartridge from several production lots; its nitroglycerine-impregnated RS60 is credited with 0.25 and its RS62 with 0.90 \citep{reloadswiss2019temp}.
+
+Makers describe their powders as ``temperature stable'' or ``insensitive'' without saying how much; Table~\ref{tab:propellants} sets these claims beside the published measurements of the velocity coefficient $\sigma_T$ (Section~\ref{sec:propellant_temp}). The same powder measured by different testers can differ by a factor of ten, because the coefficient depends on the cartridge, the load, the temperature range and how the ammunition was conditioned.
 
 \begin{table}[H]
 \centering
-\caption{Popular propellants for competition rifle cartridges}
+\caption{Temperature claims of the makers and published measurements of $\sigma_T$}
 \label{tab:propellants}
 \small
-\begin{tabularx}{\textwidth}{@{}llcX@{}}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
 \toprule
-\textbf{Propellant} & \textbf{Burn Rate} & \textbf{Temp Stable?} & \textbf{Typical Cartridges} \\
+\textbf{Propellant} & \textbf{Maker's claim} & \textbf{Measured $\sigma_T$ (fps/$\degF$), cartridge, source} \\
 \midrule
-Hodgdon Varget & Medium & Yes (Extreme) & .308, .223, 6.5 CM, 6BR \\
-Hodgdon H4350 & Med-slow & Yes (Extreme) & 6.5 CM, 6 CM, .284, .260 \\
-Hodgdon H4895 & Medium & Yes (Extreme) & 6BR, .308, .223 \\
-Alliant RL-16 & Med-slow & Yes (ETS) & 6.5 CM, 6 CM, 6mm BR \\
-Vihtavuori N140 & Medium & Moderate & 6mm BR, .308, .223 \\
-Vihtavuori N150 & Med-slow & Moderate & 6.5 CM, 6 CM, .260 \\
-Vihtavuori N555 & Medium & Yes & 6mm BR, 6 Dasher \\
-Vihtavuori N565 & Med-slow & Yes & 6.5 CM, 6 CM, 6.5$\times$47 \\
-IMR 4451 & Med-slow & Yes (Enduron) & 6.5 CM, 6 CM, .308 \\
-Reload Swiss RS52 & Medium & Moderate & .308 Win, 6mm BR, 6.5 CM \\
-Reload Swiss RS60 & Med-slow & No (Impregnated) & 6.5 CM, .260, 6.5$\times$55 \\
-Vectan Tubal 5000 & Medium & No & .308 Win, .30-30, 8$\times$57 \\
+Hodgdon Varget & ``insensitivity to hot/cold temperatures'' \citep{hodgdon2024} & 0.06 (.308) \citep{hodgdon2012extreme}; 0.14 (6mm Dasher) \citep{zant2025temp}; 0.24 (.308) \citep{gear2022temp}; 0.40 (6.5$\times$47) \citep{zant2016powder}; 0.48 (.22-250) and 0.88 (6mm CM) \citep{haviland2022temp}; 0.63 (.308) and 0.85 (6mm BR) \citep{castleman2022t308,castleman2022t6br} \\
+Hodgdon H4350 & ``insensitive to hot/cold temperatures'' \citep{hodgdon2024} & 0.03 (.30-06) \citep{hodgdon2012extreme}; 0.14 (6mm CM) \citep{zant2025temp}; 0.22 (6.5$\times$47) \citep{zant2016powder}; faster when cold in one .243 load \citep{barsness2017temp} \\
+Hodgdon H4895 & ``Extreme Extruded'' line \citep{hodgdon2024} & 0.16 (.22-250) \citep{hodgdon2012extreme}; 0.77 (6mm BR) and 0.92 (.308) \citep{castleman2022t6br,castleman2022t308} \\
+IMR 4451 & Enduron: ``insensitivity to temperature changes'' \citep{hodgdon2024} & 0.59 (6.5$\times$47) \citep{zant2016powder}; faster when cold in one .257 Roberts load \citep{barsness2017temp} \\
+IMR 4064 & no claim in \citet{hodgdon2024} & 0.37 (.308) \citep{hodgdon2012extreme}; 0.79 (.308) \citep{castleman2022t308}; 1.08 (.22-250) \citep{haviland2022temp} \\
+Vihtavuori N140 & ``exceptional stability'' \citep{vihtavuori2026} & 0.40 (.308) and 0.65 (.22-250) \citep{hodgdon2012extreme}; 1.22 (.308) \citep{castleman2022t308} \\
+Vihtavuori N150 & ``enhanced temperature stability'' \citep{vihtavuori2026} & 0.41 (.308) \citep{castleman2022t308} \\
+Vihtavuori N555 & ``the most temperature stable powder in its class'' \citep{vihtavuori2026} & none found \\
+Alliant RL-16 & ``resists the natural tendency to generate more pressure at higher temperatures and less pressure at lower temperatures'' \citep{alliant_rl16} & none found \\
+Alliant RL-15 & not read & 0.40 (.308) \citep{hodgdon2012extreme}; 1.47 (6mm BR) and 1.89 (.308) \citep{castleman2022t6br,castleman2022t308} \\
+Reload Swiss RS52 & ``flat temperature behaviour'' \citep{reloadswiss2025} & 1.00 (.308), maker's coefficient \citep{reloadswiss2019temp} \\
+Reload Swiss RS60 & ``excellent temperature behaviour'' \citep{reloadswiss2025} & 0.46 (8$\times$68\,S), maker's coefficient \citep{reloadswiss2019temp} \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+Hodgdon's own comparison, run by a maker against its competitors with the number of shots and the barrel unpublished, gives the lowest figures; the independent tests of Castleman (five shots per temperature, 1 to 36\,$^\circ$C) give two to ten times more for the same powders. In the .308, both put Varget among the least sensitive powders; Castleman also finds N150 and AR-Comp low, and Reloder~15, SO62, CFE~223 and N140 high. No measurement of RL-16, N555, N565 or Vectan's Tubal powders was found.
 
 \section{Published Load Data (Excerpts)}
 \label{sec:load_data}
@@ -2191,6 +2203,8 @@ Each row below is copied from a powder or bullet maker's table \emph{for the nam
 \centering
 \caption{6mm BR Norma: published loads \citep{vihtavuori2026,reloadswiss2025,sierra2020_6mmbr,western2020}}
 \label{tab:6br_loads}
+\small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}llcccl@{}}
 \toprule
 \textbf{Bullet} & \textbf{Powder} & \textbf{Charge (gr)} & \textbf{$v_0$ (fps)} & \textbf{Barrel} & \textbf{Source} \\
@@ -2831,6 +2845,7 @@ Propellant lot variation & 0--3 & 0 (single lot) \\
 A 10\% higher BC reduces wind deflection by approximately 8--12\%. \textbf{Choosing the highest-BC bullet your twist rate can stabilize is the single most impactful choice for reducing wind sensitivity}, which is the dominant error source (Table~\ref{tab:error_budget}).
 
 \section{Temperature Effects: Propellant and Atmosphere}
+\label{sec:propellant_temp}
 
 \subsection{Combined Temperature Effect}
 
@@ -2840,22 +2855,36 @@ A 10\% higher BC reduces wind deflection by approximately 8--12\%. \textbf{Choos
 \end{equation}
 where $\Delta y_{\mathrm{total}}$ is the total vertical shift at range $R$, $\Delta T$ is the temperature deviation from a reference point, $\sigma_T$ is the propellant's temperature sensitivity, and $\rho$ is the air density. The terms $\partial y/\partial v_0$ and $\partial y/\partial \rho$ represent the trajectory's sensitivity to muzzle velocity and air density changes, respectively.
 
-For temperature-sensitive propellants, the two effects are \emph{additive}. Using a temperature-stable propellant is ballistically equivalent to reducing the effective sensitivity by 60--80\%.
+When the velocity rises with temperature, as it usually does, the two effects act in the same direction: warmer ammunition leaves faster, and warmer air drags less. They oppose each other for the loads that shoot faster when cold (Table~\ref{tab:propellants}).
+
+Table~\ref{tab:propellant_temp} gathers published coefficients, from the military ammunition of the 1920s to the loads made with powders sold as temperature stable. Hatcher's figures for the .30-06, between 1.55 and 1.83\,fps/$\degF$, are of the same order as the Navy's 2009 measurement with IMR~4895 in the 7.62$\times$54R; the commercial and military loads measured since then mostly fall between 0.6 and 1.3\,fps/$\degF$. With powders sold as temperature stable, the published figures run from 0.03 to about 0.9 depending on the test (Table~\ref{tab:propellants}).
 
 \begin{table}[H]
 \centering
-\caption{Temperature sensitivity by propellant class}
+\caption{Published velocity coefficients $\sigma_T$ of rifle ammunition}
 \label{tab:propellant_temp}
-\begin{tabular}{@{}lcc@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}Xcc>{\raggedright\arraybackslash}p{3.1cm}@{}}
 \toprule
-\textbf{Propellant Class} & $\sigma_T$ \textbf{(fps/$\degF$ [fps/$\degC$])} & $\Delta v_0$ \textbf{for $\pm \SI{22.2}{\celsius}$ [$\pm 40\,\degF$]} \\
+\textbf{Ammunition (powder)} & \textbf{Range} & $\sigma_T$ \textbf{(fps/$\degF$)} & \textbf{Source} \\
 \midrule
-Standard (IMR 4064, etc.) & 1.5--2.0 [2.7--3.6] & $\pm$60--80 fps \\
-Temperature-stable (Varget, H4350) & 0.3--0.8 [0.5--1.4] & $\pm$12--32 fps \\
-Highly stable (RL-16, N565) & 0.2--0.5 [0.36--0.9] & $\pm$8--20 fps \\
+.30-06 military, 1920s--1940s & $-50$ to 140\,$\degF$ & 1.55--1.83 & \citet[p.~399]{hatcher1962notebook} \\
+7.62$\times$54R, reduced load (IMR 4895) & 32 to 100\,$\degF$ & 1.86 & \citet{tyson2009nawcwd} \\
+5.56\,mm, spherical double base, EPVAT barrel & 21 to 71\,$^\circ$C & 2.57 & \citet{boulkadid2016} \\
+\quad same, cold side & $-54$ to 21\,$^\circ$C & 1.09 & \citet{boulkadid2016} \\
+7.62\,mm M118LR, Lake City production & $-65$ to 160\,$\degF$ & $\approx$0.94 (graph) & \citet{faintich2010stmarks} \\
+\quad same, SMP\,768 propellant & $-65$ to 160\,$\degF$ & 0.09 & \citet{faintich2010stmarks} \\
+.308 Win factory, Highland SX 168\,gr & $-15$ to 53\,$^\circ$C & 0.95 & \citet{jackson2013outback} \\
+.223 Rem factory, Winchester Supreme 55\,gr & $-15$ to 53\,$^\circ$C & 0.97 & \citet{jackson2013outback} \\
+.308 Win factory, ADI Outback (``BTI'' powder) & $-15$ to 53\,$^\circ$C & 0.15 & \citet{jackson2013outback} \\
+.308 Win handloads, 11 powders & 1 to 36\,$^\circ$C & $-0.25$ to 1.89 & \citet{castleman2022t308} \\
+\quad median of the 11 & & 0.79 & \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
+
+Three cautions apply to any single figure. Several responses are not linear: the 5.56\,mm velocity falls faster between 71 and 21\,$^\circ$C than between 21 and $-54$\,$^\circ$C \citep{boulkadid2016}, and AR-Comp in the .308 is slower at 19\,$^\circ$C than at both 1 and 36\,$^\circ$C \citep{castleman2022t308}. Some loads reverse: four of the 29 loads tested by \citet{barsness2017temp} were faster at 0\,$\degF$ than at 70\,$\degF$. And the cold is not always the safe side: Vihtavuori does not recommend N570 in heavy loads below $-20$\,$^\circ$C, for risk of high pressure \citep[p.~14]{vihtavuori2026}. The value to use in Eq.~\eqref{eq:total_temp_shift} is the one measured with one's own load over the temperatures expected.
 
 \section{Seating Depth and Internal Ballistic Coupling}
 
@@ -2877,7 +2906,7 @@ No jump is best in general. For its hybrid bullets, Berger tests 0.015, 0.030, 0
 
 \begin{table}[H]
 \centering
-\caption{SAAMI maximum average pressure for competition cartridges}
+\caption{SAAMI maximum average pressure (transducer) for competition cartridges \citep{saami2025z2994}}
 \label{tab:saami_map}
 \begin{tabular}{@{}lcc@{}}
 \toprule
@@ -2887,10 +2916,12 @@ No jump is best in general. For its hybrid bullets, Berger tests 0.015, 0.030, 0
 6.5 Creedmoor & 62,000 & 427 \\
 .308 Winchester & 62,000 & 427 \\
 .300 Winchester Magnum & 64,000 & 441 \\
-.338 Lapua Magnum & 60,916 & 420 \\
+.338 Lapua Magnum & 65,000 & 448 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The C.I.P.\ maximum for the .338 Lapua Magnum, 4200\,bar (420\,MPa, 60{,}916\,psi), is a different figure from a different organisation and measuring protocol; the two are not interchangeable.
 
 From the Le Duc model peak pressure \eqref{eq:peak_pressure}:
 \begin{equation}
@@ -2901,28 +2932,35 @@ From the Le Duc model peak pressure \eqref{eq:peak_pressure}:
 
 \section{Barrel Life}
 
+There is no standard of barrel life. The published figures are estimates by barrel makers, reports from shooters and, for a few service rifles, military tests, and each counts to a different end point: loss of match accuracy, a throat-erosion gauge reading, a round count fixed by regulation, or a rejection limit on group size (Table~\ref{tab:barrel_life}). For the .284 Winchester, the only figure found is one F-Class shooter's projection: a barrel still shooting well at 1,036 rounds and expected to last to 3,000 or more, against 900 rounds for his 6.5-284 \citep{ballard2008_284}.
+
 \begin{table}[H]
 \centering
-\caption{Approximate barrel life for competition cartridges}
+\caption{Published barrel lives and the end point each one counts to}
 \label{tab:barrel_life}
-\begin{tabular}{@{}lc@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}lcX>{\raggedright\arraybackslash}p{3.1cm}@{}}
 \toprule
-\textbf{Cartridge} & \textbf{Barrel Life (rounds)} \\
+\textbf{Cartridge} & \textbf{Rounds} & \textbf{End point} & \textbf{Source} \\
 \midrule
-6mm BR / 6 Dasher & 2500--3500 \\
-6.5 Creedmoor & 2500--3000 \\
-.308 Winchester & 5000--8000 \\
-.284 Winchester & 1500--2500 \\
-.300 Winchester Magnum & 1200--2000 \\
+6mm BR & 2200--3000 & ``accurate life'' & \citet{accurateshooter_barrelcost} \\
+6mm BRX, one barrel & 2900 & competitive 10-shot groups at 100\,yd & \citet{accurateshooter2008_6brx} \\
+6.5 Creedmoor & 2000--3000 & replacement, untreated barrel & \citet{criterion2017barrel} \\
+6.5$\times$284 Norma & 1500--1800 & replacement, F-Class & \citet{criterion2017barrel} \\
+.308 Win and similar & 2000--3000 & ``accurate life'', stainless barrel & \citet{lilja_faq} \\
+.308 Win & $\geq$ 4000 & ``remain competitive'' & \citet{accurateshooter_barrelcost} \\
+.308 Win, AR-10, M118LR & 5000--8000 & ``serviceable'', untreated bore & \citet{criterion2017barrel} \\
+7.62\,mm, M24 sniper rifle & 5000 & replacement by round count & \citet{fm2310} \\
+.30-06 National Match, 1923 & 4700, 5200 & barrels worn out (two powders) & \citet[p.~331]{hatcher1962notebook} \\
+Magnum hunting cartridges & 1500--3000 & ``accurate rounds'' & \citet{lilja_faq} \\
+Magnums & 1000--2000 & throat ``burnt out'' & \citet[p.~83]{vaughn1998} \\
+5.56\,mm M16, 12 rifles & 25{,}000 (mean) & mean extreme spread of five 10-shot groups at 100\,yd above 9\,in. & \citet{landry1966m16} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-The ballistic signature of barrel wear:
-\begin{align}
-  v_0(N) &\approx v_{0,\text{new}} - k_{\mathrm{wear}} \cdot N^{0.7} \label{eq:barrel_wear_v}\\
-  \sigma_v(N) &\approx \sigma_{v,\text{new}} + k_{\sigma} \cdot N^{0.5} \label{eq:barrel_wear_sd}
-\end{align}
+Wear does not follow a smooth law from the first round. In the Springfield Armory test of twelve M16 rifles, the rejection limit was reached after 25{,}000 rounds on average; the velocity at the end of the test was 40\,fps lower on average, from 6\,fps faster to 111\,fps slower depending on the rifle, and neither the bullet seat advance nor the change in velocity correlated reliably with accuracy \citep{landry1966m16}. The 6BRX barrel followed over its whole life kept competitive groups to 2900 rounds, then opened up as the throat roughened \citep{accurateshooter2008_6brx}. Where the throat erosion was measured, it progressed at a roughly steady rate: about 0.001\,in.\ per 1000 rounds in the M16A1 bore \citep{yalamanchili1977m16}, and a lands advance of 0.004 to 0.006\,in.\ per 100 rounds in 6 and 6.5\,mm match cartridges \citep{zant2020barrel}. Following the seating depth to the lands and the velocity on the chronograph tells a shooter how the throat is wearing; the group size is what retires the barrel.
 
 \section{Load Development Workflow}
 

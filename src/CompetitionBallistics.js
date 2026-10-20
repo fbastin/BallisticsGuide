@@ -255,12 +255,13 @@ const ReferenceData = (() => {
     "Berger 300 Hybrid (.338)":      { name: "Berger 300 Hybrid (.338)",      massGr: 300.0, caliberIn: 0.338, bcG7: 0.419, lengthIn: 1.82, twistIn: 9.4 },
   };
 
+  // SAAMI maximum average pressure, transducer (Z299.4-2025) -- see the Julia module.
   const CARTRIDGE_MAX_PSI = {
     ".223 Remington":        55000.0,
     "6.5 Creedmoor":         62000.0,
     ".308 Winchester":       62000.0,
     ".300 Winchester Magnum": 64000.0,
-    ".338 Lapua Magnum":     60916.0,
+    ".338 Lapua Magnum":     65000.0,
   };
 
   return { COMMON_BULLETS, CARTRIDGE_MAX_PSI };
