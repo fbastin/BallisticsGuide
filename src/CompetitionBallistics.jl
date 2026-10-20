@@ -896,6 +896,17 @@ Base.@kwdef struct ShotParameters
     dt::Float64                 = 0.0005    # integration time step [s]
 end
 
+# Copie avec modifications : `ShotParameters(p; muzzle_vel_fps = …)`. Trois fonctions de
+# ReloadingAnalysis l'emploient depuis le premier commit — velocity_vertical_dispersion,
+# seating_depth_sensitivity, temperature_shift_table — et ce constructeur n'existait pas :
+# elles échouaient à chaque appel (MethodError), y compris l'exemple que le manuel en donne.
+# Relevé le 2026-10-20 en refaisant l'exemple travaillé de la 6 mm BR.
+function ShotParameters(p::ShotParameters; kw...)
+    champs = fieldnames(ShotParameters)
+    base = NamedTuple{champs}(ntuple(i -> getfield(p, i), length(champs)))
+    return ShotParameters(; merge(base, values(kw))...)
+end
+
 # ── Helper: convert to SI ──
 function _to_si(p::ShotParameters)
     (

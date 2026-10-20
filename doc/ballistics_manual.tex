@@ -147,7 +147,7 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.4 --- \today}
+{\large Version 3.5 --- \today}
 \end{titlepage}
 
 \begin{abstract}
@@ -158,6 +158,8 @@ Version 3.2 records that the 6-DOF is no longer a roadmap: it is implemented and
 Version 3.3 (2026-08-25) corrects the G7 ballistic coefficient of the Sierra 175\,gr MatchKing in the bullet data table (0.259 to 0.243, the value published by the sources that table cites) and the transonic ranges derived from it. It also adds Chapter~\ref{chap:dispersion}: the dispersion statistics, hit-probability model and Bayesian muzzle-velocity truing behind the analysis tools of the online calculator.
 
 Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread factors of Table~\ref{tab:es_factors} were those of the range of a \emph{one-dimensional} normal sample; a group's extreme spread is measured in the plane, and its factor is larger (3.066 instead of 2.326 at five shots), so the dispersion $\sigma$ had been overstated by up to 42\,\%. The truing section used the shot-to-shot standard deviation of the chronograph as the uncertainty of the mean velocity; it now uses the standard error $s/\sqrt{n}$ combined with the device's accuracy, observes the centre of a group rather than a single impact, and tests whether the two estimates are compatible. Finally, the hit probability no longer assumes a circular dispersion: the wind uncertainty was composed into a single $\sigma$ applied to both axes, which spread it vertically. Each source is now composed on its own axis, with the velocity spread added vertically, and the probability is integrated numerically. The worked example also used a wind sensitivity 2.6 times the solver's; it has been recomputed.
+
+Version 3.5 (2026-10-20) replaces the ``representative'' load tables, whose charges had no source and, for the 6mm BR, exceeded the maxima published for the same bullet and powder (by up to 2.9\,gr for the 107\,gr MatchKing with Varget), with excerpts of published tables for the named bullet and powder (Section~\ref{sec:load_data}). The 6mm BR worked example (Section~\ref{sec:6br_example}) no longer gives a charge: it uses the median of the published maximum velocities (2670 instead of 2920\,fps) and the published bullet length, and has been recomputed; its chronograph string, which no measurement supported, gives way to the solver's velocity sensitivity. The library function \texttt{velocity\_vertical\_dispersion}, and two others built the same way, had never run; they are repaired.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -671,7 +673,7 @@ The constants are not known in advance. The site's estimators take them from a m
 \end{equation}
 Its two roots have the product $L^2$. The smaller one puts the peak in the first half of the travel and is the one retained (\texttt{leduc\_anchor}). Real roots exist only if $P_{\max} \ge (16/27)\,m_p v_0^2/(A_{\mathrm{bore}} L)$.
 
-Example, from the Reload Swiss 2025 guide \citep{reloadswiss2025}: .308~Winchester, Fox Bullets Classic Hunter \SI{130}{\grain}, \SI{47.5}{\grain} of RS52, \SI{928}{\meter\per\second} and \SI{3548}{\bar} from a \SI{600}{\milli\meter} barrel, hence \SI{548.8}{\milli\meter} of travel behind a \SI{51.2}{\milli\meter} case. Then $a = \SI{1108}{\meter\per\second}$ and $b = \SI{106.3}{\milli\meter}$: the chamber pressure peaks at \SI{53}{\milli\meter} of travel and falls to \SI{528}{\bar} at the muzzle. On the base, the peak is \SI{3000}{\bar}.
+Example, from the Reload Swiss 2025 guide \citep{reloadswiss2025}: .308~Winchester, Fox Bullets \SI{130}{\grain} (the guide names no model), \SI{47.5}{\grain} of RS52, \SI{928}{\meter\per\second} and \SI{3548}{\bar} from a \SI{600}{\milli\meter} barrel, hence \SI{548.8}{\milli\meter} of travel behind a \SI{51.2}{\milli\meter} case. Then $a = \SI{1108}{\meter\per\second}$ and $b = \SI{106.3}{\milli\meter}$: the chamber pressure peaks at \SI{53}{\milli\meter} of travel and falls to \SI{528}{\bar} at the muzzle. On the base, the peak is \SI{3000}{\bar}.
 
 \subsection{Limits}
 
@@ -2089,7 +2091,7 @@ No amount of ballistic solver software can make up for inconsistent ammunition. 
 \toprule
 \textbf{Cartridge} & \textbf{Bullet (gr)} & \textbf{$v_0$ (fps)} & \textbf{BC (G7)} & \textbf{Barrel} & \textbf{Discipline} \\
 \midrule
-6mm BR & 105--108 & 2850--2950 & .225--.275 & 26--28 & Benchrest, F-Class \\
+6mm BR & 105--108 & 2550--2800 & .225--.275 & 26--28 & Benchrest, F-Class \\
 6mm Creedmoor & 105--115 & 2950--3100 & .255--.290 & 26--28 & PRS, NRL, F-Class \\
 6mm Dasher & 105--115 & 2950--3050 & .225--.290 & 26--28 & PRS, NRL \\
 6.5 Creedmoor & 130--147 & 2550--2800 & .255--.340 & 24--26 & PRS, NRL, F-Class \\
@@ -2132,79 +2134,77 @@ Vectan Tubal 5000 & Medium & No & .308 Win, .30-30, 8$\times$57 \\
 \end{tabularx}
 \end{table}
 
-\section{Representative Load Data}
+\section{Published Load Data (Excerpts)}
+\label{sec:load_data}
 
-\textbf{Disclaimer:} Reference only. Always consult current manufacturer manuals. Start 10\% below maximum.
+Each row below is copied from a powder or bullet maker's table \emph{for the named bullet and powder}: starting and maximum charge, and the velocities the maker measured with them in its test barrel. Velocities published in m/s (Vihtavuori, Reload Swiss) are converted to fps; C marks a compressed charge. A charge published for one bullet does not transfer to another bullet of the same weight: in the .308 Winchester with N150, Vihtavuori stops the 155\,gr Berger Hybrid Target at 43.8\,gr and the 155\,gr Sierra HPBT at 46.5\,gr \citep{vihtavuori2026}. Start at the published starting charge, work up while watching for pressure signs, and use the current edition of the manual: tables are revised.
 
 \begin{table}[H]
 \centering
-\caption{6.5 Creedmoor representative loads (24-inch barrel)}
+\caption{6.5 Creedmoor: published loads \citep{hodgdon2024,vihtavuori2026}}
 \label{tab:65cm_loads}
-\begin{tabular}{@{}llcccc@{}}
+\begin{tabular}{@{}llcccl@{}}
 \toprule
-\textbf{Bullet} & \textbf{Propellant} & \textbf{Charge (gr)} & \textbf{COAL (in)} & \textbf{$v_0$ (fps)} & \textbf{Press.} \\
+\textbf{Bullet} & \textbf{Powder} & \textbf{Charge (gr)} & \textbf{$v_0$ (fps)} & \textbf{Barrel} & \textbf{Source} \\
 \midrule
-140 Berger Hybrid & H4350 & 40.0--42.5 & 2.800 & 2650--2760 & Near max \\
-147 Hornady ELD-M & H4350 & 38.5--41.0 & 2.830 & 2550--2660 & Near max \\
-130 Berger Hybrid & H4350 & 41.0--43.5 & 2.810 & 2750--2880 & Near max \\
-140 Sierra MK & RL-16 & 39.0--41.5 & 2.800 & 2640--2750 & Near max \\
-147 Hornady ELD-M & N565 & 39.5--42.0 & 2.830 & 2570--2680 & Near max \\
+140 Hornady ELD-M & H4350 & 36.0--40.0\,C & 2464--2660 & 24 in. & Hodgdon \\
+147 Hornady ELD-M & H4350 & 36.7--41.8 & 2389--2680 & 24 in. & Hodgdon \\
+140 Berger Hybrid Target & N565 & 42.7--47.1 & 2516--2733 & 650 mm & Vihtavuori \\
+147 Hornady ELD Match & N565 & 41.7--46.0 & 2405--2654 & 650 mm & Vihtavuori \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{.308 Winchester representative loads (24-inch barrel)}
+\caption{.308 Winchester: published loads \citep{hodgdon2024,vihtavuori2026}}
 \label{tab:308_loads}
-\begin{tabular}{@{}llcccc@{}}
+\begin{tabular}{@{}llcccl@{}}
 \toprule
-\textbf{Bullet} & \textbf{Propellant} & \textbf{Charge (gr)} & \textbf{COAL (in)} & \textbf{$v_0$ (fps)} & \textbf{Press.} \\
+\textbf{Bullet} & \textbf{Powder} & \textbf{Charge (gr)} & \textbf{$v_0$ (fps)} & \textbf{Barrel} & \textbf{Source} \\
 \midrule
-175 Sierra MK & Varget & 42.0--44.5 & 2.800 & 2550--2680 & Near max \\
-155 Berger Hybrid & Varget & 44.5--47.0 & 2.800 & 2750--2870 & Near max \\
-168 Sierra MK & Varget & 43.0--45.5 & 2.800 & 2600--2720 & Near max \\
-175 Sierra MK & N150 & 43.0--45.0 & 2.800 & 2570--2670 & Near max \\
+155 Sierra HPBT & Varget & 44.0--47.0\,C & 2759--2909 & 24 in. & Hodgdon \\
+168 Sierra HPBT & Varget & 42.0--46.0\,C & 2520--2731 & 24 in. & Hodgdon \\
+175 Sierra HPBT & Varget & 42.0--45.0\,C & 2583--2690 & 24 in. & Hodgdon \\
+155 Berger Hybrid Target & N150 & 40.3--43.8 & 2497--2720 & 610 mm & Vihtavuori \\
+168 Sierra HPBT & N150 & 40.1--43.5 & 2441--2635 & 610 mm & Vihtavuori \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{6mm Creedmoor representative loads (26-inch barrel)}
+\caption{6mm Creedmoor: published loads \citep{hodgdon2024,vihtavuori2026}}
 \label{tab:6cm_loads}
-\begin{tabular}{@{}llcccc@{}}
+\begin{tabular}{@{}llcccl@{}}
 \toprule
-\textbf{Bullet} & \textbf{Propellant} & \textbf{Charge (gr)} & \textbf{COAL (in)} & \textbf{$v_0$ (fps)} & \textbf{Press.} \\
+\textbf{Bullet} & \textbf{Powder} & \textbf{Charge (gr)} & \textbf{$v_0$ (fps)} & \textbf{Barrel} & \textbf{Source} \\
 \midrule
-105 Berger Hybrid & H4350 & 39.5--42.0 & 2.800 & 3000--3100 & Near max \\
-108 Berger BT Tgt & H4350 & 39.0--41.5 & 2.800 & 2950--3070 & Near max \\
-115 Berger Hybrid & RL-16 & 38.0--40.5 & 2.810 & 2880--2990 & Near max \\
-105 Hornady ELD-M & N565 & 38.5--41.0 & 2.790 & 2980--3080 & Near max \\
-109 Berger LRHT & H4350 & 38.5--41.0 & 2.810 & 2950--3060 & Near max \\
+108 Hornady ELD-M & H4350 & 37.8--41.6 & 2802--3006 & 24 in. & Hodgdon \\
+115 Berger VLD & H4350 & 36.8--40.5 & 2718--2895 & 24 in. & Hodgdon \\
+105 Lapua Scenar & N565 & 42.1--46.3 & 2779--3028 & 660 mm & Vihtavuori \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{6mm BR Norma representative loads (26-inch barrel)}
+\caption{6mm BR Norma: published loads \citep{vihtavuori2026,reloadswiss2025,sierra2020_6mmbr,western2020}}
 \label{tab:6br_loads}
-\begin{tabular}{@{}llcccc@{}}
+\begin{tabular}{@{}llcccl@{}}
 \toprule
-\textbf{Bullet} & \textbf{Propellant} & \textbf{Charge (gr)} & \textbf{COAL (in)} & \textbf{$v_0$ (fps)} & \textbf{Press.} \\
+\textbf{Bullet} & \textbf{Powder} & \textbf{Charge (gr)} & \textbf{$v_0$ (fps)} & \textbf{Barrel} & \textbf{Source} \\
 \midrule
-105 Berger Hybrid & Varget & 29.0--30.5 & 2.350 & 2850--2950 & Near max \\
-105 Berger Hybrid & N140 & 29.5--31.0 & 2.350 & 2870--2960 & Near max \\
-108 Berger BT Tgt & Varget & 28.5--30.0 & 2.350 & 2820--2920 & Near max \\
-108 Berger BT Tgt & N555 & 29.0--30.5 & 2.350 & 2850--2950 & Near max \\
-105 Lapua Scenar & H4895 & 28.5--30.0 & 2.340 & 2830--2930 & Near max \\
-107 Sierra MK & Varget & 28.5--30.0 & 2.350 & 2830--2930 & Near max \\
+105 Lapua Scenar & N140 & 25.8--28.9 & 2448--2694 & 650 mm & Vihtavuori \\
+105 Lapua Scenar & RS52 & 27.0--28.5 & 2556--2667 & 600 mm & Reload Swiss \\
+107 Sierra MatchKing & Varget & 23.5--27.1 & 2250--2550 & 24 in. & Sierra \\
+107 Sierra HPBT MatchKing & Accurate 4064 & 26.2--29.1 & 2485--2704 & 26 in. & Western \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-% ============================================================================
+Over the five manuals read for the 6mm BR Norma (the four above and Shooters World), the 42 maximum loads published for 105--108\,gr bullets range from 2548 to 2800\,fps, median 2668\,fps. Norma rates its own 105\,gr match load at 2789\,fps from a 26-inch barrel \citep{norma6mmbr_diamondline}.
+
 \section{Complete Worked Example: 6mm BR at 1000 Yards}
 \label{sec:6br_example}
 
@@ -2212,29 +2212,29 @@ This section walks through a complete ballistic simulation for a 6mm BR Norma be
 
 \subsection{Step 1: Component Data}
 
-Our load:
+The bullet and rifle:
 \begin{itemize}[nosep]
   \item \textbf{Bullet:} Berger 105\,gr Hybrid Target, 6mm (.243 cal)
-  \item \textbf{BC (G7):} 0.275 \citep{litz2015ballistic}
-  \item \textbf{Bullet length:} 1.292 in.\ (manufacturer specification)
-  \item \textbf{Propellant:} Vihtavuori N140, 30.2\,gr
-  \item \textbf{Muzzle velocity:} 2920\,fps (from 26-inch barrel, verified by chronograph)
+  \item \textbf{BC (G7):} 0.275 (Table~\ref{tab:bullet_data})
+  \item \textbf{Bullet length:} 1.282 in.\ (Berger bullet data)
   \item \textbf{Barrel twist:} 1:7.5 right-hand
-  \item \textbf{Brass:} Lapua 6mm BR, weight-sorted $\pm$0.5\,gr
-  \item \textbf{Primer:} CCI BR-4 small rifle benchrest
+  \item \textbf{Brass:} Lapua 6mm BR Norma; \textbf{primer:} CCI BR-4 small rifle benchrest
+  \item \textbf{Muzzle velocity:} 2670\,fps, assumed (see below)
 \end{itemize}
+
+None of the five manuals read for Table~\ref{tab:6br_loads} lists this bullet in the 6mm BR Norma, so no powder or charge is given here: take both from a manual that lists the Berger 105\,gr Hybrid, work up from its starting charge, and chronograph the result. The example assumes 2670\,fps, the median of the 42 maximum loads those manuals publish for 105--108\,gr bullets in this chambering (test barrels of 600 to 660\,mm). Everything below is to be recomputed with the chronographed velocity.
 
 \subsection{Step 2: Stability Check}
 
-Using the Miller formula \eqref{eq:miller_sg}:
+Using the Miller formula \eqref{eq:miller_sg}, at standard conditions:
 \begin{align*}
-  d &= 0.243\;\text{in.}, \quad l = 1.292/0.243 = 5.317\;\text{cal}, \quad T_w = 7.5/0.243 = 30.86\;\text{cal/turn} \\
-  S_g &= \frac{30 \times 105}{30.86^2 \times 0.243^3 \times 5.317 \times (1 + 5.317^2)} \times \left(\frac{2920}{2800}\right)^{1/3} \times \frac{518.67}{518.67} \\
-  &= \frac{3150}{30.86^2 \times 0.01435 \times 5.317 \times 29.27} \times 1.014 \\
-  &\approx 1.50
+  d &= 0.243\;\text{in.}, \quad l = 1.282/0.243 = 5.276\;\text{cal}, \quad T_w = 7.5/0.243 = 30.86\;\text{cal/turn} \\
+  S_g &= \frac{30 \times 105}{30.86^2 \times 0.243^3 \times 5.276 \times (1 + 5.276^2)} \times \left(\frac{2670}{2800}\right)^{1/3} \times \frac{518.67}{518.67} \\
+  &= \frac{3150}{30.86^2 \times 0.01435 \times 5.276 \times 28.84} \times 0.984 \\
+  &\approx 1.49
 \end{align*}
 
-$S_g = 1.50 > 1.3$: well stabilized, and right at the threshold above which the bullet realises its full BC. The bullet will maintain gyroscopic stability down to approximately Mach 1.2 (about 1350\,fps), which occurs near 1100 yards for this load.
+$S_g = 1.49$: right at the threshold above which the bullet realises its full BC. At the match-day temperature and pressure of Step~3, the Miller correction raises it to 1.57. $S_g$ grows along the trajectory, since the bullet loses velocity much faster than spin: the muzzle value is the minimum.
 
 \subsection{Step 3: Atmospheric Conditions}
 
@@ -2256,7 +2256,7 @@ Density ratio: $\rho/\rho_0 = 1.1575/1.2250 = 0.9449$. The air is 5.5\% less den
 
 Speed of sound (at \SI{27.8}{\celsius}): $a = 20.047\sqrt{300.9} = 347.7\;\text{m/s}$.
 
-Muzzle Mach number: $\Mach_0 = 890.0/347.7 = 2.56$ (well into the supersonic regime).
+Muzzle Mach number: $\Mach_0 = 813.8/347.7 = 2.34$ (well into the supersonic regime).
 
 \subsection{Step 4: Solver Setup and Trajectory}
 
@@ -2270,8 +2270,8 @@ params_6br = ShotParameters(
     bc              = 0.275,        # G7
     drag_model      = :G7,
 
-    # Launch
-    muzzle_vel_fps  = 2920.0,
+    # Launch: median of published maximum loads, 105-108 gr
+    muzzle_vel_fps  = 2670.0,
     sight_height_in = 1.5,
     zero_range_yd   = 100.0,
 
@@ -2291,7 +2291,7 @@ params_6br = ShotParameters(
     # Spin: 1:7.5 RH twist
     twist_in        = 7.5,
     twist_direction = 1,
-    bullet_length_in = 1.10,
+    bullet_length_in = 1.282,       # Berger bullet data
 
     # Location: Ottawa, ON
     latitude_deg    = 45.4,
@@ -2303,11 +2303,11 @@ params_6br = ShotParameters(
 trajectory_table(params_6br, step_yd=100)
 \end{lstlisting}
 
-The solver output for this configuration:
+The solver output for this configuration (wind column: wind alone; spin column: spin drift alone):
 
 \begin{table}[H]
 \centering
-\caption{Computed trajectory: 6mm BR, 105 gr Berger Hybrid, $v_0 = 2920$ fps, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 in Hg, 55\% RH. 8 mph wind at $60^{\circ}$. 100 yd zero. 1:7.5 RH twist, $45.4^{\circ}$N, firing West.}
+\caption{Computed trajectory: 6mm BR, 105 gr Berger Hybrid, $v_0 = 2670$ fps, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 in Hg, 55\% RH. 8 mph wind at $60^{\circ}$. 100 yd zero. 1:7.5 RH twist, $45.4^{\circ}$N, firing West.}
 \label{tab:6br_trajectory}
 \small
 \begin{tabular}{@{}rrrrrrrrr@{}}
@@ -2315,73 +2315,67 @@ The solver output for this configuration:
 \textbf{Range} & \textbf{Drop} & \textbf{Elev} & \textbf{Vel} & \textbf{Mach} & \textbf{Energy} & \textbf{ToF} & \textbf{Wind} & \textbf{Spin} \\
 \textbf{(yd)} & \textbf{(in)} & \textbf{(MOA)} & \textbf{(fps)} & & \textbf{(ft-lb)} & \textbf{(s)} & \textbf{(in)} & \textbf{(in)} \\
 \midrule
-100  &    0.0 &   0.0 & 2754 & 2.41 & 1768 & 0.106 &   0.4 & 0.1 \\
-200  &  $-$3.2 &   1.5 & 2593 & 2.27 & 1568 & 0.219 &   1.6 & 0.3 \\
-300  & $-$11.5 &   3.7 & 2439 & 2.14 & 1386 & 0.338 &   3.8 & 0.6 \\
-400  & $-$25.8 &   6.2 & 2289 & 2.01 & 1221 & 0.465 &   6.9 & 1.1 \\
-500  & $-$46.8 &   8.9 & 2145 & 1.88 & 1072 & 0.600 &  11.0 & 1.8 \\
-600  & $-$75.4 &  12.0 & 2006 & 1.76 &  938 & 0.744 &  16.4 & 2.7 \\
-700  &$-$112.7 &  15.4 & 1871 & 1.64 &  816 & 0.899 &  23.0 & 3.8 \\
-800  &$-$160.0 &  19.1 & 1741 & 1.53 &  707 & 1.065 &  31.1 & 5.2 \\
-900  &$-$218.9 &  23.2 & 1615 & 1.42 &  608 & 1.244 &  40.8 & 6.9 \\
-1000 &$-$291.1 &  27.8 & 1493 & 1.31 &  520 & 1.437 &  52.3 & 9.0 \\
+100  &    0.0 &   0.0 & 2512 & 2.20 & 1471 & 0.116 &   0.4 & 0.1 \\
+200  &  $-$4.1 &   2.0 & 2360 & 2.07 & 1298 & 0.239 &   1.7 & 0.3 \\
+300  & $-$14.5 &   4.6 & 2213 & 1.94 & 1142 & 0.370 &   4.0 & 0.6 \\
+400  & $-$32.0 &   7.6 & 2072 & 1.82 & 1000 & 0.510 &   7.4 & 1.0 \\
+500  & $-$57.7 &  11.0 & 1935 & 1.70 &  873 & 0.660 &  12.0 & 1.6 \\
+600  & $-$92.8 &  14.8 & 1803 & 1.58 &  758 & 0.821 &  17.9 & 2.4 \\
+700  &$-$138.6 &  18.9 & 1675 & 1.47 &  654 & 0.994 &  25.2 & 3.4 \\
+800  &$-$197.0 &  23.5 & 1551 & 1.36 &  561 & 1.180 &  34.2 & 4.7 \\
+900  &$-$269.9 &  28.6 & 1431 & 1.25 &  478 & 1.381 &  45.0 & 6.3 \\
+1000 &$-$360.0 &  34.4 & 1316 & 1.15 &  404 & 1.600 &  57.9 & 8.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Step 5: Analysis of Results}
 
-\textbf{Velocity retention.} The bullet arrives at 1000 yards at 1493 fps (Mach 1.31), still above the transonic threshold ($\approx$1340 fps), but with less margin than the older editions of this manual reported: the corrected drag tables cost roughly 100 fps at this range. The 6mm BR with a high-BC 105\,gr bullet remains supersonic to 1000 yards, and not much beyond.
+\textbf{Velocity retention.} The bullet arrives at 1000 yards at 1316 fps (Mach 1.15), about 60 fps above the transonic band ($\Mach \leq 1.1$, about 1255 fps at this temperature). Under standard conditions it arrives at 1269 fps (Mach 1.14). At a published-maximum velocity, the 6mm BR stays supersonic to 1000 yards with little margin; a slower load or a colder day takes it into the transonic band.
 
-\textbf{Total elevation.} From the 100-yard zero, the shooter dials 27.8 MOA of elevation (approximately 8.1 mils). This is competitive with the 6.5 Creedmoor (31.6 MOA for 140 gr, Table~\ref{tab:drop_65cm}) despite the lighter bullet, thanks to the higher muzzle velocity.
+\textbf{Total elevation.} From the 100-yard zero, the shooter dials 34.4 MOA of elevation (about 10.0 mils). Under standard conditions this load needs 35.1 MOA, against 31.6 MOA for the 6.5 Creedmoor 140\,gr at 2700\,fps (Table~\ref{tab:drop_65cm}): at published velocities, the 6mm BR is the slower of the two.
 
-\textbf{Wind deflection.} The 8 mph wind at $60^{\circ}$ produces a crosswind component $W_{\mathrm{cross}} = 8 \sin 60^{\circ} = 6.93$ mph and a headwind component $W_{\mathrm{head}} = 8 \cos 60^{\circ} = 4.0$ mph. The total wind deflection at 1000 yards is 52.3 inches (5.0 MOA). For a full-value 10 mph crosswind, this would scale to approximately 75.5 inches --- about 3\% more than the 6.5 Creedmoor (73.5 in.) but comparable, illustrating that the 6mm BR's higher velocity partly compensates for the lower BC.
+\textbf{Wind deflection.} The 8 mph wind at $60^{\circ}$ produces a crosswind component $W_{\mathrm{cross}} = 8 \sin 60^{\circ} = 6.93$ mph and a headwind component $W_{\mathrm{head}} = 8 \cos 60^{\circ} = 4.0$ mph. The wind deflection at 1000 yards is 57.9 inches (5.5 MOA). A full-value 10 mph crosswind gives 83.3 inches under the match conditions; under standard conditions, 89.0 inches against 73.5 inches for the 6.5 Creedmoor (Table~\ref{tab:drop_65cm}), about 21\% more.
 
-\textbf{Spin drift.} The 1:7.5 RH twist produces 9.0 inches of rightward drift at 1000 yards (0.86 MOA). This is a systematic bias that should be dialed into the scope or included in the wind hold.
+\textbf{Spin drift.} The 1:7.5 RH twist produces 8.2 inches of rightward drift at 1000 yards (0.78 MOA). This is a systematic bias that should be dialed into the scope or included in the wind hold.
 
 \textbf{Coriolis and E\"otv\"os.} Firing West at $45.4^{\circ}$N latitude:
 \begin{itemize}[nosep]
-  \item Horizontal Coriolis: $\approx 2.4$ inches right (0.23 MOA), same direction as spin drift.
-  \item E\"otv\"os (firing West): $\approx 2.4$ inches \emph{down} (the bullet loses the ``boost'' of the Earth's rotation), adding about 0.2 MOA to the required elevation.
+  \item Horizontal Coriolis: $\approx 2.6$ inches right (0.25 MOA), same direction as spin drift.
+  \item E\"otv\"os (firing West): $\approx 2.6$ inches \emph{down} (the bullet loses the ``boost'' of the Earth's rotation), adding about 0.25 MOA to the required elevation.
 \end{itemize}
 
-\textbf{Total horizontal correction:} Wind 52.3 in.\ $+$ spin drift 9.0 in.\ $+$ Coriolis 2.4 in.\ $= 63.7$ inches total rightward deflection (6.1 MOA).
+\textbf{Total horizontal correction:} Wind 57.9 in.\ $+$ spin drift 8.2 in.\ $+$ Coriolis 2.6 in.\ $= 68.7$ inches total rightward deflection (6.6 MOA).
 
-\subsection{Step 6: Chronograph Validation}
+\subsection{Step 6: What the Chronograph SD Means at 1000 Yards}
 
-A 20-round chronograph string from this load:
-\begin{center}
-\small
-2918, 2925, 2914, 2928, 2920, 2916, 2922, 2919, 2927, 2921, \\
-2915, 2923, 2926, 2917, 2920, 2924, 2919, 2922, 2916, 2925
-\end{center}
+Chronograph the load and enter its mean velocity in the solver. Its standard deviation sets the vertical dispersion it causes downrange, which the library computes by differentiating the trajectory with respect to the muzzle velocity:
 
-Statistics: $\bar{v} = 2920.9$ fps, ES $= 14$ fps, SD $= 3.9$ fps. The SD of 3.9 fps produces a vertical dispersion of:
-\begin{equation*}
-  \sigma_y(1000\;\text{yd}) \approx 0.23 \times 3.9 = 0.90\;\text{inches} \quad (0.09\;\text{MOA})
-\end{equation*}
+\begin{lstlisting}
+velocity_vertical_dispersion(params_6br, 1.0; range_yd = 1000)   # 0.32 in per fps
+\end{lstlisting}
 
-This is well below the F-Class X-ring diameter (2.5 inches) and represents a benchrest-grade load.
+Under the match conditions, each fps of velocity SD costs 0.32 inch of vertical SD at 1000 yards: an SD of 5 fps gives 1.6 inches (0.15 MOA), an SD of 10 fps 3.2 inches (0.31 MOA), before any other source of dispersion.
 
 \subsection{Step 7: DOPE Card Summary}
 
 \begin{table}[H]
 \centering
-\caption{DOPE card: 6mm BR 105 Berger / N140 / 2920 fps. Ottawa, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 inHg. Wind hold is per 1 mph full crosswind.}
+\caption{DOPE card: 6mm BR, 105 Berger Hybrid, 2670 fps assumed (replace with the chronographed velocity). Ottawa, \protect\SI{27.8}{\celsius} (82\protect\degF), 29.75 inHg. Wind hold is per 1 mph full crosswind.}
 \label{tab:6br_dope}
 \begin{tabular}{@{}rccc@{}}
 \toprule
 \textbf{Range (yd)} & \textbf{Elevation (MOA)} & \textbf{Wind/1 mph (MOA)} & \textbf{Spin+Cor (MOA)} \\
 \midrule
-200 &  1.5 & 0.10 & 0.19 \\
-300 &  3.7 & 0.17 & 0.25 \\
-400 &  6.2 & 0.22 & 0.36 \\
-500 &  8.9 & 0.29 & 0.46 \\
-600 & 12.0 & 0.36 & 0.56 \\
-700 & 15.4 & 0.43 & 0.67 \\
-800 & 19.1 & 0.51 & 0.80 \\
-900 & 23.2 & 0.60 & 0.93 \\
-1000 & 27.8 & 0.69 & 1.09 \\
+200 &  2.0 & 0.12 & 0.16 \\
+300 &  4.6 & 0.19 & 0.24 \\
+400 &  7.6 & 0.26 & 0.33 \\
+500 & 11.0 & 0.33 & 0.42 \\
+600 & 14.7 & 0.41 & 0.52 \\
+700 & 18.9 & 0.49 & 0.63 \\
+800 & 23.5 & 0.59 & 0.75 \\
+900 & 28.6 & 0.69 & 0.89 \\
+1000 & 34.3 & 0.80 & 1.04 \\
 \bottomrule
 \end{tabular}
 \end{table}
