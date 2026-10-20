@@ -147,7 +147,7 @@ with Reloading Guide and Julia Implementations}\\[2cm]
 {\large\itshape Merging Core Theory, Advanced Effects, and Practical Shooting Tools\\
 Drag Models (G1--G8), Coriolis \& E\"otv\"os Effects, Spin Drift,\\
 Aerodynamic Jump, Wind Deflection, and Handloading Data}\\[1.5cm]
-{\large Version 3.6 --- \today}
+{\large Version 3.7 --- \today}
 \end{titlepage}
 
 \begin{abstract}
@@ -162,6 +162,8 @@ Version 3.4 (2026-09-30) corrects two errors in that chapter. The extreme-spread
 Version 3.5 (2026-10-20) replaces the ``representative'' load tables, whose charges had no source and, for the 6mm BR, exceeded the maxima published for the same bullet and powder (by up to 2.9\,gr for the 107\,gr MatchKing with Varget), with excerpts of published tables for the named bullet and powder (Section~\ref{sec:load_data}). The 6mm BR worked example (Section~\ref{sec:6br_example}) no longer gives a charge: it uses the median of the published maximum velocities (2670 instead of 2920\,fps) and the published bullet length, and has been recomputed; its chronograph string, which no measurement supported, gives way to the solver's velocity sensitivity. The library function \texttt{velocity\_vertical\_dispersion}, and two others built the same way, had never run; they are repaired.
 
 Version 3.6 (2026-10-20) gives a source to the three tables of the reloading chapter that had none. The cartridge table now reports the maximum velocities published by nine load guides and the G7 coefficients published by Berger; it had the .284 Winchester at 2850--2950\,fps with 180\,gr bullets, above every published maximum (2743\,fps), and listed the 6.5$\times$47 Lapua as a ``Palma variant'', a match that admits only the .308 and the .223. The disciplines column gives way to the rules of ICFRA, the ISSF and the PRS. The temperature tables replace three unsourced classes of powders with the coefficients published by makers, independent testers and military laboratories: the ``standard'' class at 1.5--2.0\,fps/$\degF$ matches the military ammunition of the 1920s, not IMR~4064 (0.37 to 1.08 in three tests), and the same powder can differ by a factor of ten from one test to another. The barrel-life table now states the end point and source of each figure; the two wear laws in $N^{0.7}$ and $N^{0.5}$, for which no source was found and which the published tests contradict, are removed. Finally, the SAAMI pressure of the .338 Lapua Magnum was the C.I.P.\ maximum converted to psi (60{,}916); the SAAMI figure is 65{,}000\,psi.
+
+Version 3.7 (2026-10-20) adds to the 6-DOF chapter a worked comparison of the 6-DOF, a point mass and the 3-DOF G7 solver on the same shot (Table~\ref{tab:model_comparison}): with the same drag, the point mass stays within 1.7\,\% of the 6-DOF, while the choice of drag curve moves the result by 2.5 to 4.2\,\%. The binding constraint is the data, as the chapter says.
 \end{abstract}
 
 \pagenumbering{roman}
@@ -1499,6 +1501,28 @@ When shooting at extreme long range, or when using modern high-BC bullets that b
 \paragraph{Note: when 6-DOF is actually required.} It is worth stating plainly, before developing the equations, that this chapter is not a correction the 3-DOF trajectory is waiting for. \citet{mccoy1999modern} is explicit: 6-DOF trajectories \emph{are not required for routine work in exterior ballistics}. If the total angle of attack is small everywhere along the flight path, a point-mass trajectory is ``often sufficiently accurate for all practical purposes'', and where a drift solution is also wanted, the modified point-mass method is accurate for all but the highest quadrant elevation angles. The criterion is the \emph{yaw level}, not the range: six-degrees-of-freedom methods are required whenever a projectile experiences large-yaw flight --- an artillery or mortar shell at high quadrant elevation, or a projectile launched sidewise into a several-hundred-mile-per-hour crosswind. McCoy's own worked example, a .308", 168\,gr Sierra International match bullet fired flat to 1000 yards, never exceeds five degrees of pitch and yaw, and he notes that its flight dynamic analysis ``can actually be done by simpler methods''. Sport shooting, including at long range, sits entirely on the small-yaw side of that line; the 6-DOF model earns its keep in stability and flight-dynamic analysis.
 
 \paragraph{Note: the binding constraint is data, not algorithm.} A 6-DOF solution ``gives the most accurate solution possible \dots provided that all the aerodynamic forces and moments, and the initial conditions, are known to a high degree of accuracy'' \citep{mccoy1999modern}. That proviso is the whole difficulty. The full coefficient set --- normal force, overturning moment, pitch and roll damping, Magnus force and moment --- is measured in a spark range or a wind tunnel and is published for almost no commercial bullet; the semi-empirical codes shooters know by name supply only fragments of it (MCDRAG returns the zero-yaw drag coefficient alone). Practitioners of the method have a motto for what follows: \emph{GI-GO}, garbage in, garbage out. No computed trajectory or flight dynamic analysis can be any better than the quality of its input data, and a 6-DOF run fed with placeholder coefficients is worth less than a 3-DOF run fed with a measured ballistic coefficient.
+
+\paragraph{A worked comparison.} The temperature example of Section~\ref{sec:propellant_temp} puts a figure on both notes. McCoy's .308\,in, 168\,gr bullet --- the 6-DOF validation case, 2600\,fps, with its measured aerodynamic coefficients --- is launched at the angle that zeros it at 1000 yards (14.465\,mrad) and kept at that angle while the muzzle velocity drops by $T_c \times 11\,^\circ$C, for a powder at $T_c = 0.15$ and one at $0.40$\,m/s/$^\circ$C. Table~\ref{tab:model_comparison} gives the vertical shift of the point of impact at 1000 yards in five runs.
+
+\begin{table}[H]
+\centering
+\caption{Same shot, five models: vertical shift at 1000 yards for an 11\,$^\circ$C drop in ammunition temperature, launch angle held constant}
+\label{tab:model_comparison}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}Xrr@{}}
+\toprule
+\textbf{Model} & \textbf{Drag} & \textbf{$T_c = 0.15$} & \textbf{$T_c = 0.40$} \\
+\midrule
+6-DOF, McCoy's initial yaw rate (25\,rad/s) & measured & 6.51\,cm & 17.54\,cm \\
+6-DOF, no initial yaw rate & measured & 6.45\,cm & 17.32\,cm \\
+Point mass & measured, zero-yaw $C_{D0}$ & 6.43\,cm & 17.24\,cm \\
+3-DOF, G7 BC 0.209 & G7, BC fitted to the 6-DOF remaining velocity & 6.79\,cm & 18.19\,cm \\
+3-DOF, G7 BC 0.212 & G7, BC fitted to the 6-DOF time of flight & 6.71\,cm & 17.98\,cm \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+With the same drag, the point mass stays within 1.2 to 1.7\,\% of the full 6-DOF, and most of that gap is the yaw-induced drag of McCoy's initial yaw rate: without it, the 6-DOF falls to 6.45 and 17.32\,cm. The G7 runs are 2.5 to 4.2\,\% higher, about twice as far off, and the cause is the drag curve, not the degrees of freedom: the G7 form factor of this bullet falls from 1.19 at Mach 2.3 to 1.11 at Mach 1.1, which no single ballistic coefficient can follow. The ratio between the two powders is 2.7 in every model. The yaw-induced drag is the one effect that shows in absolute terms: with the same zero-yaw drag, the 6-DOF arrives at 1000 yards at 306.8\,m/s instead of 313.3\,m/s, and 25\,cm lower. It depends on an initial yaw rate that no shooter knows for a given rifle; a 3-DOF run whose ballistic coefficient is fitted to an observed trajectory absorbs it, as the BC~0.209 row does for the remaining velocity.
 
 A 6-DOF model treats the bullet as a spinning rigid body. It tracks three translational coordinates (forward, up, sideways) and three rotational coordinates (yaw, pitch, roll). By doing this, a 6-DOF solver predicts yaw, precession, nutation, spin decay, and all complex gyroscopic phenomena from absolute first principles. This chapter develops the full 6-DOF equations of motion.
 
